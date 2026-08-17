@@ -224,13 +224,6 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <span className="header-feather-fan" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-          <i />
-          <i />
-        </span>
         <button className="portal-button" onClick={openPortal}>
           Members & admin
         </button>
