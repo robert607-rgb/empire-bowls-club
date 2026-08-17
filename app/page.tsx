@@ -41,7 +41,7 @@ type NewsItem = {
   body: string;
   category: string;
   accent: string;
-  emoji: string;
+  imageUrl: string;
   publishedAt: string;
 };
 
@@ -112,7 +112,7 @@ const starterNews: NewsItem[] = [
     body: "The Empire News page is where we will share the people, fixtures, celebrations and behind-the-scenes moments that keep our club connected.",
     category: "Club life",
     accent: "gold",
-    emoji: "📰",
+    imageUrl: "",
     publishedAt: "2025-01-01T09:00:00.000Z",
   },
   {
@@ -123,7 +123,7 @@ const starterNews: NewsItem[] = [
     body: "Bowls is a game for all ages and abilities. Contact Steve to arrange a first visit and discover the Empire welcome for yourself.",
     category: "Welcome",
     accent: "green",
-    emoji: "🌱",
+    imageUrl: "",
     publishedAt: "2024-12-01T09:00:00.000Z",
   },
   {
@@ -134,7 +134,7 @@ const starterNews: NewsItem[] = [
     body: "Keep an eye on the fixtures page and the members area for the latest sessions, team sheets and club updates.",
     category: "On the green",
     accent: "navy",
-    emoji: "🎯",
+    imageUrl: "",
     publishedAt: "2024-11-01T09:00:00.000Z",
   },
 ];
@@ -290,7 +290,13 @@ function NewsPage() {
         <div className={`wrap news-feature news-accent-${featured.accent}`}>
           <div className="news-feature-art">
             <span className="news-stamp">Latest</span>
-            <strong>{featured.emoji}</strong>
+            {featured.imageUrl ? (
+              <img src={featured.imageUrl} alt="" />
+            ) : (
+              <div className="news-art-mark" aria-hidden="true">
+                <span>EB</span>
+              </div>
+            )}
             <i>
               EMPIRE
               <br />
@@ -313,7 +319,7 @@ function NewsPage() {
         </div>
       ) : (
         <div className="wrap news-empty">
-          <span>📰</span>
+          <span aria-hidden="true">EB</span>
           <h2>The noticeboard is ready.</h2>
           <p>Our latest club stories will appear here soon.</p>
         </div>
@@ -334,7 +340,11 @@ function NewsPage() {
                 key={item.id}
               >
                 <div className="news-card-art">
-                  <span>{item.emoji}</span>
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt="" />
+                  ) : (
+                    <span aria-hidden="true">EB</span>
+                  )}
                   <b>{String(index + 2).padStart(2, "0")}</b>
                 </div>
                 <div className="news-card-body">
@@ -1116,6 +1126,7 @@ function MemberZone({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [memberTab, setMemberTab] = useState<"club" | "directory">("club");
+  const [directorySearch, setDirectorySearch] = useState("");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
   const refresh = async () => {
     const [bookingResponse, memberResponse, fileResponse] = await Promise.all([
@@ -1184,6 +1195,9 @@ function MemberZone({
     bookings.find(
       (booking) => booking.rinkNumber === rink && booking.timeSlot === slot,
     );
+  const visibleMembers = members.filter((member) =>
+    member.name.toLowerCase().includes(directorySearch.trim().toLowerCase()),
+  );
   const group = (category: ClubFile["category"]) =>
     files.filter((file) => file.category === category);
   return (
@@ -1359,14 +1373,23 @@ function MemberZone({
         </section>
       ) : (
         <section className="directory">
-          <div>
+          <div className="directory-head">
             <p className="eyebrow">Member directory</p>
             <h2>Club contact details</h2>
             <p>For members’ use only. Please treat these details with care.</p>
+            <label className="directory-search">
+              Search by name
+              <input
+                type="search"
+                placeholder="Start typing a member’s name…"
+                value={directorySearch}
+                onChange={(event) => setDirectorySearch(event.target.value)}
+              />
+            </label>
           </div>
           <div className="directory-list">
-            {members.length ? (
-              members.map((member) => (
+            {visibleMembers.length ? (
+              visibleMembers.map((member) => (
                 <article key={member.id}>
                   <b>{member.name}</b>
                   <span>{member.membershipType}</span>
@@ -1376,6 +1399,8 @@ function MemberZone({
                   <a href={`mailto:${member.email}`}>{member.email}</a>
                 </article>
               ))
+            ) : members.length ? (
+              <p className="empty">No members match that name.</p>
             ) : (
               <p className="empty">
                 The directory will appear here as members are added by the club
@@ -1666,11 +1691,11 @@ function NewsAdminPanel({
   const publish = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const form = new FormData(event.currentTarget);
     const response = await fetch("/api/empire/news", {
       method: "POST",
-      headers: { ...headers, "content-type": "application/json" },
-      body: JSON.stringify(values),
+      headers,
+      body: form,
     });
     const result = await response.json();
     if (!response.ok) {
@@ -1733,14 +1758,17 @@ function NewsAdminPanel({
             </select>
           </label>
         </div>
-        <label>
-          Story emoji
+        <label className="news-image-field">
+          Story image
           <input
-            name="emoji"
-            defaultValue="📰"
-            maxLength={8}
-            aria-label="Story emoji"
+            name="image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
           />
+          <small>
+            Upload a sharp, high-quality image — avoid blurry, dark or pixelated
+            photos. Landscape images work best.
+          </small>
         </label>
         <label>
           Short introduction
@@ -1777,7 +1805,7 @@ function NewsAdminPanel({
           items.map((item) => (
             <article key={item.id}>
               <span className={`news-admin-icon news-accent-${item.accent}`}>
-                {item.emoji}
+                {item.imageUrl ? <img src={item.imageUrl} alt="" /> : "EB"}
               </span>
               <div>
                 <b>{item.title}</b>

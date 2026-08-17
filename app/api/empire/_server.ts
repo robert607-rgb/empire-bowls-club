@@ -67,6 +67,14 @@ export async function getEmpireDatabase() {
         published_at TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_news_assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        news_id INTEGER NOT NULL UNIQUE,
+        object_key TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_uploads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         category TEXT NOT NULL,

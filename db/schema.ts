@@ -60,3 +60,12 @@ export const empireNews = sqliteTable("empire_news", {
   publishedAt: text("published_at").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const empireNewsAssets = sqliteTable("empire_news_assets", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  newsId: integer("news_id").notNull().unique(),
+  objectKey: text("object_key").notNull(),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  createdAt: text("created_at").notNull(),
+});

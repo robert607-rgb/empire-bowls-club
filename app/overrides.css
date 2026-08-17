@@ -200,6 +200,204 @@
   }
 }
 
+/* Empire polish: high-contrast type, fuller sponsor artwork and clearer admin tools. */
+.site-header {
+  border-top: 4px solid #e4b82c;
+}
+.page,
+.news-page,
+.sponsors-page {
+  background-image:
+    radial-gradient(
+      circle at 8% 8%,
+      rgba(228, 184, 44, 0.1) 0 2px,
+      transparent 3px
+    ),
+    linear-gradient(135deg, rgba(18, 101, 74, 0.035), transparent 32%);
+  background-size:
+    28px 28px,
+    auto;
+}
+.news-feature-art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+}
+.news-feature-art > img + i,
+.news-feature-art > img ~ .news-stamp {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.news-art-mark {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 142px;
+  height: 142px;
+  color: #062761;
+  background: #f4cf54;
+  border: 12px solid rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  box-shadow: 0 14px 24px rgba(0, 0, 0, 0.24);
+  transform: rotate(-8deg);
+}
+.news-art-mark span {
+  font:
+    800 38px Georgia,
+    serif;
+  letter-spacing: -0.08em;
+}
+.news-card-art > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.news-card-art > img + b {
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+.news-card-art > span {
+  display: grid;
+  place-items: center;
+  width: 82px;
+  height: 82px;
+  color: #062761;
+  background: #f4cf54;
+  border: 8px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  font:
+    800 24px Georgia,
+    serif;
+  letter-spacing: -0.08em;
+}
+.news-image-field small {
+  color: #53657c;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.news-admin-icon {
+  overflow: hidden;
+  font:
+    800 12px Georgia,
+    serif;
+  letter-spacing: -0.08em;
+}
+.news-admin-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.directory-head {
+  min-width: 0;
+}
+.directory-search {
+  display: grid;
+  gap: 6px;
+  margin-top: 22px;
+  color: #062761;
+  font-size: 12px;
+  font-weight: 800;
+}
+.directory-search input {
+  width: 100%;
+  padding: 11px 12px;
+  color: #17273d;
+  background: #fff;
+  border: 1px solid #bfc7d1;
+  border-radius: 4px;
+}
+.admin-members-tab > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  min-width: 0;
+}
+.admin-members-tab > summary b {
+  min-width: 0;
+}
+.admin-members-tab > summary i {
+  margin-left: auto;
+  color: #53657c;
+  white-space: nowrap;
+  transform: none;
+}
+.member-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.member-table th:nth-child(1),
+.member-table td:nth-child(1) {
+  width: 20%;
+}
+.member-table th:nth-child(2),
+.member-table td:nth-child(2) {
+  width: 18%;
+}
+.member-table th:nth-child(3),
+.member-table td:nth-child(3) {
+  width: 15%;
+}
+.member-table th:nth-child(4),
+.member-table td:nth-child(4) {
+  width: 37%;
+}
+.member-table th:last-child,
+.member-table td:last-child {
+  width: 10%;
+  white-space: nowrap;
+}
+.member-table td:last-child {
+  text-align: center;
+}
+.sponsor-card > a {
+  height: 260px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(6, 39, 97, 0.08), transparent 45%), #f2eee1;
+}
+.sponsor-card > a::after {
+  display: none;
+}
+.sponsor-card > a > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.sponsor-card > a > span {
+  right: 12px;
+  bottom: 10px;
+  padding: 6px 9px;
+  color: #fff;
+  background: rgba(6, 39, 97, 0.94);
+  border-radius: 999px;
+  opacity: 1;
+}
+.sponsor-card > a:hover > img,
+.sponsor-card > a:focus-visible > img {
+  transform: scale(1.015);
+}
+.sponsor-card-copy > p:not(.eyebrow) {
+  color: #354f70;
+}
+@media (max-width: 680px) {
+  .admin-members-tab > summary i {
+    width: 100%;
+    margin-left: 0;
+  }
+  .sponsor-card > a {
+    height: 220px;
+  }
+  .member-table {
+    min-width: 680px;
+  }
+}
+
 /* Successful admin actions are visually distinct from regular page messages. */
 .admin-zone > .status {
   margin-top: 24px;
@@ -953,5 +1151,84 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+/* Keep the member records and sponsor gallery crisp at every breakpoint. */
+.admin-members-tab > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  min-width: 0;
+}
+.admin-members-tab > summary i {
+  margin-left: auto;
+  white-space: nowrap;
+  transform: none;
+}
+.member-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.member-table th:nth-child(1),
+.member-table td:nth-child(1) {
+  width: 20%;
+}
+.member-table th:nth-child(2),
+.member-table td:nth-child(2) {
+  width: 18%;
+}
+.member-table th:nth-child(3),
+.member-table td:nth-child(3) {
+  width: 15%;
+}
+.member-table th:nth-child(4),
+.member-table td:nth-child(4) {
+  width: 37%;
+}
+.member-table th:last-child,
+.member-table td:last-child {
+  width: 10%;
+  white-space: nowrap;
+}
+.member-table td:last-child {
+  text-align: center;
+}
+.sponsor-card > a {
+  height: 260px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(6, 39, 97, 0.08), transparent 45%), #f2eee1;
+}
+.sponsor-card > a::after {
+  display: none;
+}
+.sponsor-card > a > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.sponsor-card > a > span {
+  right: 12px;
+  bottom: 10px;
+  padding: 6px 9px;
+  color: #fff;
+  background: rgba(6, 39, 97, 0.94);
+  border-radius: 999px;
+  opacity: 1;
+}
+@media (max-width: 680px) {
+  .admin-members-tab > summary i {
+    width: 100%;
+    margin-left: 0;
+  }
+  .sponsor-card > a {
+    height: 220px;
+  }
+  .member-table {
+    min-width: 680px;
   }
 }

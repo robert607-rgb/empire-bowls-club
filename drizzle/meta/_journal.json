@@ -15,6 +15,13 @@
       "when": 1786974830661,
       "tag": "0001_steep_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1786976979168,
+      "tag": "0002_dark_zeigeist",
+      "breakpoints": true
     }
   ]
 }
