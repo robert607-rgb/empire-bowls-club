@@ -86,23 +86,9 @@ const committee = [
   ["Head Greenkeeper", "Chris Read", "07976 329351"],
   ["Safeguarding Officer", "Richard Stone", "07980 389398"],
 ];
-const fixtures = [
-  {
-    date: "Saturday 22 August",
-    event: "Friendly v Greenhithe",
-    type: "Friendly",
-  },
-  {
-    date: "Monday 24 August",
-    event: "Club practice afternoon",
-    type: "Club session",
-  },
-  {
-    date: "Thursday 27 August",
-    event: "Empire club night",
-    type: "Club session",
-  },
-];
+const fixtures: Array<{ date: string; event: string; type: string }> = [];
+const fixtureMessage =
+  "The fixtures are taking a little summer break — we’ll see you next summer with a full schedule of games!";
 const starterNews: NewsItem[] = [
   {
     id: -1,
@@ -488,16 +474,26 @@ function HomePage({
             </button>
           </div>
           <div className="fixture-grid">
-            {fixtures.map((fixture) => (
-              <article key={fixture.event}>
-                <span>{fixture.type}</span>
-                <b>{fixture.date}</b>
-                <h3>{fixture.event}</h3>
+            {fixtures.length > 0 ? (
+              fixtures.map((fixture) => (
+                <article key={fixture.event}>
+                  <span>{fixture.type}</span>
+                  <b>{fixture.date}</b>
+                  <h3>{fixture.event}</h3>
+                  <button onClick={() => openPage("Fixtures")}>
+                    Details <span>→</span>
+                  </button>
+                </article>
+              ))
+            ) : (
+              <article className="fixture-empty-card">
+                <span>Fixtures taking a summer break</span>
+                <h3>{fixtureMessage}</h3>
                 <button onClick={() => openPage("Fixtures")}>
-                  Details <span>→</span>
+                  Visit the fixtures page <span>→</span>
                 </button>
               </article>
-            ))}
+            )}
           </div>
         </div>
       </section>
@@ -722,26 +718,34 @@ function FixturesPage() {
         Club sessions, friendlies and competitions are all part of the Empire
         calendar.
       </p>
-      <div className="fixture-list">
-        {fixtures.map((fixture) => (
-          <article key={fixture.event}>
-            <div>
-              <span>{fixture.type}</span>
-              <b>{fixture.date}</b>
-            </div>
-            <h2>{fixture.event}</h2>
-            <p>
-              Please check the members area and club noticeboard for confirmed
-              team details, times and any late changes.
-            </p>
-          </article>
-        ))}
-      </div>
+      {fixtures.length > 0 ? (
+        <div className="fixture-list">
+          {fixtures.map((fixture) => (
+            <article key={fixture.event}>
+              <div>
+                <span>{fixture.type}</span>
+                <b>{fixture.date}</b>
+              </div>
+              <h2>{fixture.event}</h2>
+              <p>
+                Please check the members area and club noticeboard for confirmed
+                team details, times and any late changes.
+              </p>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="fixture-empty" role="status">
+          <span>Seasonal update</span>
+          <h2>The fixtures are currently enjoying a summer rest.</h2>
+          <p>{fixtureMessage}</p>
+        </div>
+      )}
       <div className="notice-banner">
-        <b>Members’ notice</b>
+        <b>Keep an eye out</b>
         <p>
-          Team sheets, availability sheets and the latest club documents are
-          kept together in the members area.
+          When the new season is announced, the full schedule will appear here
+          first, with team sheets and availability in the members area.
         </p>
       </div>
     </section>
