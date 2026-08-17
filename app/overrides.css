@@ -398,6 +398,29 @@
   }
 }
 
+.site-credit {
+  max-width: 270px;
+  color: #c3d1ec;
+  font-size: 12px;
+  line-height: 1.35;
+  text-decoration: none;
+}
+.site-credit:hover,
+.site-credit:focus-visible {
+  color: #f0cd63;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (max-width: 680px) {
+  .site-credit {
+    flex: 1 1 100%;
+    max-width: none;
+    order: 3;
+    padding-top: 8px;
+    border-top: 1px solid rgba(195, 209, 236, 0.28);
+  }
+}
+
 @media (max-width: 680px) {
   .site-header {
     flex-wrap: wrap;

@@ -244,6 +244,14 @@ export default function Home() {
           <b>Empire Bowls Club</b>
           <span>Norton Lane, Greenhithe, Kent, DA9 9XY</span>
         </div>
+        <a
+          className="site-credit"
+          href="https://bowlsclubdigital.com"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Created for bowlers by a bowler – bowlsclubdigital.com
+        </a>
         <button onClick={openPortal}>Members & admin</button>
       </footer>
     </>
