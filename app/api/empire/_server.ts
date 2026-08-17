@@ -40,6 +40,14 @@ export async function getEmpireDatabase() {
         created_at TEXT NOT NULL
       )`),
       runtime.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS empire_bookings_slot_unique ON empire_bookings (booking_date, rink_number, time_slot)"),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_player_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        match_name TEXT NOT NULL,
+        match_date TEXT NOT NULL,
+        players_required INTEGER NOT NULL,
+        names_json TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL
+      )`),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_uploads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         category TEXT NOT NULL,
