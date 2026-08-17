@@ -4,7 +4,10 @@ let ready: Promise<void> | null = null;
 
 export async function getRuntimeEnv() {
   // Deferred so the packaged worker can also be inspected by the local artifact validator.
-  return (await import("cloudflare:workers")).env as unknown as { DB: D1Database; BUCKET: R2Bucket };
+  return (await import("cloudflare:workers")).env as unknown as {
+    DB: D1Database;
+    BUCKET: R2Bucket;
+  };
 }
 
 export function hasEmpireAccess(request: Request, adminOnly = false): boolean {
@@ -14,7 +17,10 @@ export function hasEmpireAccess(request: Request, adminOnly = false): boolean {
 }
 
 export function unauthorized() {
-  return Response.json({ error: "This area requires the correct Empire access password." }, { status: 401 });
+  return Response.json(
+    { error: "This area requires the correct Empire access password." },
+    { status: 401 },
+  );
 }
 
 export async function getEmpireDatabase() {
@@ -39,7 +45,9 @@ export async function getEmpireDatabase() {
         booking_name TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`),
-      runtime.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS empire_bookings_slot_unique ON empire_bookings (booking_date, rink_number, time_slot)"),
+      runtime.DB.prepare(
+        "CREATE UNIQUE INDEX IF NOT EXISTS empire_bookings_slot_unique ON empire_bookings (booking_date, rink_number, time_slot)",
+      ),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_player_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         match_name TEXT NOT NULL,
@@ -69,7 +77,12 @@ export async function getEmpireDatabase() {
         content_type TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`),
-    ]).then(() => undefined).catch((error) => { ready = null; throw error; });
+    ])
+      .then(() => undefined)
+      .catch((error) => {
+        ready = null;
+        throw error;
+      });
   }
   await ready;
   return runtime.DB;
@@ -80,6 +93,7 @@ export function cleanText(value: unknown, maximum: number) {
 }
 
 export function apiError(error: unknown) {
-  const message = error instanceof Error ? error.message : "Unexpected server error";
+  const message =
+    error instanceof Error ? error.message : "Unexpected server error";
   return Response.json({ error: message }, { status: 500 });
 }

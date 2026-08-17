@@ -7,6 +7,7 @@ type Page =
   | "Home"
   | "About the Club"
   | "News"
+  | "Sponsors"
   | "Fixtures"
   | "Honours"
   | "Play bowls"
@@ -23,6 +24,7 @@ type Member = {
   phone: string;
   email: string;
   membershipType: "Full member" | "Social member";
+  createdAt: string;
 };
 type ClubFile = {
   id: number;
@@ -47,6 +49,7 @@ const nav: Page[] = [
   "Home",
   "About the Club",
   "News",
+  "Sponsors",
   "Fixtures",
   "Play bowls",
   "Contact",
@@ -101,9 +104,72 @@ const fixtures = [
   },
 ];
 const starterNews: NewsItem[] = [
-  { id: -1, title: "Welcome to the Empire noticeboard", summary: "A new home for club moments, match-day stories and the little updates that make our green feel like home.", body: "The Empire News page is where we will share the people, fixtures, celebrations and behind-the-scenes moments that keep our club connected.", category: "Club life", accent: "gold", emoji: "📰", publishedAt: "2025-01-01T09:00:00.000Z" },
-  { id: -2, title: "New bowlers are always welcome", summary: "Never played before? Come and have a go with friendly members, loan equipment and a relaxed introduction.", body: "Bowls is a game for all ages and abilities. Contact Steve to arrange a first visit and discover the Empire welcome for yourself.", category: "Welcome", accent: "green", emoji: "🌱", publishedAt: "2024-12-01T09:00:00.000Z" },
-  { id: -3, title: "Good bowls, good company", summary: "From Monday practice afternoons to competitive fixtures, there is always a reason to step onto the green.", body: "Keep an eye on the fixtures page and the members area for the latest sessions, team sheets and club updates.", category: "On the green", accent: "navy", emoji: "🎯", publishedAt: "2024-11-01T09:00:00.000Z" },
+  {
+    id: -1,
+    title: "Welcome to the Empire noticeboard",
+    summary:
+      "A new home for club moments, match-day stories and the little updates that make our green feel like home.",
+    body: "The Empire News page is where we will share the people, fixtures, celebrations and behind-the-scenes moments that keep our club connected.",
+    category: "Club life",
+    accent: "gold",
+    emoji: "📰",
+    publishedAt: "2025-01-01T09:00:00.000Z",
+  },
+  {
+    id: -2,
+    title: "New bowlers are always welcome",
+    summary:
+      "Never played before? Come and have a go with friendly members, loan equipment and a relaxed introduction.",
+    body: "Bowls is a game for all ages and abilities. Contact Steve to arrange a first visit and discover the Empire welcome for yourself.",
+    category: "Welcome",
+    accent: "green",
+    emoji: "🌱",
+    publishedAt: "2024-12-01T09:00:00.000Z",
+  },
+  {
+    id: -3,
+    title: "Good bowls, good company",
+    summary:
+      "From Monday practice afternoons to competitive fixtures, there is always a reason to step onto the green.",
+    body: "Keep an eye on the fixtures page and the members area for the latest sessions, team sheets and club updates.",
+    category: "On the green",
+    accent: "navy",
+    emoji: "🎯",
+    publishedAt: "2024-11-01T09:00:00.000Z",
+  },
+];
+const sponsors = [
+  {
+    name: "Frost Funeral Service",
+    strapline: "Professional, caring funeral services for the local community.",
+    image: "/sponsors/frost-funeral-service.png",
+    website:
+      "https://funeral-notices.co.uk/services-directory/view/4589?source=notice",
+    linkLabel: "View sponsor information",
+    note: "No standalone official website was identified; this opens the local business listing.",
+  },
+  {
+    name: "In Action Bowlswear",
+    strapline: "Bowls clothing, equipment and friendly specialist advice.",
+    image: "/sponsors/inaction-bowlswear.png",
+    website: "https://inactionbowlswear.co.uk/",
+    linkLabel: "Visit inactionbowlswear.co.uk",
+  },
+  {
+    name: "Mike’s Maindrain Services",
+    strapline: "Drain, sewer and waste services for homes and businesses.",
+    image: "/sponsors/mikes-maindrain.png",
+    website: "https://www.checkatrade.com/trades/mikesmaindrain",
+    linkLabel: "View sponsor profile",
+    note: "This opens the company’s verified trade profile.",
+  },
+  {
+    name: "NH Heating Services",
+    strapline: "Domestic and commercial heating support across Kent.",
+    image: "/sponsors/nh-heating.png",
+    website: "https://www.nhheating.co.uk/",
+    linkLabel: "Visit nhheating.co.uk",
+  },
 ];
 function apiHeaders(access: Access, password: string) {
   return { "x-empire-access": `${access}:${password}` };
@@ -258,9 +324,7 @@ function NewsPage() {
             <p className="eyebrow">Fresh from Empire</p>
             <h2>Stories worth sharing</h2>
           </div>
-          <span className="news-count">
-            {displayItems.length} updates
-          </span>
+          <span className="news-count">{displayItems.length} updates</span>
         </div>
         {displayItems.length > 1 ? (
           <div className="news-grid">
@@ -325,6 +389,7 @@ function renderPage(
     return <HomePage openPage={openPage} openPortal={openPortal} />;
   if (page === "About the Club") return <AboutPage />;
   if (page === "News") return <NewsPage />;
+  if (page === "Sponsors") return <SponsorsPage />;
   if (page === "Fixtures") return <FixturesPage />;
   if (page === "Honours") return <HonoursPage />;
   if (page === "Play bowls") return <PlayBowlsPage openPortal={openPortal} />;
@@ -436,6 +501,53 @@ function HomePage({
         </div>
       </section>
     </>
+  );
+}
+function SponsorsPage() {
+  return (
+    <section className="sponsors-page">
+      <div className="wrap sponsors-intro">
+        <p className="eyebrow">Proudly supported</p>
+        <h1>The businesses behind Empire.</h1>
+        <p className="lead">
+          Our sponsors help keep the green thriving. Please support the
+          businesses that support our club.
+        </p>
+      </div>
+      <div className="wrap sponsor-grid">
+        {sponsors.map((sponsor) => (
+          <article className="sponsor-card" key={sponsor.name}>
+            <a
+              href={sponsor.website}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`${sponsor.name} website`}
+            >
+              <img
+                src={sponsor.image}
+                alt={`${sponsor.name} sponsor artwork`}
+              />
+              <span>
+                Visit sponsor <b>↗</b>
+              </span>
+            </a>
+            <div className="sponsor-card-copy">
+              <p className="eyebrow">Empire sponsor</p>
+              <h2>{sponsor.name}</h2>
+              <p>{sponsor.strapline}</p>
+              {sponsor.note && <small>{sponsor.note}</small>}
+            </div>
+          </article>
+        ))}
+      </div>
+      <div className="sponsors-thanks">
+        <div className="wrap">
+          <span>COMMUNITY PARTNERS</span>
+          <b>Every sponsor makes a difference.</b>
+          <i>Thank you for backing Empire.</i>
+        </div>
+      </div>
+    </section>
   );
 }
 function AboutPage() {
@@ -1003,6 +1115,7 @@ function MemberZone({
   const [bookingType, setBookingType] = useState("Roll Up");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [memberTab, setMemberTab] = useState<"club" | "directory">("club");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
   const refresh = async () => {
     const [bookingResponse, memberResponse, fileResponse] = await Promise.all([
@@ -1201,52 +1314,77 @@ function MemberZone({
         {notice && <Status message={notice} />}
         {error && <Status type="error" message={error} />}
       </section>
-      <section className="member-content">
-        <InfoList
-          title="Team sheets"
-          description="The latest match selections published by the committee."
-          files={group("team_sheet")}
-          password={password}
-        />
-        <InfoList
-          title="Players required"
-          description="Let captains know when you are available to play."
-          files={group("players_required")}
-          password={password}
-        />
-        <InfoList
-          title="Club documents"
-          description="Policies, notices and other club information."
-          files={group("club_document")}
-          password={password}
-        />
-      </section>
-      <section className="directory">
-        <div>
-          <p className="eyebrow">Member directory</p>
-          <h2>Club contact details</h2>
-          <p>For members’ use only. Please treat these details with care.</p>
-        </div>
-        <div className="directory-list">
-          {members.length ? (
-            members.map((member) => (
-              <article key={member.id}>
-                <b>{member.name}</b>
-                <span>{member.membershipType}</span>
-                <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
-                  {member.phone}
-                </a>
-                <a href={`mailto:${member.email}`}>{member.email}</a>
-              </article>
-            ))
-          ) : (
-            <p className="empty">
-              The directory will appear here as members are added by the club
-              administrator.
-            </p>
-          )}
-        </div>
-      </section>
+      <div
+        className="member-area-tabs"
+        role="tablist"
+        aria-label="Members area sections"
+      >
+        <button
+          className={memberTab === "club" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "club"}
+          onClick={() => setMemberTab("club")}
+        >
+          Club information
+        </button>
+        <button
+          className={memberTab === "directory" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "directory"}
+          onClick={() => setMemberTab("directory")}
+        >
+          Club directory
+        </button>
+      </div>
+      {memberTab === "club" ? (
+        <section className="member-content">
+          <InfoList
+            title="Team sheets"
+            description="The latest match selections published by the committee."
+            files={group("team_sheet")}
+            password={password}
+          />
+          <InfoList
+            title="Players required"
+            description="Let captains know when you are available to play."
+            files={group("players_required")}
+            password={password}
+          />
+          <InfoList
+            title="Club documents"
+            description="Policies, notices and other club information."
+            files={group("club_document")}
+            password={password}
+          />
+        </section>
+      ) : (
+        <section className="directory">
+          <div>
+            <p className="eyebrow">Member directory</p>
+            <h2>Club contact details</h2>
+            <p>For members’ use only. Please treat these details with care.</p>
+          </div>
+          <div className="directory-list">
+            {members.length ? (
+              members.map((member) => (
+                <article key={member.id}>
+                  <b>{member.name}</b>
+                  <span>{member.membershipType}</span>
+                  <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
+                    {member.phone}
+                  </a>
+                  <a href={`mailto:${member.email}`}>{member.email}</a>
+                </article>
+              ))
+            ) : (
+              <p className="empty">
+                The directory will appear here as members are added by the club
+                administrator.
+              </p>
+            )}
+          </div>
+        </section>
+      )}
     </main>
   );
 }
@@ -1375,6 +1513,138 @@ function InfoList({
     </article>
   );
 }
+
+function AdminMemberOverview({
+  members,
+  password,
+  onChange,
+  onMessage,
+}: {
+  members: Member[];
+  password: string;
+  onChange: (members: Member[]) => void;
+  onMessage: (message: string) => void;
+}) {
+  const [sort, setSort] = useState<"name" | "membershipType" | "createdAt">(
+    "name",
+  );
+  const ordered = [...members].sort((a, b) => {
+    if (sort === "membershipType")
+      return (
+        a.membershipType.localeCompare(b.membershipType) ||
+        a.name.localeCompare(b.name)
+      );
+    if (sort === "createdAt")
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return a.name.localeCompare(b.name);
+  });
+  const remove = async (member: Member) => {
+    if (!window.confirm(`Remove ${member.name} from the member directory?`))
+      return;
+    const response = await fetch("/api/empire/members", {
+      method: "DELETE",
+      headers: {
+        ...apiHeaders("admin", password),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ id: member.id }),
+    });
+    if (!response.ok) {
+      onMessage("We could not remove that member.");
+      return;
+    }
+    onChange(members.filter((item) => item.id !== member.id));
+    onMessage(`${member.name} has been removed from the member directory.`);
+  };
+  return (
+    <details className="admin-members-tab">
+      <summary>
+        <span className="eyebrow">Member records</span>
+        <b>Members overview</b>
+        <i>{members.length} listed · open to sort and manage</i>
+      </summary>
+      <div className="admin-members-panel">
+        <div className="admin-members-toolbar">
+          <p>
+            Review the club directory, sort the list and remove former members.
+          </p>
+          <label>
+            Sort by
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as typeof sort)}
+            >
+              <option value="name">Name</option>
+              <option value="membershipType">Membership type</option>
+              <option value="createdAt">Date joined</option>
+            </select>
+          </label>
+        </div>
+        {ordered.length ? (
+          <div className="member-table-wrap">
+            <table className="member-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Membership</th>
+                  <th>Date joined</th>
+                  <th>Contact</th>
+                  <th>
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ordered.map((member) => (
+                  <tr key={member.id}>
+                    <td>
+                      <b>{member.name}</b>
+                    </td>
+                    <td>
+                      <span
+                        className={`member-badge ${member.membershipType === "Social member" ? "social" : "full"}`}
+                      >
+                        {member.membershipType}
+                      </span>
+                    </td>
+                    <td>{formatJoinedDate(member.createdAt)}</td>
+                    <td>
+                      <a href={`mailto:${member.email}`}>{member.email}</a>
+                      <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
+                        {member.phone}
+                      </a>
+                    </td>
+                    <td>
+                      <button
+                        className="remove-member"
+                        type="button"
+                        onClick={() => void remove(member)}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="empty">No members have been added yet.</p>
+        )}
+      </div>
+    </details>
+  );
+}
+function formatJoinedDate(value: string) {
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime())
+    ? "—"
+    : new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(parsed);
+}
 function NewsAdminPanel({
   password,
   onMessage,
@@ -1430,10 +1700,17 @@ function NewsAdminPanel({
       <form onSubmit={publish}>
         <p className="eyebrow">Newsroom</p>
         <h2>Publish a story</h2>
-        <p className="form-help">Give members and visitors something memorable to discover.</p>
+        <p className="form-help">
+          Give members and visitors something memorable to discover.
+        </p>
         <label>
           Headline
-          <input name="title" required maxLength={160} placeholder="e.g. Empire pair reach the county final" />
+          <input
+            name="title"
+            required
+            maxLength={160}
+            placeholder="e.g. Empire pair reach the county final"
+          />
         </label>
         <div className="form-columns">
           <label>
@@ -1458,22 +1735,68 @@ function NewsAdminPanel({
         </div>
         <label>
           Story emoji
-          <input name="emoji" defaultValue="📰" maxLength={8} aria-label="Story emoji" />
+          <input
+            name="emoji"
+            defaultValue="📰"
+            maxLength={8}
+            aria-label="Story emoji"
+          />
         </label>
         <label>
           Short introduction
-          <textarea name="summary" required maxLength={320} placeholder="A punchy two-line introduction for the story card." />
+          <textarea
+            name="summary"
+            required
+            maxLength={320}
+            placeholder="A punchy two-line introduction for the story card."
+          />
         </label>
         <label>
           Full story
-          <textarea name="body" required maxLength={2000} placeholder="Share the detail, names, score or invitation." />
+          <textarea
+            name="body"
+            required
+            maxLength={2000}
+            placeholder="Share the detail, names, score or invitation."
+          />
         </label>
-        <button className="primary" type="submit">Publish to News</button>
+        <button className="primary" type="submit">
+          Publish to News
+        </button>
         {error && <Status type="error" message={error} />}
       </form>
       <div className="news-admin-list">
-        <div className="news-admin-list-head"><div><p className="eyebrow">Live stories</p><h3>On the website now</h3></div><span>{items.length}</span></div>
-        {items.length ? items.map((item) => <article key={item.id}><span className={`news-admin-icon news-accent-${item.accent}`}>{item.emoji}</span><div><b>{item.title}</b><small>{item.category} · {displayNewsDate(item.publishedAt)}</small></div><button type="button" onClick={() => void remove(item.id)} aria-label={`Remove ${item.title}`}>Remove</button></article>) : <p className="empty">No stories published yet.</p>}
+        <div className="news-admin-list-head">
+          <div>
+            <p className="eyebrow">Live stories</p>
+            <h3>On the website now</h3>
+          </div>
+          <span>{items.length}</span>
+        </div>
+        {items.length ? (
+          items.map((item) => (
+            <article key={item.id}>
+              <span className={`news-admin-icon news-accent-${item.accent}`}>
+                {item.emoji}
+              </span>
+              <div>
+                <b>{item.title}</b>
+                <small>
+                  {item.category} · {displayNewsDate(item.publishedAt)}
+                </small>
+              </div>
+              <button
+                type="button"
+                onClick={() => void remove(item.id)}
+                aria-label={`Remove ${item.title}`}
+              >
+                Remove
+              </button>
+            </article>
+          ))
+        ) : (
+          <p className="empty">No stories published yet.</p>
+        )}
       </div>
     </section>
   );
@@ -1593,6 +1916,15 @@ function AdminZone({
           </b>
         </article>
       </section>
+      <AdminMemberOverview
+        members={members}
+        password={password}
+        onChange={setMembers}
+        onMessage={(nextMessage) => {
+          setError("");
+          setMessage(nextMessage);
+        }}
+      />
       <div className="admin-forms">
         <form onSubmit={addMember}>
           <p className="eyebrow">Member management</p>
