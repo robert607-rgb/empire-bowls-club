@@ -1,4 +1,31 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+export const empireMembers = sqliteTable("empire_members", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email").notNull(),
+  membershipType: text("membership_type", { enum: ["Full member", "Social member"] }).notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const empireBookings = sqliteTable("empire_bookings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  bookingDate: text("booking_date").notNull(),
+  rinkNumber: integer("rink_number").notNull(),
+  timeSlot: text("time_slot").notNull(),
+  bookingName: text("booking_name").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [uniqueIndex("empire_bookings_slot_unique").on(table.bookingDate, table.rinkNumber, table.timeSlot)]);
+
+export const empireUploads = sqliteTable("empire_uploads", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  category: text("category", { enum: ["team_sheet", "club_document", "players_required"] }).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  fileName: text("file_name").notNull(),
+  objectKey: text("object_key").notNull(),
+  contentType: text("content_type").notNull(),
+  createdAt: text("created_at").notNull(),
+});
