@@ -238,7 +238,6 @@ export default function Home() {
         >
           Created for bowlers by a bowler – bowlsclubdigital.com
         </a>
-        <button onClick={openPortal}>Members & admin</button>
       </footer>
     </>
   );
