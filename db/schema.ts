@@ -29,3 +29,15 @@ export const empireUploads = sqliteTable("empire_uploads", {
   contentType: text("content_type").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const empireNews = sqliteTable("empire_news", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  body: text("body").notNull(),
+  category: text("category").notNull(),
+  accent: text("accent").notNull(),
+  emoji: text("emoji").notNull(),
+  publishedAt: text("published_at").notNull(),
+  createdAt: text("created_at").notNull(),
+});
