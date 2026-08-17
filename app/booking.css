@@ -1,0 +1,41 @@
+.booking-scroll table {
+  min-width: 980px;
+  table-layout: fixed;
+}
+
+.booking-scroll th,
+.booking-scroll td {
+  padding: 12px 8px;
+}
+
+.booking-scroll td {
+  height: 86px;
+}
+
+.booking-scroll .available,
+.booking-scroll .taken {
+  min-height: 62px;
+  padding: 10px 6px;
+  line-height: 1.2;
+}
+
+.booking-scroll .taken {
+  color: #17273d;
+  background: #f3e5ba;
+}
+
+.booking-scroll .taken b,
+.booking-scroll .taken span {
+  display: block;
+}
+
+.booking-scroll .taken b {
+  font-size: 13px;
+}
+
+.booking-scroll .taken span {
+  margin-top: 5px;
+  color: #8c1f2d;
+  font-size: 11px;
+  font-weight: 800;
+}
