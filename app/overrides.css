@@ -421,6 +421,129 @@
   }
 }
 
+/* A signature peacock-feather motif makes every Empire page feel like the same club. */
+.hero,
+.page,
+.news-page,
+.sponsors-page,
+.play-page,
+.portal-shell {
+  position: relative;
+  overflow: hidden;
+}
+.hero::before,
+.page::before,
+.news-page::before,
+.sponsors-page::before,
+.play-page::before,
+.portal-shell::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 24px;
+  right: -72px;
+  width: 245px;
+  height: 415px;
+  opacity: 0.16;
+  border-radius: 52% 48% 44% 46% / 62% 58% 42% 40%;
+  transform: rotate(26deg);
+  background:
+    radial-gradient(ellipse at 50% 17%, #f6d35a 0 4%, transparent 4.7%),
+    radial-gradient(ellipse at 50% 17%, #bd253e 0 11%, transparent 11.7%),
+    radial-gradient(ellipse at 50% 17%, #f6f1d6 0 18%, transparent 18.7%),
+    radial-gradient(ellipse at 50% 17%, #17a7a0 0 27%, transparent 27.7%),
+    radial-gradient(ellipse at 50% 17%, #1d4f93 0 38%, transparent 38.7%),
+    radial-gradient(ellipse at 50% 17%, #12654a 0 52%, transparent 52.7%),
+    linear-gradient(
+      108deg,
+      transparent 47%,
+      rgba(244, 207, 84, 0.9) 48% 49%,
+      transparent 50%
+    ),
+    linear-gradient(
+      90deg,
+      transparent 49%,
+      rgba(6, 39, 97, 0.8) 49.5% 50.5%,
+      transparent 51%
+    );
+  box-shadow:
+    0 0 0 18px rgba(228, 184, 44, 0.06),
+    0 0 0 34px rgba(18, 101, 74, 0.05);
+  pointer-events: none;
+}
+.hero::before {
+  top: 38px;
+  right: 5%;
+  opacity: 0.3;
+  transform: rotate(18deg) scale(1.08);
+}
+.page::before,
+.portal-shell::before {
+  opacity: 0.1;
+}
+.news-page::before {
+  top: 180px;
+  opacity: 0.12;
+}
+.sponsors-page::before {
+  top: 130px;
+  opacity: 0.11;
+  transform: rotate(-22deg);
+}
+.play-page::before {
+  top: 90px;
+  opacity: 0.12;
+}
+.hero > *,
+.page > *,
+.news-page > *,
+.sponsors-page > *,
+.play-page > *,
+.portal-shell > * {
+  position: relative;
+  z-index: 1;
+}
+.news-ribbon,
+.sponsors-thanks {
+  position: relative;
+  overflow: hidden;
+}
+.news-ribbon::after,
+.sponsors-thanks::after {
+  content: "";
+  position: absolute;
+  right: 8%;
+  top: 50%;
+  width: 130px;
+  height: 130px;
+  border: 2px solid rgba(244, 207, 84, 0.32);
+  border-radius: 50% 50% 50% 12%;
+  transform: translateY(-50%) rotate(35deg);
+  pointer-events: none;
+}
+@media (max-width: 680px) {
+  .hero::before,
+  .page::before,
+  .news-page::before,
+  .sponsors-page::before,
+  .play-page::before,
+  .portal-shell::before {
+    right: -120px;
+    opacity: 0.08;
+    transform: rotate(22deg) scale(0.75);
+  }
+  .hero::before {
+    right: -45px;
+    top: 55px;
+    opacity: 0.2;
+  }
+  .news-ribbon::after,
+  .sponsors-thanks::after {
+    right: -35px;
+    opacity: 0.45;
+  }
+}
+
 @media (max-width: 680px) {
   .site-header {
     flex-wrap: wrap;
