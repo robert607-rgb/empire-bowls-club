@@ -8,7 +8,7 @@ type Booking = { id: number; rinkNumber: number; timeSlot: string; bookingName: 
 type Member = { id: number; name: string; phone: string; email: string; membershipType: "Full member" | "Social member" };
 type ClubFile = { id: number; category: "team_sheet" | "club_document" | "players_required"; title: string; description: string; fileName: string; createdAt: string };
 
-const nav: Page[] = ["Home", "About the Club", "Fixtures", "Honours", "Play bowls", "Contact"];
+const nav: Page[] = ["Home", "About the Club", "Fixtures", "Play bowls", "Contact"];
 const timeSlots = ["10:00–12:00", "12:00–14:00", "14:00–16:00", "16:00–18:00", "18:00–21:00"];
 const displayDate = (value: string) => new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(`${value}T12:00:00`));
 const today = () => new Date().toISOString().slice(0, 10);
