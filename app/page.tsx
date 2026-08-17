@@ -546,17 +546,216 @@ function AboutPage() {
               <b>The Empire story</b>
               <i>+</i>
             </summary>
-            <div>
+            <div className="heritage-story">
+              <div className="heritage-lead-grid">
+                <div className="heritage-year-mark">
+                  <strong>1910</strong>
+                  <span>Where the story begins</span>
+                </div>
+                <div>
+                  <p className="heritage-kicker">A Greenhithe story</p>
+                  <blockquote>
+                    “Long before Empire Bowls Club became the club we know
+                    today, it began as part of a community built around one of
+                    Greenhithe’s great industries.”
+                  </blockquote>
+                  <p>
+                    Empire Bowls Club was founded in 1910 as the lawn bowls
+                    section of the works social club connected with the large
+                    paper mill at Greenhithe. At that time, the factory was
+                    still associated with the Ingress Abbey Paper Mills
+                    operation. The site subsequently became known as Empire
+                    Paper Mills, and it was from that later identity that the
+                    club took its Empire name.
+                  </p>
+                </div>
+              </div>
+
+              <h3>Born from a mill community</h3>
               <p>
-                Empire Bowls Club began in 1910 as the lawn bowls section of the
-                Empire Paper Mill social club. More than a century on, that same
-                community spirit remains at the centre of the club.
+                Paper production at the Greenhithe site had begun in 1908. The
+                mill became one of the area’s significant employers, shaping
+                everyday life as well as the skyline. Housing was created for
+                workers, while the company provided gardens, recreation
+                grounds and social facilities for its workforce.
               </p>
               <p>
-                We have grown into a friendly mixed club, proud of our green,
-                our traditions and the way new people are welcomed into the
-                game.
+                The bowling green formed part of that wider culture of
+                recreation and community. Generations of local people had
+                connections with the paper mill and its sporting facilities,
+                helping the bowls club grow from a works section into a lasting
+                part of Greenhithe life.
               </p>
+
+              <div className="heritage-timeline" aria-label="Empire heritage timeline">
+                <article className="heritage-event">
+                  <time dateTime="1908">1908</time>
+                  <div>
+                    <h4>Paper production begins</h4>
+                    <p>
+                      The Greenhithe site begins producing paper and becomes an
+                      increasingly important local employer.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time dateTime="1910">1910</time>
+                  <div>
+                    <h4>The lawn bowls section is formed</h4>
+                    <p>
+                      People connected with the mill establish a lawn bowls
+                      section within the works social club — the beginning of
+                      the club we know today.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time>1920s</time>
+                  <div>
+                    <h4>The Empire identity develops</h4>
+                    <p>
+                      The site becomes associated with the Empire Paper Mills
+                      name, giving the bowls club the identity it still carries.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time dateTime="1952">1952</time>
+                  <div>
+                    <h4>A changing paper industry</h4>
+                    <p>
+                      Empire Paper Mills becomes part of the Reed Group, while
+                      the sporting and social life around the green continues.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time>Early 1990s</time>
+                  <div>
+                    <h4>The mill closes — but the bowls club survives</h4>
+                    <p>
+                      By the early 1990s, the great paper mill that had shaped
+                      this part of Greenhithe had finally closed its doors. The
+                      industry disappeared, but the club carried its community
+                      tradition forward.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time dateTime="2005-04-25">2005</time>
+                  <div>
+                    <h4>Empire Bowls Club Limited</h4>
+                    <p>
+                      Empire Bowls Club Limited is incorporated on 25 April as
+                      a company limited by guarantee. This is the incorporation
+                      date of the present legal organisation — not the founding
+                      date of the bowls club, which dates back to 1910.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time dateTime="2016">2016</time>
+                  <div>
+                    <h4>The sports ground changes around it</h4>
+                    <p>
+                      Dartford Borough Council documents still referred to the
+                      area as the “Empire Paper Mills Sports Ground” during
+                      plans for surrounding development. Much of the former
+                      sports-ground land was redeveloped, particularly for
+                      housing, while the bowling club remained.
+                    </p>
+                  </div>
+                </article>
+                <article className="heritage-event">
+                  <time>Today</time>
+                  <div>
+                    <h4>The Empire story continues</h4>
+                    <p>
+                      More than 115 years after its beginnings, Empire Bowls
+                      Club remains at Greenhithe and continues to take an active
+                      part in Kent bowls.
+                    </p>
+                  </div>
+                </article>
+              </div>
+
+              <div className="heritage-pullquote">
+                <strong>The mill disappeared. The Empire remained.</strong>
+                <span>
+                  A works bowls section became an independent community club,
+                  carrying a sporting tradition through industrial change and
+                  generations of Greenhithe history.
+                </span>
+              </div>
+
+              <div className="heritage-two-column">
+                <section className="heritage-panel">
+                  <p className="heritage-kicker">The old sports ground</p>
+                  <h3>A green that stayed</h3>
+                  <p>
+                    The area around the club was historically known as the
+                    Empire Paper Mills Sports Ground. When road names were being
+                    considered for the surrounding development, Empire Bowls
+                    Club suggested “Bowling Green Lane” — a nod to how long a
+                    bowling club had existed at the location.
+                  </p>
+                  <p>
+                    The eventual surrounding road names included Norton Lane,
+                    Parkwood Hill and Peacock Close. There is no confirmed
+                    evidence that Peacock Close explains the peacock in the
+                    club’s identity, but the names remain part of the modern
+                    landscape around the green.
+                  </p>
+                </section>
+                <section className="heritage-panel heritage-panel-navy">
+                  <p className="heritage-kicker">Empire today</p>
+                  <h3>Still writing the story</h3>
+                  <p>
+                    Empire has survived industrial change, the closure of the
+                    paper mill, redevelopment of the former sports ground and
+                    more than a century of change in Greenhithe.
+                  </p>
+                  <p>
+                    The surroundings may have changed, but bowls has been part
+                    of this corner of Greenhithe since 1910. More than a century
+                    later, the Empire story is still being written.
+                  </p>
+                </section>
+              </div>
+
+              <div className="heritage-archive">
+                <div>
+                  <p className="heritage-kicker">Archive collection</p>
+                  <h3>Help us bring the story to life</h3>
+                  <p>
+                    Genuine historical photographs can be added here in the
+                    future. These placeholders are deliberately not presented
+                    as archive images.
+                  </p>
+                </div>
+                <div className="heritage-gallery">
+                  <div className="archive-placeholder">
+                    <span>Archive photograph required</span>
+                    <b>Empire Paper Mills, Greenhithe</b>
+                  </div>
+                  <div className="archive-placeholder">
+                    <span>Archive photograph required</span>
+                    <b>The former Empire Paper Mills Sports Ground</b>
+                  </div>
+                  <div className="archive-placeholder">
+                    <span>Archive photograph required</span>
+                    <b>Early Empire bowlers</b>
+                  </div>
+                  <div className="archive-placeholder">
+                    <span>Archive photograph required</span>
+                    <b>Greenhithe and the paper mill community</b>
+                  </div>
+                  <div className="archive-placeholder">
+                    <span>Archive photograph required</span>
+                    <b>Empire Bowls Club through the years</b>
+                  </div>
+                </div>
+              </div>
             </div>
           </details>
           <details>
