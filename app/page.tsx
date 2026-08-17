@@ -728,10 +728,95 @@ function AboutPage() {
                   <p className="heritage-kicker">Archive collection</p>
                   <h3>Help us bring the story to life</h3>
                   <p>
-                    Genuine historical photographs can be added here in the
-                    future. These placeholders are deliberately not presented
-                    as archive images.
+                    These contextual photographs come from established heritage
+                    collections. They show the paper mill and the surrounding
+                    Greenhithe setting in the period around the club’s early
+                    years. They are not presented as photographs of Empire
+                    Bowls Club itself.
                   </p>
+                </div>
+                <div className="heritage-photo-grid">
+                  <figure className="heritage-photo-card">
+                    <a
+                      className="heritage-photo-link"
+                      href="https://www.britainfromabove.org.uk/image/epw017657"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img
+                        src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017657.jpg"
+                        alt="Aerial view of Empire Paper Mills and Ingress Abbey Wharf, Greenhithe, in 1927"
+                      />
+                    </a>
+                    <figcaption>
+                      <b>Empire Paper Mills, Greenhithe · 1927</b>
+                      <p>
+                        The mill, wharf and surrounding landscape in the era
+                        when the Empire identity was developing.{" "}
+                        <a
+                          href="https://www.britainfromabove.org.uk/image/epw017657"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View the Britain from Above record ↗
+                        </a>
+                      </p>
+                    </figcaption>
+                  </figure>
+                  <figure className="heritage-photo-card">
+                    <a
+                      className="heritage-photo-link"
+                      href="https://www.britainfromabove.org.uk/en/image/EPW006257"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img
+                        src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/006/EPW006257.jpg"
+                        alt="Aerial view of Ingress Abbey Wharf and Swanscombe Marshes, Greenhithe, in 1921"
+                      />
+                    </a>
+                    <figcaption>
+                      <b>Ingress Abbey Wharf and the marshes · 1921</b>
+                      <p>
+                        The wider Greenhithe landscape during the first decade
+                        of the bowls club’s story.{" "}
+                        <a
+                          href="https://www.britainfromabove.org.uk/en/image/EPW006257"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View the Britain from Above record ↗
+                        </a>
+                      </p>
+                    </figcaption>
+                  </figure>
+                  <figure className="heritage-photo-card">
+                    <a
+                      className="heritage-photo-link"
+                      href="https://www.britainfromabove.org.uk/en/image/EPW017656"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <img
+                        src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017656.jpg"
+                        alt="Aerial view of Empire Paper Mills and Ingress Abbey Wharf, Greenhithe, in 1927"
+                      />
+                    </a>
+                    <figcaption>
+                      <b>Empire Paper Mills and the wharf · 1927</b>
+                      <p>
+                        A second archival view of the mill and wharf during the
+                        paper-mill era.{" "}
+                        <a
+                          href="https://www.britainfromabove.org.uk/en/image/EPW017656"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View the Britain from Above record ↗
+                        </a>
+                      </p>
+                    </figcaption>
+                  </figure>
                 </div>
                 <div className="heritage-gallery">
                   <div className="archive-placeholder">
