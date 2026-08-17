@@ -562,11 +562,12 @@ function AboutPage() {
                   <p>
                     Empire Bowls Club was founded in 1910 as the lawn bowls
                     section of the works social club connected with the large
-                    paper mill at Greenhithe. At that time, the factory was
-                    still associated with the Ingress Abbey Paper Mills
-                    operation. The site subsequently became known as Empire
-                    Paper Mills, and it was from that later identity that the
-                    club took its Empire name.
+                    paper mill at Greenhithe. At that time, the factory site
+                    was known as the Ingress Abbey Paper Mill. The Empire name
+                    came later: after Associated Newspapers acquired the
+                    complex in 1919, it became known as Empire Paper Mills.
+                    That later identity is the source of the club’s Empire
+                    name.
                   </p>
                 </div>
               </div>
@@ -610,12 +611,14 @@ function AboutPage() {
                   </div>
                 </article>
                 <article className="heritage-event">
-                  <time>1920s</time>
+                  <time dateTime="1919">1919</time>
                   <div>
-                    <h4>The Empire identity develops</h4>
+                    <h4>The Empire name is adopted</h4>
                     <p>
-                      The site becomes associated with the Empire Paper Mills
-                      name, giving the bowls club the identity it still carries.
+                      Associated Newspapers acquires the complex and changes
+                      its name to Empire Paper Mills. The Empire name is now
+                      associated with the site; it was not the name used when
+                      the bowls section began in 1910.
                     </p>
                   </div>
                 </article>
@@ -635,7 +638,10 @@ function AboutPage() {
                     <h4>The mill closes — but the bowls club survives</h4>
                     <p>
                       By the early 1990s, the great paper mill that had shaped
-                      this part of Greenhithe had finally closed its doors. The
+                      this part of Greenhithe was in decline and closure had
+                      become inevitable. Historical sources differ slightly
+                      between 1992 and 1993 for the final closure, so the
+                      timeline uses the broader early-1990s wording. The
                       industry disappeared, but the club carried its community
                       tradition forward.
                     </p>
@@ -649,7 +655,14 @@ function AboutPage() {
                       Empire Bowls Club Limited is incorporated on 25 April as
                       a company limited by guarantee. This is the incorporation
                       date of the present legal organisation — not the founding
-                      date of the bowls club, which dates back to 1910.
+                      date of the bowls club, which dates back to 1910.{" "}
+                      <a
+                        href="https://find-and-update.company-information.service.gov.uk/company/05434583"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        View the Companies House record ↗
+                      </a>
                     </p>
                   </div>
                 </article>
@@ -725,14 +738,15 @@ function AboutPage() {
 
               <div className="heritage-archive">
                 <div>
-                  <p className="heritage-kicker">Archive collection</p>
-                  <h3>Help us bring the story to life</h3>
+                  <p className="heritage-kicker">Historical photographs</p>
+                  <h3>The world Empire came from</h3>
                   <p>
                     These contextual photographs come from established heritage
                     collections. They show the paper mill and the surrounding
                     Greenhithe setting in the period around the club’s early
                     years. They are not presented as photographs of Empire
-                    Bowls Club itself.
+                    Bowls Club itself. The club’s own archive photographs can
+                    be added here later when they are available and verified.
                   </p>
                 </div>
                 <div className="heritage-photo-grid">
@@ -818,28 +832,25 @@ function AboutPage() {
                     </figcaption>
                   </figure>
                 </div>
-                <div className="heritage-gallery">
-                  <div className="archive-placeholder">
-                    <span>Archive photograph required</span>
-                    <b>Empire Paper Mills, Greenhithe</b>
-                  </div>
-                  <div className="archive-placeholder">
-                    <span>Archive photograph required</span>
-                    <b>The former Empire Paper Mills Sports Ground</b>
-                  </div>
-                  <div className="archive-placeholder">
-                    <span>Archive photograph required</span>
-                    <b>Early Empire bowlers</b>
-                  </div>
-                  <div className="archive-placeholder">
-                    <span>Archive photograph required</span>
-                    <b>Greenhithe and the paper mill community</b>
-                  </div>
-                  <div className="archive-placeholder">
-                    <span>Archive photograph required</span>
-                    <b>Empire Bowls Club through the years</b>
-                  </div>
-                </div>
+                <p className="heritage-source-note">
+                  Historical reference:{" "}
+                  <a
+                    href="https://heritage.kent.gov.uk/Monument/MWX17331/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Kent Historic Environment Record
+                  </a>
+                  . Company details:{" "}
+                  <a
+                    href="https://find-and-update.company-information.service.gov.uk/company/05434583"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Companies House
+                  </a>
+                  .
+                </p>
               </div>
             </div>
           </details>
