@@ -174,23 +174,6 @@ const sponsors = [
 function apiHeaders(access: Access, password: string) {
   return { "x-empire-access": `${access}:${password}` };
 }
-function PlaceholderImage({
-  label,
-  className = "",
-}: {
-  label: string;
-  className?: string;
-}) {
-  return (
-    <div
-      className={`placeholder-image ${className}`}
-      role="img"
-      aria-label={label}
-    >
-      <span>{label}</span>
-    </div>
-  );
-}
 function Status({
   message,
   type = "success",
@@ -971,12 +954,33 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
   );
 }
 function ContactPage() {
+  const [sent, setSent] = useState(false);
+  const submitContact = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const name = String(values.get("name") ?? "");
+    const email = String(values.get("email") ?? "");
+    const phone = String(values.get("phone") ?? "");
+    const message = String(values.get("message") ?? "");
+    const body = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      phone ? `Phone: ${phone}` : "",
+      "",
+      message,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    window.location.href = `mailto:stevewebster@btinternet.com?subject=${encodeURIComponent("Empire Bowls Club enquiry")}&body=${encodeURIComponent(body)}`;
+    event.currentTarget.reset();
+    setSent(true);
+  };
   return (
     <section className="page wrap">
       <p className="eyebrow">Contact & visit</p>
       <h1>Come and see the green.</h1>
       <div className="contact-grid">
-        <div>
+        <div className="contact-details">
           <h2>Empire Bowls Club</h2>
           <p>
             Norton Lane (off Knockhall Road)
@@ -995,17 +999,73 @@ function ContactPage() {
             <a href="tel:07872111577">
               <span>Phone</span>
               <b>Club secretary</b>
-            </a>
-            <a href="mailto:stevewebster@btinternet.com">
-              <span>Email</span>
-              <b>stevewebster@btinternet.com</b>
+              <small>07872 111577</small>
             </a>
           </div>
         </div>
-        <PlaceholderImage
-          label="Image placeholder · Map and approach to Empire Bowls Club"
-          className="map-image"
-        />
+        <form className="contact-form" onSubmit={submitContact}>
+          <p className="eyebrow">Send an enquiry</p>
+          <h2>Talk to the club.</h2>
+          <p className="form-intro">
+            Complete the form and your email app will open with the enquiry
+            ready to send to the club secretary.
+          </p>
+          <label>
+            Name
+            <input name="name" required maxLength={120} />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" required maxLength={160} />
+          </label>
+          <label>
+            Phone <span>(optional)</span>
+            <input name="phone" type="tel" maxLength={40} />
+          </label>
+          <label>
+            How can we help?
+            <textarea
+              name="message"
+              required
+              maxLength={2000}
+              placeholder="Ask about visiting, membership or club sessions…"
+            />
+          </label>
+          <button className="primary" type="submit">
+            Prepare enquiry
+          </button>
+          {sent && (
+            <Status message="Your email app should now be ready to send the enquiry." />
+          )}
+        </form>
+      </div>
+      <div className="contact-map">
+        <div className="contact-map-heading">
+          <div>
+            <p className="eyebrow">Find the green</p>
+            <h2>Plan your visit to Norton Lane.</h2>
+          </div>
+          <a
+            className="map-link"
+            href="https://www.google.com/maps/search/?api=1&query=Empire+Bowls+Club+Norton+Lane+Greenhithe+DA9+9XY"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open in Google Maps <span>↗</span>
+          </a>
+        </div>
+        <div className="map-frame">
+          <iframe
+            title="Map showing Empire Bowls Club in Greenhithe"
+            src="https://www.google.com/maps?q=Empire%20Bowls%20Club%20Norton%20Lane%20Greenhithe%20DA9%209XY&output=embed"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+        <p className="map-note">
+          Car park access is via Parkhill Road, entered at the side of 25
+          Knockhall Road. Turn right into Norton Lane.
+        </p>
       </div>
     </section>
   );
