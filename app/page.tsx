@@ -88,7 +88,7 @@ const committee = [
 ];
 const fixtures: Array<{ date: string; event: string; type: string }> = [];
 const fixtureMessage =
-  "The fixtures are taking a little summer break — we’ll see you next summer with a full schedule of games!";
+  "The fixtures are taking a winter break — we’ll see you next summer with a full schedule of games!";
 const starterNews: NewsItem[] = [
   {
     id: -1,
@@ -373,7 +373,7 @@ function renderPage(
   openPortal: () => void,
 ) {
   if (page === "Home")
-    return <HomePage openPage={openPage} openPortal={openPortal} />;
+    return <HomePage openPage={openPage} />;
   if (page === "About the Club") return <AboutPage />;
   if (page === "News") return <NewsPage />;
   if (page === "Sponsors") return <SponsorsPage />;
@@ -384,10 +384,8 @@ function renderPage(
 }
 function HomePage({
   openPage,
-  openPortal,
 }: {
   openPage: (page: Page) => void;
-  openPortal: () => void;
 }) {
   return (
     <>
@@ -407,9 +405,6 @@ function HomePage({
             <button className="primary" onClick={() => openPage("Play bowls")}>
               Come and try bowls
             </button>
-            <button className="text-button" onClick={openPortal}>
-              Members’ area <span>→</span>
-            </button>
           </div>
         </div>
         <div className="hero-emblem">
@@ -417,22 +412,10 @@ function HomePage({
           <span>EST. 1910</span>
         </div>
       </section>
-      <section className="quick-facts wrap">
+      <section className="quick-facts wrap single">
         <article>
           <strong>April–September</strong>
           <span>Outdoor playing season</span>
-        </article>
-        <article>
-          <strong>Monday afternoons</strong>
-          <span>Practice sessions</span>
-        </article>
-        <article>
-          <strong>All abilities</strong>
-          <span>Coaching and equipment available</span>
-        </article>
-        <article>
-          <strong>Norton Lane</strong>
-          <span>Greenhithe, Kent</span>
         </article>
       </section>
       <section className="intro-grid wrap">
@@ -487,7 +470,7 @@ function HomePage({
               ))
             ) : (
               <article className="fixture-empty-card">
-                <span>Fixtures taking a summer break</span>
+                <span>Fixtures taking a winter break</span>
                 <h3>{fixtureMessage}</h3>
                 <button onClick={() => openPage("Fixtures")}>
                   Visit the fixtures page <span>→</span>
@@ -737,7 +720,7 @@ function FixturesPage() {
       ) : (
         <div className="fixture-empty" role="status">
           <span>Seasonal update</span>
-          <h2>The fixtures are currently enjoying a summer rest.</h2>
+          <h2>The fixtures are taking a winter break.</h2>
           <p>{fixtureMessage}</p>
         </div>
       )}
