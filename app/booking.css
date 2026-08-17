@@ -22,6 +22,14 @@
 .booking-scroll .taken {
   color: #17273d;
   background: #f3e5ba;
+  cursor: pointer;
+}
+
+.booking-scroll .taken:hover,
+.booking-scroll .taken:focus-visible {
+  background: #ead293;
+  outline: 3px solid #8c1f2d;
+  outline-offset: -3px;
 }
 
 .booking-scroll .taken b,

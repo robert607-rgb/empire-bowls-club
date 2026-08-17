@@ -27,3 +27,15 @@ export async function POST(request: Request) {
     return Response.json({ booking: { bookingDate, rinkNumber, timeSlot, bookingName } }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
+
+export async function DELETE(request: Request) {
+  if (!hasEmpireAccess(request)) return unauthorized();
+  try {
+    const input = await request.json() as Record<string, unknown>;
+    const id = Number(input.id);
+    if (!Number.isInteger(id)) return Response.json({ error: "Choose a valid booking to remove." }, { status: 400 });
+    const db = await getEmpireDatabase();
+    await db.prepare("DELETE FROM empire_bookings WHERE id = ?").bind(id).run();
+    return Response.json({ removed: true });
+  } catch (error) { return apiError(error); }
+}

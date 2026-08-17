@@ -49,3 +49,13 @@
   .first-visit > div,.first-visit aside,.enquiry-section { padding:28px; }
   .first-visit ol { grid-template-columns:1fr; }
 }
+
+/* Successful admin actions are visually distinct from regular page messages. */
+.admin-zone > .status {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border-left: 5px solid #d6aa1f;
+  background: #173b31;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(10, 44, 36, .16);
+}
