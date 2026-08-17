@@ -319,11 +319,10 @@
 .admin-members-tab > summary b {
   min-width: 0;
 }
-.admin-members-tab > summary i {
+.admin-members-tab > summary .members-count {
   margin-left: auto;
   color: #53657c;
   white-space: nowrap;
-  transform: none;
 }
 .member-table {
   min-width: 0;
@@ -386,7 +385,7 @@
   color: #354f70;
 }
 @media (max-width: 680px) {
-  .admin-members-tab > summary i {
+  .admin-members-tab > summary .members-count {
     width: 100%;
     margin-left: 0;
   }
@@ -421,7 +420,68 @@
   }
 }
 
-/* A signature peacock-feather motif makes every Empire page feel like the same club. */
+/* A recognisable peacock fan gives every Empire view a club-specific signature. */
+.site-header {
+  position: relative;
+}
+.header-feather-fan {
+  position: absolute;
+  right: calc(5% + 174px);
+  top: 10px;
+  z-index: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 122px;
+  height: 78px;
+  gap: 1px;
+  pointer-events: none;
+}
+.header-feather-fan i {
+  position: relative;
+  display: block;
+  width: 21px;
+  height: 62px;
+  border: 1px solid rgba(6, 39, 97, 0.26);
+  border-radius: 54% 54% 38% 38% / 64% 64% 36% 36%;
+  background: radial-gradient(
+    ellipse at 50% 18%,
+    #f6d35a 0 5%,
+    #bd253e 5.7% 15%,
+    #f6f1d6 15.7% 27%,
+    #17a7a0 27.7% 40%,
+    #1d4f93 40.7% 55%,
+    #12654a 55.7% 100%
+  );
+  box-shadow: 0 5px 9px rgba(6, 39, 97, 0.18);
+  transform-origin: 50% 100%;
+}
+.header-feather-fan i::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  width: 2px;
+  height: 76px;
+  background: linear-gradient(#e4b82c, #12654a);
+  transform: translateX(-50%);
+}
+.header-feather-fan i:nth-child(1) {
+  transform: rotate(-29deg) translateY(6px);
+}
+.header-feather-fan i:nth-child(2) {
+  transform: rotate(-14deg) translateY(2px);
+}
+.header-feather-fan i:nth-child(3) {
+  transform: translateY(-2px) scale(1.08);
+}
+.header-feather-fan i:nth-child(4) {
+  transform: rotate(14deg) translateY(2px);
+}
+.header-feather-fan i:nth-child(5) {
+  transform: rotate(29deg) translateY(6px);
+}
+
 .hero,
 .page,
 .news-page,
@@ -440,59 +500,119 @@
   content: "";
   position: absolute;
   z-index: 0;
-  top: 24px;
-  right: -72px;
-  width: 245px;
-  height: 415px;
-  opacity: 0.16;
-  border-radius: 52% 48% 44% 46% / 62% 58% 42% 40%;
-  transform: rotate(26deg);
+  top: 36px;
+  right: 2.5%;
+  width: 300px;
+  height: 245px;
+  opacity: 0.22;
+  pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 17%, #f6d35a 0 4%, transparent 4.7%),
-    radial-gradient(ellipse at 50% 17%, #bd253e 0 11%, transparent 11.7%),
-    radial-gradient(ellipse at 50% 17%, #f6f1d6 0 18%, transparent 18.7%),
-    radial-gradient(ellipse at 50% 17%, #17a7a0 0 27%, transparent 27.7%),
-    radial-gradient(ellipse at 50% 17%, #1d4f93 0 38%, transparent 38.7%),
-    radial-gradient(ellipse at 50% 17%, #12654a 0 52%, transparent 52.7%),
-    linear-gradient(
-      108deg,
-      transparent 47%,
-      rgba(244, 207, 84, 0.9) 48% 49%,
+    radial-gradient(
+      ellipse at 9% 29%,
+      #f6d35a 0 2%,
+      #bd253e 2.7% 7%,
+      #f6f1d6 7.7% 13%,
+      #17a7a0 13.7% 21%,
+      #1d4f93 21.7% 33%,
+      #12654a 33.7% 49%,
       transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 30% 15%,
+      #f6d35a 0 2%,
+      #bd253e 2.7% 7%,
+      #f6f1d6 7.7% 13%,
+      #17a7a0 13.7% 21%,
+      #1d4f93 21.7% 33%,
+      #12654a 33.7% 49%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 52% 8%,
+      #f6d35a 0 2%,
+      #bd253e 2.7% 7%,
+      #f6f1d6 7.7% 13%,
+      #17a7a0 13.7% 21%,
+      #1d4f93 21.7% 33%,
+      #12654a 33.7% 49%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 74% 15%,
+      #f6d35a 0 2%,
+      #bd253e 2.7% 7%,
+      #f6f1d6 7.7% 13%,
+      #17a7a0 13.7% 21%,
+      #1d4f93 21.7% 33%,
+      #12654a 33.7% 49%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 95% 29%,
+      #f6d35a 0 2%,
+      #bd253e 2.7% 7%,
+      #f6f1d6 7.7% 13%,
+      #17a7a0 13.7% 21%,
+      #1d4f93 21.7% 33%,
+      #12654a 33.7% 49%,
+      transparent 50%
+    ),
+    linear-gradient(
+      76deg,
+      transparent 48%,
+      rgba(244, 207, 84, 0.84) 49% 50%,
+      transparent 51%
+    ),
+    linear-gradient(
+      84deg,
+      transparent 48%,
+      rgba(244, 207, 84, 0.74) 49% 50%,
+      transparent 51%
     ),
     linear-gradient(
       90deg,
       transparent 49%,
-      rgba(6, 39, 97, 0.8) 49.5% 50.5%,
+      rgba(244, 207, 84, 0.72) 49.5% 50.5%,
+      transparent 51%
+    ),
+    linear-gradient(
+      96deg,
+      transparent 48%,
+      rgba(244, 207, 84, 0.74) 49% 50%,
+      transparent 51%
+    ),
+    linear-gradient(
+      104deg,
+      transparent 48%,
+      rgba(244, 207, 84, 0.84) 49% 50%,
       transparent 51%
     );
-  box-shadow:
-    0 0 0 18px rgba(228, 184, 44, 0.06),
-    0 0 0 34px rgba(18, 101, 74, 0.05);
-  pointer-events: none;
 }
 .hero::before {
-  top: 38px;
-  right: 5%;
-  opacity: 0.3;
-  transform: rotate(18deg) scale(1.08);
+  top: 76px;
+  right: 4%;
+  width: 420px;
+  height: 325px;
+  opacity: 0.48;
 }
 .page::before,
+.news-page::before,
+.sponsors-page::before,
+.play-page::before,
 .portal-shell::before {
-  opacity: 0.1;
+  opacity: 0.16;
 }
 .news-page::before {
-  top: 180px;
-  opacity: 0.12;
+  top: 116px;
 }
 .sponsors-page::before {
-  top: 130px;
-  opacity: 0.11;
-  transform: rotate(-22deg);
+  top: 102px;
 }
 .play-page::before {
-  top: 90px;
-  opacity: 0.12;
+  top: 75px;
+}
+.portal-shell::before {
+  top: 85px;
 }
 .hero > *,
 .page > *,
@@ -503,44 +623,28 @@
   position: relative;
   z-index: 1;
 }
-.news-ribbon,
-.sponsors-thanks {
-  position: relative;
-  overflow: hidden;
-}
-.news-ribbon::after,
-.sponsors-thanks::after {
-  content: "";
-  position: absolute;
-  right: 8%;
-  top: 50%;
-  width: 130px;
-  height: 130px;
-  border: 2px solid rgba(244, 207, 84, 0.32);
-  border-radius: 50% 50% 50% 12%;
-  transform: translateY(-50%) rotate(35deg);
-  pointer-events: none;
-}
 @media (max-width: 680px) {
+  .header-feather-fan {
+    display: none;
+  }
   .hero::before,
   .page::before,
   .news-page::before,
   .sponsors-page::before,
   .play-page::before,
   .portal-shell::before {
-    right: -120px;
-    opacity: 0.08;
-    transform: rotate(22deg) scale(0.75);
+    right: -52px;
+    top: 105px;
+    width: 240px;
+    height: 190px;
+    opacity: 0.22;
   }
   .hero::before {
-    right: -45px;
-    top: 55px;
-    opacity: 0.2;
-  }
-  .news-ribbon::after,
-  .sponsors-thanks::after {
-    right: -35px;
-    opacity: 0.45;
+    right: -24px;
+    top: 72px;
+    width: 310px;
+    height: 245px;
+    opacity: 0.42;
   }
 }
 

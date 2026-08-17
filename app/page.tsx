@@ -224,6 +224,13 @@ export default function Home() {
             </button>
           ))}
         </nav>
+        <span className="header-feather-fan" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
         <button className="portal-button" onClick={openPortal}>
           Members & admin
         </button>
@@ -1654,7 +1661,7 @@ function AdminMemberOverview({
       <summary>
         <span className="eyebrow">Member records</span>
         <b>Members overview</b>
-        <i>{members.length} listed · open to sort and manage</i>
+        <span className="members-count">{members.length} members</span>
       </summary>
       <div className="admin-members-panel">
         <div className="admin-members-toolbar">
