@@ -437,7 +437,7 @@ function HomePage({
         <div className="green-card club-green-card">
           <img
             className="club-green-image"
-            src="/club/empire-green-rainbow.png"
+            src="/club/empire-green-clubhouse.png"
             alt="The Empire Bowls Club green and clubhouse beneath a rainbow"
           />
           <div className="club-green-copy">
@@ -879,7 +879,7 @@ function AboutPage() {
               </div>
               <figure className="people-photo">
                 <img
-                  src="/club/empire-team.jpg"
+                  src="/club/empire-players.jpg"
                   alt="Empire Bowls Club members gathered together on the green"
                 />
                 <figcaption>Empire bowlers together on the green.</figcaption>
