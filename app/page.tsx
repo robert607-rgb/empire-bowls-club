@@ -434,11 +434,18 @@ function HomePage({
             Discover our club
           </button>
         </div>
-        <div className="green-card">
-          <p>
-            “A warm welcome, a superb green, and a real sense of belonging.”
-          </p>
-          <span>Empire Bowls Club</span>
+        <div className="green-card club-green-card">
+          <img
+            className="club-green-image"
+            src="/club/empire-green-rainbow.png"
+            alt="The Empire Bowls Club green and clubhouse beneath a rainbow"
+          />
+          <div className="club-green-copy">
+            <p>
+              “A warm welcome, a superb green, and a real sense of belonging.”
+            </p>
+            <span>Empire Bowls Club</span>
+          </div>
         </div>
       </section>
       <section className="upcoming-section">
@@ -860,14 +867,23 @@ function AboutPage() {
               <b>The people of Empire</b>
               <i>+</i>
             </summary>
-            <div className="committee">
-              {committee.map(([role, name, phone]) => (
-                <article key={role}>
-                  <b>{role}</b>
-                  <span>{name}</span>
-                  <a href={`tel:${phone.replaceAll(" ", "")}`}>{phone}</a>
-                </article>
-              ))}
+            <div className="people-grid">
+              <div className="committee">
+                {committee.map(([role, name, phone]) => (
+                  <article key={role}>
+                    <b>{role}</b>
+                    <span>{name}</span>
+                    <a href={`tel:${phone.replaceAll(" ", "")}`}>{phone}</a>
+                  </article>
+                ))}
+              </div>
+              <figure className="people-photo">
+                <img
+                  src="/club/empire-team.jpg"
+                  alt="Empire Bowls Club members gathered together on the green"
+                />
+                <figcaption>Empire bowlers together on the green.</figcaption>
+              </figure>
             </div>
           </details>
           <details>
