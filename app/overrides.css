@@ -3,8 +3,14 @@
   text-shadow: 0 2px 5px rgba(0, 0, 0, 0.62);
 }
 
+.intro-grid {
+  grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+  gap: 54px;
+}
+
 .club-green-card {
   position: relative;
+  min-height: 390px;
   overflow: hidden;
   isolation: isolate;
   background: #12654a;
@@ -41,8 +47,8 @@
 
 .people-grid {
   display: grid;
-  grid-template-columns: 1.12fr 0.88fr;
-  gap: 18px;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+  gap: 26px;
   align-items: start;
 }
 .people-photo {
@@ -235,6 +241,13 @@
   color: #062761;
 }
 @media (max-width: 680px) {
+  .intro-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .club-green-card {
+    min-height: 340px;
+  }
   .people-grid {
     grid-template-columns: 1fr;
   }
