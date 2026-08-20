@@ -1852,23 +1852,36 @@ function PlayerRequestBoard({ password }: { password: string }) {
           const names = drafts[r.id] ?? r.names;
           return (
             <div className="request-card" key={r.id}>
-              <b>{r.match}</b>
-              <span>
-                {r.date} · {r.playersRequired} player
-                {r.playersRequired === 1 ? "" : "s"} required
-              </span>
-              {Array.from({ length: r.playersRequired }, (_, i) => (
-                <input
-                  key={i}
-                  placeholder={"Player " + (i + 1)}
-                  value={names[i] ?? ""}
-                  onChange={(e) => {
-                    const next = [...names];
-                    next[i] = e.target.value;
-                    setDrafts({ ...drafts, [r.id]: next });
-                  }}
-                />
-              ))}
+              <div className="request-card-head">
+                <div>
+                  <span className="request-card-kicker">Player sign-up</span>
+                  <b>{r.match}</b>
+                </div>
+                <span className="request-card-meta">
+                  {r.date} · {r.playersRequired} player
+                  {r.playersRequired === 1 ? "" : "s"} required
+                </span>
+              </div>
+              <p className="request-card-help">
+                Add your name to an available place, then save your choices.
+              </p>
+              <div className="player-slots">
+                {Array.from({ length: r.playersRequired }, (_, i) => (
+                  <label className="player-slot" key={i}>
+                    <span>{String(i + 1).padStart(2, "0")}</span>
+                    <input
+                      aria-label={`Player ${i + 1} name for ${r.match}`}
+                      placeholder={`Player ${i + 1}`}
+                      value={names[i] ?? ""}
+                      onChange={(e) => {
+                        const next = [...names];
+                        next[i] = e.target.value;
+                        setDrafts({ ...drafts, [r.id]: next });
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
               <button className="primary" onClick={() => void save(r.id)}>
                 Save names
               </button>
@@ -2348,7 +2361,7 @@ function AdminZone({
         }}
       />
       <div className="admin-forms">
-        <form onSubmit={addMember}>
+        <form className="admin-card admin-card-members" onSubmit={addMember}>
           <p className="eyebrow">Member management</p>
           <h2>Add a member</h2>
           <label>
@@ -2380,7 +2393,10 @@ function AdminZone({
             Add member
           </button>
         </form>
-        <form onSubmit={createPlayerRequest}>
+        <form
+          className="admin-card admin-card-players"
+          onSubmit={createPlayerRequest}
+        >
           <p className="eyebrow">Player availability</p>
           <h2>Create a player sign-up sheet</h2>
           <label>
@@ -2412,7 +2428,7 @@ function AdminZone({
             Create sign-up sheet
           </button>
         </form>
-        <form onSubmit={upload}>
+        <form className="admin-card admin-card-upload" onSubmit={upload}>
           <p className="eyebrow">Club updates</p>
           <h2>Upload team sheets or documents</h2>
           <label>
