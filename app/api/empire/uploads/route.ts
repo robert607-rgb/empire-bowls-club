@@ -1,11 +1,15 @@
-import { apiError, cleanText, getEmpireDatabase, getRuntimeEnv, hasEmpireAccess, unauthorized } from "../_server";
+import { apiError, cleanText, getEmpireDatabase, getRuntimeEnv, hasEmpireAccess, sameOrigin, unauthorized } from "../_server";
 
 const categories = new Set(["team_sheet", "club_document", "players_required"]);
 const allowedExtensions = new Set(["pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png"]);
+const contentTypes: Record<string, string> = {
+  pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+};
 type UploadRow = { id: number; category: "team_sheet" | "club_document" | "players_required"; title: string; description: string; file_name: string; created_at: string };
 
 export async function GET(request: Request) {
-  if (!hasEmpireAccess(request)) return unauthorized();
+  if (!(await hasEmpireAccess(request))) return unauthorized();
   try {
     const db = await getEmpireDatabase();
     const result = await db.prepare("SELECT id, category, title, description, file_name, created_at FROM empire_uploads ORDER BY created_at DESC").all<UploadRow>();
@@ -14,7 +18,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!hasEmpireAccess(request, true)) return unauthorized();
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const { BUCKET } = await getRuntimeEnv();
     if (!BUCKET) return Response.json({ error: "File storage is not available yet." }, { status: 503 });
@@ -22,8 +27,8 @@ export async function POST(request: Request) {
     if (!categories.has(category) || !title || !file || typeof file === "string") return Response.json({ error: "Please select a file, title and update type." }, { status: 400 });
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!allowedExtensions.has(extension) || file.size > 8 * 1024 * 1024) return Response.json({ error: "Use a PDF, Word, Excel, JPG or PNG file of 8MB or less." }, { status: 400 });
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) || `upload.${extension}`; const objectKey = `empire/${crypto.randomUUID()}-${safeName}`; const contentType = file.type || "application/octet-stream";
-    await BUCKET.put(objectKey, file.stream(), { httpMetadata: { contentType, contentDisposition: `inline; filename=\"${safeName}\"` } });
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) || `upload.${extension}`; const objectKey = `empire/${crypto.randomUUID()}-${safeName}`; const contentType = contentTypes[extension];
+    await BUCKET.put(objectKey, file.stream(), { httpMetadata: { contentType, contentDisposition: `attachment; filename=\"${safeName}\"` } });
     const db = await getEmpireDatabase();
     try { await db.prepare("INSERT INTO empire_uploads (category, title, description, file_name, object_key, content_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(category, title, description, safeName, objectKey, contentType, new Date().toISOString()).run(); }
     catch (error) { await BUCKET.delete(objectKey); throw error; }

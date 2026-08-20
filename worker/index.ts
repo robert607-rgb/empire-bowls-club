@@ -20,6 +20,40 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "img-src 'self' data: blob: https://britainfromabove.org.uk",
+  // Vinext's server-rendered shell includes its own small inline bootstrap
+  // scripts. External script origins remain blocked; the remaining controls
+  // still protect against object embedding, framing and rogue connections.
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "frame-src https://www.google.com",
+  "upgrade-insecure-requests",
+].join("; ");
+
+function secureResponse(response: Response, pathname: string) {
+  const headers = new Headers(response.headers);
+  headers.set("content-security-policy", contentSecurityPolicy);
+  headers.set("strict-transport-security", "max-age=31536000");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  headers.set("permissions-policy", "camera=(), geolocation=(), microphone=(), payment=(), usb=()");
+  headers.set("cross-origin-opener-policy", "same-origin");
+  if (pathname.startsWith("/api/")) {
+    headers.set("cache-control", "no-store, max-age=0");
+    headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -32,16 +66,16 @@ const worker = {
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(request, {
+      return secureResponse(await handleImageOptimization(request, {
         fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
         transformImage: async (body, { width, format, quality }) => {
           const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
           return result.response();
         },
-      }, allowedWidths);
+      }, allowedWidths), url.pathname);
     }
 
-    return handler.fetch(request, env, ctx);
+    return secureResponse(await handler.fetch(request, env, ctx), url.pathname);
   },
 };
 

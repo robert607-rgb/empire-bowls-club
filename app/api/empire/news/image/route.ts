@@ -29,6 +29,7 @@ export async function GET(request: Request) {
         "content-type": row.content_type,
         "content-disposition": `inline; filename=\"${filename}\"`,
         "cache-control": "public, max-age=300",
+        "x-content-type-options": "nosniff",
       },
     });
   } catch (error) {

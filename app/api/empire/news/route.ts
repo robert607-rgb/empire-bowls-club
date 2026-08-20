@@ -4,6 +4,7 @@ import {
   getEmpireDatabase,
   getRuntimeEnv,
   hasEmpireAccess,
+  sameOrigin,
   unauthorized,
 } from "../_server";
 
@@ -16,6 +17,12 @@ type NewsRow = {
   accent: string;
   published_at: string;
   object_key?: string | null;
+};
+const imageTypes: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
 };
 
 function mapNews(item: NewsRow) {
@@ -56,7 +63,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!hasEmpireAccess(request, true)) return unauthorized();
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const form = await request.formData();
     const title = cleanText(form.get("title"), 160);
@@ -78,7 +86,8 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     if (file) {
-      if (!file.type.startsWith("image/"))
+      const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+      if (!imageTypes[extension])
         return Response.json(
           { error: "Please upload a JPG, PNG or WebP image." },
           { status: 400 },
@@ -118,6 +127,7 @@ export async function POST(request: Request) {
         );
       }
       const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const contentType = imageTypes[extension] ?? "image/jpeg";
       const safeName =
         file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-120) ||
         `news-image.${extension}`;
@@ -125,7 +135,7 @@ export async function POST(request: Request) {
       try {
         await BUCKET.put(objectKey, file.stream(), {
           httpMetadata: {
-            contentType: file.type || "image/jpeg",
+            contentType,
             contentDisposition: `inline; filename=\"${safeName}\"`,
           },
         });
@@ -133,7 +143,7 @@ export async function POST(request: Request) {
           .prepare(
             "INSERT INTO empire_news_assets (news_id, object_key, file_name, content_type, created_at) VALUES (?, ?, ?, ?, ?)",
           )
-          .bind(id, objectKey, safeName, file.type || "image/jpeg", publishedAt)
+          .bind(id, objectKey, safeName, contentType, publishedAt)
           .run();
         imageUrl = `/api/empire/news/image?id=${id}`;
       } catch (error) {
@@ -163,7 +173,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!hasEmpireAccess(request, true)) return unauthorized();
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const input = (await request.json()) as Record<string, unknown>;
     const id = Number(input.id);

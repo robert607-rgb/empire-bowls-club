@@ -3,6 +3,7 @@ import {
   cleanText,
   getEmpireDatabase,
   hasEmpireAccess,
+  sameOrigin,
   unauthorized,
 } from "../_server";
 
@@ -16,7 +17,7 @@ type MemberRow = {
 };
 
 export async function GET(request: Request) {
-  if (!hasEmpireAccess(request)) return unauthorized();
+  if (!(await hasEmpireAccess(request))) return unauthorized();
   try {
     const db = await getEmpireDatabase();
     const result = await db
@@ -40,7 +41,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!hasEmpireAccess(request, true)) return unauthorized();
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const input = (await request.json()) as Record<string, unknown>;
     const name = cleanText(input.name, 120),
@@ -90,7 +92,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!hasEmpireAccess(request, true)) return unauthorized();
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const input = (await request.json()) as Record<string, unknown>;
     const id = Number(input.id);

@@ -157,8 +157,12 @@ const sponsors = [
     linkLabel: "Visit nhheating.co.uk",
   },
 ];
-function apiHeaders(access: Access, password: string) {
-  return { "x-empire-access": `${access}:${password}` };
+function apiHeaders(_access: Access, _password: string) {
+  // Browser credentials are now held in a short-lived HttpOnly cookie, so no
+  // password or bearer token is exposed to the page or sent in request headers.
+  void _access;
+  void _password;
+  return {};
 }
 function Status({
   message,
@@ -1417,22 +1421,38 @@ function Portal({
   setPassword: (value: string) => void;
 }) {
   const [loginError, setLoginError] = useState("");
-  const login = (kind: Access, supplied: string) => {
-    const correct = kind === "member" ? "empire" : "empireadmin";
-    if (supplied !== correct) {
-      setLoginError(
-        "That password does not match this area. Please try again.",
-      );
-      return;
-    }
-    setPassword(supplied);
-    setAccess(kind);
+  const [loggingIn, setLoggingIn] = useState(false);
+  const login = async (kind: Access, supplied: string) => {
+    setLoggingIn(true);
     setLoginError("");
+    try {
+      const response = await fetch("/api/empire/auth", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ access: kind, password: supplied }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setLoginError(result.error || "We could not sign you in. Please try again.");
+        return;
+      }
+      setPassword("");
+      setAccess(kind);
+    } catch {
+      setLoginError("We could not sign you in. Please check your connection and try again.");
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+  const leave = () => {
+    void fetch("/api/empire/auth", { method: "DELETE" });
+    setPassword("");
+    setAccess(null);
   };
   if (access === "member")
-    return <MemberZone password={password} onLeave={() => setAccess(null)} />;
+    return <MemberZone password={password} onLeave={leave} />;
   if (access === "admin")
-    return <AdminZone password={password} onLeave={() => setAccess(null)} />;
+    return <AdminZone password={password} onLeave={leave} />;
   return (
     <main className="portal-shell">
       <section className="portal-intro">
@@ -1449,12 +1469,14 @@ function Portal({
           title="Members Zone"
           description="Book a rink, see club information and view the member directory."
           passwordHint="Members password"
+          busy={loggingIn}
           onLogin={(value) => login("member", value)}
         />
         <LoginCard
           title="Admin Zone"
           description="Add members and publish team sheets, club documents and player-request forms."
           passwordHint="Admin password"
+          busy={loggingIn}
           onLogin={(value) => login("admin", value)}
         />
       </section>
@@ -1466,12 +1488,14 @@ function LoginCard({
   title,
   description,
   passwordHint,
+  busy,
   onLogin,
 }: {
   title: string;
   description: string;
   passwordHint: string;
-  onLogin: (value: string) => void;
+  busy: boolean;
+  onLogin: (value: string) => void | Promise<void>;
 }) {
   const [value, setValue] = useState("");
   return (
@@ -1479,7 +1503,7 @@ function LoginCard({
       className="login-card"
       onSubmit={(event) => {
         event.preventDefault();
-        onLogin(value);
+        void onLogin(value);
       }}
     >
       <p className="eyebrow">Private area</p>
@@ -1493,9 +1517,10 @@ function LoginCard({
           type="password"
           required
           autoComplete="current-password"
+          disabled={busy}
         />
       </label>
-      <button className="primary">Enter {title}</button>
+      <button className="primary" disabled={busy}>{busy ? "Checking access…" : `Enter ${title}`}</button>
     </form>
   );
 }
@@ -2127,6 +2152,69 @@ function formatJoinedDate(value: string) {
         year: "numeric",
       }).format(parsed);
 }
+function SecuritySettings({ onMessage }: { onMessage: (message: string) => void }) {
+  const [access, setAccess] = useState<Access>("member");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const updatePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    if (password.length < 12) {
+      setError("Use at least 12 characters for the new password.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("The two new passwords do not match.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await fetch("/api/empire/auth", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ access, password }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "We could not update that password.");
+        return;
+      }
+      setPassword("");
+      setConfirmPassword("");
+      onMessage(`${access === "admin" ? "Admin" : "Members"} password updated. That area will need to sign in again.`);
+    } catch {
+      setError("We could not update that password. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <form className="admin-card security-card" onSubmit={updatePassword}>
+      <p className="eyebrow">Security</p>
+      <h2>Update an access password</h2>
+      <p>Use a unique password of at least 12 characters. Changing it signs that area out on other devices.</p>
+      <label>
+        Area
+        <select value={access} onChange={(event) => setAccess(event.target.value as Access)}>
+          <option value="member">Members Zone</option>
+          <option value="admin">Admin Zone</option>
+        </select>
+      </label>
+      <label>
+        New password
+        <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" minLength={12} maxLength={256} autoComplete="new-password" required />
+      </label>
+      <label>
+        Confirm new password
+        <input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} type="password" minLength={12} maxLength={256} autoComplete="new-password" required />
+      </label>
+      {error && <Status type="error" message={error} />}
+      <button className="primary" disabled={saving}>{saving ? "Updating…" : "Update password"}</button>
+    </form>
+  );
+}
 function NewsAdminPanel({
   password,
   onMessage,
@@ -2509,6 +2597,12 @@ function AdminZone({
             Publish to members area
           </button>
         </form>
+        <SecuritySettings
+          onMessage={(nextMessage) => {
+            setError("");
+            setMessage(nextMessage);
+          }}
+        />
       </div>
       <NewsAdminPanel
         password={password}
