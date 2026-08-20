@@ -755,6 +755,24 @@
   padding-bottom: 26px;
   border-bottom: 1px solid #ded7c7;
 }
+
+/* Put the most useful club information first while preserving the existing content. */
+.about-layout .accordion-list {
+  display: flex;
+  flex-direction: column;
+}
+.about-layout .accordion-list > details:nth-of-type(1) {
+  order: 4;
+}
+.about-layout .accordion-list > details:nth-of-type(2) {
+  order: 1;
+}
+.about-layout .accordion-list > details:nth-of-type(3) {
+  order: 3;
+}
+.about-layout .accordion-list > details:nth-of-type(4) {
+  order: 2;
+}
 .admin-zone .admin-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;

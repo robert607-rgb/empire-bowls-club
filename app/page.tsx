@@ -576,9 +576,9 @@ function AboutPage() {
       </p>
       <div className="about-layout">
         <div className="accordion-list">
-          <details open>
+          <details>
             <summary>
-              <span>01</span>
+              <span>04</span>
               <b>The Empire story</b>
               <i>+</i>
             </summary>
@@ -890,9 +890,9 @@ function AboutPage() {
               </div>
             </div>
           </details>
-          <details>
+          <details open>
             <summary>
-              <span>02</span>
+              <span>01</span>
               <b>The people of Empire</b>
               <i>+</i>
             </summary>
@@ -918,7 +918,7 @@ function AboutPage() {
           <details>
             <summary>
               <span>03</span>
-              <b>Proud moments</b>
+              <b>Achievements</b>
               <i>+</i>
             </summary>
             <div>
@@ -958,8 +958,8 @@ function AboutPage() {
           </details>
           <details>
             <summary>
-              <span>04</span>
-              <b>Empire Champions 2025</b>
+              <span>02</span>
+              <b>Club Champions 2025</b>
               <i>+</i>
             </summary>
             <div className="winner-list">
