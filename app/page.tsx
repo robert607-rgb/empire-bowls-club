@@ -173,22 +173,25 @@ function Status({
 export default function Home() {
   const [page, setPage] = useState<Page>("Home");
   const [portalOpen, setPortalOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [access, setAccess] = useState<Access | null>(null);
   const [password, setPassword] = useState("");
   const openPage = (next: Page) => {
     setPage(next);
     setAccess(null);
     setPortalOpen(false);
+    setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const openPortal = () => {
     setAccess(null);
     setPortalOpen(true);
+    setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   return (
     <>
-      <header className="site-header">
+      <header className={`site-header${menuOpen ? " menu-open" : ""}`}>
         <button
           className="brand"
           onClick={() => openPage("Home")}
@@ -199,7 +202,17 @@ export default function Home() {
             Empire Bowls Club<small>Greenhithe · Kent</small>
           </span>
         </button>
-        <nav aria-label="Main navigation">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="main-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span>{menuOpen ? "Close" : "Menu"}</span>
+          <i aria-hidden="true" />
+        </button>
+        <nav id="main-navigation" aria-label="Main navigation">
           {nav.map((item) => (
             <button
               key={item}
@@ -211,7 +224,7 @@ export default function Home() {
           ))}
         </nav>
         <button className="portal-button" onClick={openPortal}>
-          Members & admin
+          Member Zone
         </button>
       </header>
       {portalOpen ? (
@@ -413,8 +426,24 @@ function HomePage({
       </section>
       <section className="quick-facts wrap single">
         <article>
+          <strong>Established 1910</strong>
+          <span>A proud Greenhithe sporting tradition</span>
+        </article>
+        <article>
+          <strong>Greenhithe, Kent</strong>
+          <span>A community club with a local heart</span>
+        </article>
+        <article>
+          <strong>Six-rink green</strong>
+          <span>Space for roll-ups, fixtures and events</span>
+        </article>
+        <article>
           <strong>April–September</strong>
-          <span>Outdoor playing season</span>
+          <span>Our outdoor playing season</span>
+        </article>
+        <article>
+          <strong>New bowlers welcome</strong>
+          <span>A friendly first step into the game</span>
         </article>
       </section>
       <section className="intro-grid wrap">

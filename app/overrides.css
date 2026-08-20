@@ -470,6 +470,174 @@
   }
 }
 
+/* Empire details: bowl-inspired curves and the club's crest colours, not generic sports decoration. */
+.quick-facts.single {
+  position: relative;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow: hidden;
+  isolation: isolate;
+  border-color: #cfd8d1;
+}
+.quick-facts.single::before {
+  position: absolute;
+  z-index: -1;
+  right: -112px;
+  top: -130px;
+  width: 290px;
+  height: 290px;
+  border: 34px solid rgba(18, 101, 74, 0.08);
+  border-radius: 50%;
+  content: "";
+}
+.quick-facts.single article {
+  position: relative;
+  min-height: 118px;
+  padding: 24px 20px 22px;
+  border-top: 4px solid #e4b82c;
+  background: rgba(255, 254, 250, 0.97);
+}
+.quick-facts.single article:nth-child(2n) {
+  border-top-color: #12654a;
+}
+.quick-facts.single article::after {
+  position: absolute;
+  right: 16px;
+  top: 17px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #bd253e;
+  border-radius: 50%;
+  content: "";
+  opacity: 0.8;
+}
+.quick-facts.single strong {
+  max-width: 158px;
+  font-size: 17px;
+  line-height: 1.15;
+}
+.quick-facts.single span {
+  margin-top: 7px;
+  line-height: 1.35;
+}
+
+.menu-toggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .quick-facts.single {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .site-header {
+    position: sticky;
+    flex-wrap: wrap;
+  }
+  .menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: 9px 11px;
+    color: #062761;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .menu-toggle i,
+  .menu-toggle i::before,
+  .menu-toggle i::after {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: currentColor;
+    content: "";
+    transition: transform 0.18s ease;
+  }
+  .menu-toggle i {
+    position: relative;
+  }
+  .menu-toggle i::before,
+  .menu-toggle i::after {
+    position: absolute;
+    left: 0;
+  }
+  .menu-toggle i::before {
+    top: -6px;
+  }
+  .menu-toggle i::after {
+    top: 6px;
+  }
+  .menu-open .menu-toggle i {
+    background: transparent;
+  }
+  .menu-open .menu-toggle i::before {
+    top: 0;
+    transform: rotate(45deg);
+  }
+  .menu-open .menu-toggle i::after {
+    top: 0;
+    transform: rotate(-45deg);
+  }
+  .site-header nav {
+    display: none;
+  }
+  .site-header.menu-open nav {
+    display: grid;
+    order: 4;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    padding: 10px 0 2px;
+    border-top: 1px solid #dcd5c4;
+  }
+  .site-header nav button {
+    min-height: 46px;
+    padding: 10px 12px;
+    background: #f4f0e3;
+    text-align: left;
+  }
+  .site-header nav button.active {
+    background: #062761;
+    color: #fff;
+    box-shadow: inset 4px 0 #e4b82c;
+  }
+  .portal-button {
+    min-height: 44px;
+    margin-left: 0;
+    padding: 10px 13px;
+  }
+  .quick-facts.single {
+    grid-template-columns: 1fr;
+    width: 100%;
+    margin: 0;
+    border-inline: 0;
+  }
+  .quick-facts.single article {
+    min-height: 0;
+    padding: 18px 8%;
+  }
+  .quick-facts.single strong {
+    max-width: none;
+  }
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .section-heading .text-button {
+    min-height: 44px;
+  }
+  .fixture-empty-card {
+    min-height: 250px !important;
+  }
+  .fixture-empty-card h3 {
+    font-size: 25px;
+  }
+}
+
 .site-credit {
   max-width: 270px;
   color: #c3d1ec;
