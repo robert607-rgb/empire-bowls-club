@@ -128,7 +128,7 @@ const sponsors = [
   {
     name: "Frost Funeral Service",
     strapline: "Professional, caring funeral services for the local community.",
-    image: "/sponsors/frost-funeral-service.png",
+    image: "/optimized/sponsors/frost-funeral-service.webp",
     website:
       "https://funeral-notices.co.uk/services-directory/view/4589?source=notice",
     linkLabel: "View sponsor information",
@@ -137,14 +137,14 @@ const sponsors = [
   {
     name: "In Action Bowlswear",
     strapline: "Bowls clothing, equipment and friendly specialist advice.",
-    image: "/sponsors/inaction-bowlswear.png",
+    image: "/optimized/sponsors/inaction-bowlswear.webp",
     website: "https://inactionbowlswear.co.uk/",
     linkLabel: "Visit inactionbowlswear.co.uk",
   },
   {
     name: "Mike’s Maindrain Services",
     strapline: "Drain, sewer and waste services for homes and businesses.",
-    image: "/sponsors/mikes-maindrain.png",
+    image: "/optimized/sponsors/mikes-maindrain.webp",
     website: "https://www.checkatrade.com/trades/mikesmaindrain",
     linkLabel: "View sponsor profile",
     note: "This opens the company’s verified trade profile.",
@@ -152,7 +152,7 @@ const sponsors = [
   {
     name: "NH Heating Services",
     strapline: "Domestic and commercial heating support across Kent.",
-    image: "/sponsors/nh-heating.png",
+    image: "/optimized/sponsors/nh-heating.webp",
     website: "https://www.nhheating.co.uk/",
     linkLabel: "Visit nhheating.co.uk",
   },
@@ -201,7 +201,13 @@ export default function Home() {
           onClick={() => openPage("Home")}
           aria-label="Empire Bowls Club home"
         >
-          <img src="/empire-crest.png" alt="Empire Bowls Club crest" />
+          <img
+            src="/optimized/empire-crest.webp"
+            alt="Empire Bowls Club crest"
+            width={512}
+            height={512}
+            decoding="async"
+          />
           <span>
             Empire Bowls Club<small>Greenhithe · Kent</small>
           </span>
@@ -242,7 +248,14 @@ export default function Home() {
         <main>{renderPage(page, openPage, openPortal)}</main>
       )}
       <footer>
-        <img src="/empire-crest.png" alt="" />
+        <img
+          src="/optimized/empire-crest.webp"
+          alt=""
+          width={512}
+          height={512}
+          loading="lazy"
+          decoding="async"
+        />
         <div>
           <b>Empire Bowls Club</b>
           <span>Norton Lane, Greenhithe, Kent, DA9 9XY</span>
@@ -284,7 +297,13 @@ function NewsPage() {
           <div className="news-feature-art">
             <span className="news-stamp">Latest</span>
             {featured.imageUrl ? (
-              <img src={featured.imageUrl} alt="" />
+              <img
+                src={featured.imageUrl}
+                alt={featured.title}
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
             ) : (
               <div className="news-art-mark" aria-hidden="true">
                 <span>EB</span>
@@ -334,7 +353,12 @@ function NewsPage() {
               >
                 <div className="news-card-art">
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt="" />
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <span aria-hidden="true">EB</span>
                   )}
@@ -424,7 +448,13 @@ function HomePage({
           </div>
         </div>
         <div className="hero-emblem">
-          <img src="/empire-crest.png" alt="Empire Bowls Club crest" />
+          <img
+            src="/optimized/empire-crest.webp"
+            alt="Empire Bowls Club crest"
+            width={512}
+            height={512}
+            decoding="async"
+          />
           <span>EST. 1910</span>
         </div>
       </section>
@@ -470,8 +500,13 @@ function HomePage({
         <div className="green-card club-green-card">
           <img
             className="club-green-image"
-            src="/club/empire-green-clubhouse.png"
+            src="/optimized/club/empire-green-clubhouse.webp"
             alt="The Empire Bowls Club green and clubhouse beneath a rainbow"
+            width={1200}
+            height={900}
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="club-green-copy">
             <p>
@@ -545,6 +580,8 @@ function SponsorsPage() {
               <img
                 src={sponsor.image}
                 alt={`${sponsor.name} sponsor artwork`}
+                loading="lazy"
+                decoding="async"
               />
               <span>
                 Visit sponsor <b>↗</b>
@@ -800,6 +837,10 @@ function AboutPage() {
                       <img
                         src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017657.jpg"
                         alt="Aerial view of Empire Paper Mills and Ingress Abbey Wharf, Greenhithe, in 1927"
+                        width={580}
+                        height={480}
+                        loading="lazy"
+                        decoding="async"
                       />
                     </a>
                     <figcaption>
@@ -827,6 +868,10 @@ function AboutPage() {
                       <img
                         src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/006/EPW006257.jpg"
                         alt="Aerial view of Ingress Abbey Wharf and Swanscombe Marshes, Greenhithe, in 1921"
+                        width={580}
+                        height={493}
+                        loading="lazy"
+                        decoding="async"
                       />
                     </a>
                     <figcaption>
@@ -854,6 +899,10 @@ function AboutPage() {
                       <img
                         src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017656.jpg"
                         alt="Aerial view of Empire Paper Mills and Ingress Abbey Wharf, Greenhithe, in 1927"
+                        width={580}
+                        height={482}
+                        loading="lazy"
+                        decoding="async"
                       />
                     </a>
                     <figcaption>
@@ -912,8 +961,12 @@ function AboutPage() {
               </div>
               <figure className="people-photo">
                 <img
-                  src="/club/empire-players.jpg"
+                  src="/optimized/club/empire-players.webp"
                   alt="Empire Bowls Club members gathered together on the green"
+                  width={1200}
+                  height={900}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <figcaption>Empire bowlers together on the green.</figcaption>
               </figure>
@@ -2350,7 +2403,16 @@ function NewsAdminPanel({
           items.map((item) => (
             <article key={item.id}>
               <span className={`news-admin-icon news-accent-${item.accent}`}>
-                {item.imageUrl ? <img src={item.imageUrl} alt="" /> : "EB"}
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt={item.title}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : (
+                  "EB"
+                )}
               </span>
               <div>
                 <b>{item.title}</b>
