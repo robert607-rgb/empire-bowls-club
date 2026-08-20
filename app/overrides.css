@@ -69,6 +69,19 @@
   color: #53657c;
   font-size: 13px;
 }
+@media (max-width: 980px) {
+  .about-layout {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+  .people-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .people-photo {
+    width: min(100%, 560px);
+  }
+}
 .play-hero {
   padding: 96px 0 104px;
   color: #fff;
@@ -1619,6 +1632,28 @@
   font-size: 12px;
   font-weight: 800;
 }
+.admin-members-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.admin-members-controls label {
+  min-width: 160px;
+}
+.copy-emails {
+  min-height: 39px;
+  padding: 9px 13px;
+  color: #fff;
+  background: #12654a;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.copy-emails:hover {
+  background: #0d4b36;
+}
 .admin-members-toolbar select {
   padding: 8px 10px;
   color: #17273d;
@@ -1709,6 +1744,15 @@
   .admin-members-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+  .admin-members-controls {
+    align-items: stretch;
+    justify-content: stretch;
+    flex-direction: column;
+  }
+  .admin-members-controls label,
+  .copy-emails {
+    width: 100%;
   }
 }
 

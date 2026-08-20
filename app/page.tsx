@@ -1960,6 +1960,9 @@ function AdminMemberOverview({
   const [sort, setSort] = useState<"name" | "membershipType" | "createdAt">(
     "name",
   );
+  const [emailGroup, setEmailGroup] = useState<"all" | "full" | "social">(
+    "all",
+  );
   const ordered = [...members].sort((a, b) => {
     if (sort === "membershipType")
       return (
@@ -1970,6 +1973,30 @@ function AdminMemberOverview({
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return a.name.localeCompare(b.name);
   });
+  const selectedForEmail = members.filter((member) => {
+    if (emailGroup === "full") return member.membershipType === "Full member";
+    if (emailGroup === "social")
+      return member.membershipType === "Social member";
+    return true;
+  });
+  const copyEmails = async () => {
+    const emails = selectedForEmail
+      .map((member) => member.email.trim())
+      .filter(Boolean)
+      .join(", ");
+    if (!emails) {
+      onMessage("There are no email addresses in that membership group.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(emails);
+      onMessage(
+        `${selectedForEmail.length} ${emailGroup === "all" ? "member" : `${emailGroup} member`} email address${selectedForEmail.length === 1 ? "" : "es"} copied.`,
+      );
+    } catch {
+      onMessage("We could not copy those email addresses. Please try again.");
+    }
+  };
   const remove = async (member: Member) => {
     if (!window.confirm(`Remove ${member.name} from the member directory?`))
       return;
@@ -2000,17 +2027,40 @@ function AdminMemberOverview({
           <p>
             Review the club directory, sort the list and remove former members.
           </p>
-          <label>
-            Sort by
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value as typeof sort)}
+          <div className="admin-members-controls">
+            <label>
+              Sort by
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value as typeof sort)}
+              >
+                <option value="name">Name</option>
+                <option value="membershipType">Membership type</option>
+                <option value="createdAt">Date joined</option>
+              </select>
+            </label>
+            <label>
+              Copy emails for
+              <select
+                value={emailGroup}
+                onChange={(event) =>
+                  setEmailGroup(event.target.value as typeof emailGroup)
+                }
+              >
+                <option value="all">All members</option>
+                <option value="full">Full members</option>
+                <option value="social">Social members</option>
+              </select>
+            </label>
+            <button
+              className="copy-emails"
+              type="button"
+              onClick={() => void copyEmails()}
             >
-              <option value="name">Name</option>
-              <option value="membershipType">Membership type</option>
-              <option value="createdAt">Date joined</option>
-            </select>
-          </label>
+              Copy {selectedForEmail.length} email
+              {selectedForEmail.length === 1 ? "" : "s"}
+            </button>
+          </div>
         </div>
         {ordered.length ? (
           <div className="member-table-wrap">
