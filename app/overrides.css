@@ -1971,3 +1971,847 @@
     min-width: 680px;
   }
 }
+
+/* Empire night-green refresh: a darker, more progressive visual system with
+   cream used as a deliberate reading surface rather than a default canvas. */
+:root {
+  --night: #071a36;
+  --night-soft: #0b2446;
+  --surface: #102f4d;
+  --surface-green: #123f35;
+  --paper: #eef4f1;
+  --paper-surface: #eee8d8;
+  --muted-light: #c4d5d8;
+  --dark-line: rgba(215, 232, 230, 0.18);
+}
+
+html,
+body {
+  min-width: 320px;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--paper);
+  background:
+    radial-gradient(circle at 10% 8%, rgba(228, 184, 44, 0.08), transparent 26rem),
+    linear-gradient(145deg, #06172f 0%, var(--night) 42%, #092e36 100%);
+}
+
+main {
+  min-width: 0;
+  background: transparent;
+}
+
+img,
+svg,
+video,
+iframe {
+  max-width: 100%;
+}
+
+.wrap,
+.portal-shell {
+  width: min(1180px, calc(100% - 32px));
+}
+
+.site-header {
+  min-height: 82px;
+  padding-inline: clamp(16px, 4vw, 5%);
+  color: var(--paper);
+  background: rgba(7, 26, 54, 0.96);
+  border-top-color: var(--gold);
+  border-bottom-color: var(--dark-line);
+}
+
+.site-header .brand {
+  color: var(--paper);
+}
+
+.site-header .brand small {
+  color: #f0cd63;
+}
+
+.site-header nav button {
+  color: #dce9e8;
+}
+
+.site-header nav button:hover,
+.site-header nav button:focus-visible {
+  color: #f4d66f;
+}
+
+.site-header nav button.active {
+  color: #f4d66f;
+  box-shadow: inset 0 -3px var(--gold);
+}
+
+.portal-button {
+  color: var(--night);
+  background: var(--gold);
+}
+
+.portal-button:hover,
+.portal-button:focus-visible {
+  color: var(--night);
+  background: #f2cf4d;
+}
+
+.page,
+.news-page,
+.sponsors-page {
+  background-color: transparent;
+  background-image:
+    radial-gradient(circle at 8% 8%, rgba(228, 184, 44, 0.12) 0 2px, transparent 3px),
+    linear-gradient(135deg, rgba(18, 101, 74, 0.12), transparent 34%);
+  background-size: 28px 28px, auto;
+}
+
+.page > h1,
+.news-intro h1,
+.sponsors-intro h1,
+.portal-intro h1,
+.zone-head h1,
+.intro-grid h2,
+.section-heading h2,
+.play-intro h2,
+.contact-details h2,
+.news-stream-heading h2 {
+  color: var(--paper);
+}
+
+.lead,
+.intro-grid > div > p:not(.eyebrow),
+.play-intro p:not(.eyebrow),
+.contact-grid > div > p,
+.portal-intro > p:not(.eyebrow),
+.zone-head > div > p:not(.eyebrow) {
+  color: var(--muted-light);
+}
+
+.outline {
+  color: #f3d36d;
+  border-color: #f3d36d;
+}
+
+.outline:hover,
+.outline:focus-visible {
+  color: var(--night);
+  background: #f3d36d;
+}
+
+.quick-facts {
+  background: var(--dark-line);
+  border-color: var(--dark-line);
+}
+
+.quick-facts article {
+  background: var(--surface);
+}
+
+.quick-facts strong {
+  color: var(--paper);
+}
+
+.quick-facts span {
+  color: var(--muted-light);
+}
+
+.upcoming-section {
+  color: var(--paper);
+  background: linear-gradient(135deg, #0b302c, #0a2744);
+}
+
+.section-heading .text-button,
+.fixture-grid article button {
+  color: #f3d36d;
+}
+
+.fixture-grid article,
+.fixture-list article {
+  background: var(--surface);
+  border-color: var(--gold);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.fixture-grid article > span,
+.fixture-list article span,
+.honours-grid article span {
+  color: #f3d36d;
+}
+
+.fixture-grid b,
+.fixture-grid h3,
+.fixture-list b,
+.fixture-list h2,
+.fixture-list p {
+  color: var(--paper);
+}
+
+.accordion-list,
+details,
+.directory,
+.heritage-lead-grid,
+.heritage-archive {
+  border-color: var(--dark-line);
+}
+
+.about-layout .accordion-list > details > summary b,
+.about-layout .accordion-list > details > summary i,
+.about-layout .accordion-list > details > div,
+.heritage-story h3,
+.heritage-story h4 {
+  color: var(--paper);
+}
+
+.about-layout .accordion-list > details > div,
+.heritage-story p,
+.heritage-source-note {
+  color: var(--muted-light);
+}
+
+.heritage-event time {
+  color: var(--paper);
+  background: var(--night-soft);
+}
+
+.heritage-panel {
+  color: var(--paper);
+  background: var(--surface-green);
+}
+
+.heritage-panel h3,
+.heritage-panel p {
+  color: var(--paper);
+}
+
+.heritage-panel-navy {
+  background: var(--night-soft);
+}
+
+.heritage-photo-card,
+.people-photo {
+  background: var(--surface);
+  border-color: var(--gold);
+}
+
+.heritage-photo-card figcaption,
+.people-photo figcaption {
+  color: var(--muted-light);
+}
+
+.heritage-photo-card figcaption > b {
+  color: var(--paper);
+}
+
+.heritage-photo-link,
+.heritage-photo-card img {
+  background: #0d263e;
+}
+
+.heritage-pullquote {
+  background: linear-gradient(120deg, #06172f, #0f5648);
+}
+
+.honours-grid article,
+.benefit-grid article,
+.directory-list article,
+.committee article,
+.winner-list p,
+.contact-cards a {
+  background: var(--surface);
+  border-color: var(--gold);
+}
+
+.honours-grid h2,
+.benefit-grid h3,
+.directory-list b,
+.committee b,
+.winner-list b,
+.contact-cards b,
+.contact-cards small {
+  color: var(--paper);
+}
+
+.honours-grid p,
+.benefit-grid p,
+.winner-list span,
+.directory-list a,
+.contact-cards small {
+  color: var(--muted-light);
+}
+
+.first-visit {
+  background: var(--paper-surface);
+}
+
+.first-visit h2,
+.first-visit li span {
+  color: var(--ink);
+}
+
+.play-content {
+  color: var(--paper);
+}
+
+.play-grid form,
+.admin-forms form,
+.login-card,
+.contact-form,
+.booking-panel,
+.admin-members-tab {
+  color: var(--ink);
+  background: var(--paper-surface);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.play-grid form h2,
+.admin-forms form h2,
+.login-card h2,
+.contact-form h2,
+.booking-head h2,
+.admin-members-tab > summary,
+.admin-members-tab > summary b {
+  color: var(--ink);
+}
+
+.play-grid label,
+.admin-forms label,
+.login-card label,
+.booking-head label,
+.booking-form label,
+.contact-form label {
+  color: var(--ink);
+}
+
+.play-grid input,
+.play-grid textarea,
+.admin-forms input,
+.admin-forms textarea,
+.admin-forms select,
+.login-card input,
+.booking-head input,
+.booking-form input,
+.booking-form select,
+.contact-form input,
+.contact-form textarea,
+.directory-search input,
+.news-admin input,
+.news-admin textarea,
+.news-admin select {
+  color: var(--ink);
+  background: #f8f4e9;
+  border-color: #b9c4c4;
+}
+
+.contact-form .form-intro,
+.login-card > p:not(.eyebrow),
+.booking-date,
+.directory-search,
+.admin-members-toolbar p {
+  color: #526575;
+}
+
+.enquiry-section,
+.member-prompt,
+.results-board,
+.notice-banner {
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.14);
+}
+
+.contact-map {
+  background: var(--surface);
+  border-color: var(--dark-line);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
+}
+
+.contact-map-heading h2,
+.map-note {
+  color: var(--paper);
+}
+
+.map-link {
+  color: var(--night);
+  background: #f3d36d;
+  border-color: #f3d36d;
+}
+
+.map-frame {
+  background: #0a1e36;
+}
+
+.news-page {
+  padding-bottom: 1px;
+}
+
+.news-feature,
+.news-card,
+.news-admin-list {
+  background: var(--paper-surface);
+  border-color: rgba(228, 184, 44, 0.36);
+}
+
+.news-feature-copy h2,
+.news-card h3,
+.news-empty h2,
+.news-admin h2,
+.news-admin-list-head h3 {
+  color: var(--ink);
+}
+
+.news-feature-copy > p,
+.news-card-body > p,
+.news-feature details > p,
+.news-card details > p,
+.news-admin .form-help {
+  color: #526575;
+}
+
+.news-stream-heading .news-count {
+  color: #f3d36d;
+  border-color: rgba(243, 211, 109, 0.45);
+}
+
+.news-empty,
+.news-empty-inline,
+.news-admin {
+  background: var(--surface);
+}
+
+.news-empty h2,
+.news-empty-inline,
+.news-admin .form-help,
+.news-admin label {
+  color: var(--paper);
+}
+
+.sponsors-intro .lead {
+  color: var(--muted-light);
+}
+
+.sponsor-card {
+  background: var(--surface);
+  border-color: var(--dark-line);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.16);
+}
+
+.sponsor-card > a {
+  background: #e7dfcb;
+}
+
+.sponsor-card-copy {
+  background: var(--paper-surface);
+}
+
+.sponsor-card-copy h2,
+.sponsor-card-copy > p:not(.eyebrow),
+.sponsor-card-copy small {
+  color: var(--ink);
+}
+
+.member-area-tabs {
+  border-color: var(--dark-line);
+}
+
+.member-area-tabs button {
+  color: var(--muted-light);
+  background: var(--surface);
+}
+
+.member-area-tabs button.active {
+  color: var(--ink);
+  background: var(--paper-surface);
+  border-color: var(--gold);
+}
+
+.member-content .info-list,
+.admin-members-panel,
+.admin-card-upload {
+  color: var(--ink);
+  background: var(--paper-surface);
+}
+
+.member-content .info-list h2,
+.member-content .info-list > p,
+.member-content .info-list li span {
+  color: var(--ink);
+}
+
+.admin-members-tab > summary .members-count,
+.admin-members-tab > summary i {
+  color: #526575;
+}
+
+.admin-members-panel {
+  border-color: #d1c8b4;
+}
+
+.zone-head .outline {
+  flex: 0 0 auto;
+}
+
+/* Responsive guardrails: keep every grid child shrinkable and replace the
+   cramped desktop navigation with an explicit menu before it can collide. */
+* {
+  min-width: 0;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+
+@media (max-width: 1120px) {
+  .site-header {
+    gap: 14px;
+  }
+
+  .site-header .brand img {
+    width: 68px;
+    height: 68px;
+  }
+
+  .site-header .brand {
+    font-size: 17px;
+  }
+
+  .site-header nav button {
+    padding-inline: 6px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 980px) {
+  .site-header {
+    min-height: 74px;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding-block: 7px;
+  }
+
+  .site-header .brand {
+    order: 1;
+    max-width: calc(100% - 170px);
+  }
+
+  .site-header .brand img {
+    width: 62px;
+    height: 62px;
+  }
+
+  .site-header .menu-toggle {
+    display: inline-flex;
+    order: 2;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: 9px 10px;
+    color: #f3d36d;
+    background: transparent;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .menu-toggle i,
+  .menu-toggle i::before,
+  .menu-toggle i::after {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: currentColor;
+    content: "";
+  }
+
+  .menu-toggle i {
+    position: relative;
+  }
+
+  .menu-toggle i::before,
+  .menu-toggle i::after {
+    position: absolute;
+    left: 0;
+  }
+
+  .menu-toggle i::before {
+    top: -6px;
+  }
+
+  .menu-toggle i::after {
+    top: 6px;
+  }
+
+  .menu-open .menu-toggle i {
+    background: transparent;
+  }
+
+  .menu-open .menu-toggle i::before,
+  .menu-open .menu-toggle i::after {
+    top: 0;
+  }
+
+  .menu-open .menu-toggle i::before {
+    transform: rotate(45deg);
+  }
+
+  .menu-open .menu-toggle i::after {
+    transform: rotate(-45deg);
+  }
+
+  .site-header .portal-button {
+    order: 3;
+    margin-left: 0;
+    padding: 10px 13px;
+  }
+
+  .site-header nav {
+    display: none;
+    order: 4;
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .site-header.menu-open nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    padding: 10px 0 2px;
+    border-top: 1px solid var(--dark-line);
+  }
+
+  .site-header.menu-open nav button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 9px 10px;
+    color: var(--paper);
+    background: var(--surface);
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .site-header.menu-open nav button.active {
+    color: var(--night);
+    background: var(--gold);
+    box-shadow: none;
+  }
+
+  .hero {
+    padding-inline: clamp(24px, 7vw, 72px);
+  }
+
+  .fixture-list article {
+    grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1fr);
+  }
+
+  .fixture-list article p {
+    grid-column: 2;
+  }
+
+  .booking-head,
+  .news-stream-heading,
+  .contact-map-heading {
+    align-items: flex-start;
+  }
+
+  .contact-grid,
+  .play-intro,
+  .enquiry-section,
+  .news-feature {
+    gap: 28px;
+  }
+
+  .admin-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .wrap,
+  .portal-shell {
+    width: min(100% - 28px, 680px);
+  }
+
+  .site-header .brand {
+    max-width: calc(100% - 152px);
+  }
+
+  .site-header .brand span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .site-header.menu-open nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero {
+    min-height: 560px;
+  }
+
+  .intro-grid,
+  .play-intro,
+  .first-visit,
+  .enquiry-section,
+  .contact-grid,
+  .news-feature,
+  .heritage-two-column,
+  .people-grid,
+  .directory,
+  .admin-forms {
+    grid-template-columns: 1fr;
+  }
+
+  .intro-grid,
+  .page,
+  .portal-shell,
+  .play-content {
+    padding-block: 52px 68px;
+  }
+
+  .benefit-grid,
+  .honours-grid,
+  .news-grid,
+  .sponsor-grid,
+  .member-content {
+    grid-template-columns: 1fr;
+  }
+
+  .results-board > div,
+  .form-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .info-list:last-child {
+    grid-column: auto;
+  }
+
+  .first-visit > div,
+  .first-visit aside,
+  .enquiry-section,
+  .news-feature-copy {
+    padding: 28px 24px;
+  }
+
+  .first-visit ol {
+    grid-template-columns: 1fr;
+  }
+
+  .member-prompt,
+  .zone-head,
+  .booking-head,
+  .sponsors-thanks .wrap,
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .member-prompt .primary,
+  .zone-head .outline {
+    margin-top: 18px;
+  }
+
+  .booking-form {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .booking-form .primary,
+  .booking-form .text-button,
+  .map-link {
+    width: max-content;
+  }
+
+  .contact-map-heading {
+    flex-direction: column;
+    padding: 24px;
+  }
+
+  .map-frame {
+    height: 285px;
+  }
+
+  .map-note {
+    padding-inline: 24px;
+  }
+
+  .news-stream-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .sponsors-thanks .wrap {
+    gap: 8px;
+  }
+
+  footer {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .site-header .brand img {
+    width: 52px;
+    height: 52px;
+  }
+
+  .site-header .brand {
+    font-size: 15px;
+  }
+
+  .site-header .portal-button {
+    padding-inline: 10px;
+    font-size: 11px;
+  }
+
+  .hero {
+    min-height: 540px;
+    padding-inline: 20px;
+  }
+
+  .page > h1,
+  .portal-intro h1 {
+    font-size: 42px;
+  }
+
+  .results-board > div,
+  .form-columns,
+  .admin-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .news-feature-copy,
+  .contact-form,
+  .play-grid form,
+  .login-card {
+    padding: 23px 20px;
+  }
+
+  .member-area-tabs {
+    overflow-x: auto;
+  }
+
+  .member-area-tabs button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+/* The home facts strip has a more specific legacy selector; keep its five
+   cards on the new dark surface as well. */
+.quick-facts.single article,
+.quick-facts.single article:nth-child(2n) {
+  color: var(--paper);
+  background: var(--surface) !important;
+}
+
+.quick-facts.single strong {
+  color: var(--paper) !important;
+}
+
+.quick-facts.single span {
+  color: var(--muted-light) !important;
+}
