@@ -5,6 +5,7 @@ import {
   getEmpireAccess,
   hasEmpireAccess,
   rotateEmpireAccess,
+  readJson,
   sameOrigin,
   sessionCookie,
   expiredSessionCookie,
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
   if (!sameOrigin(request))
     return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = (await request.json()) as Record<string, unknown>;
+    const input = await readJson(request);
     const access = input.access === "admin" ? "admin" : input.access === "member" ? "member" : null;
     const password = typeof input.password === "string" ? input.password : "";
     if (!access || !password || password.length > 256)
@@ -61,7 +62,7 @@ export async function PUT(request: Request) {
   if (!sameOrigin(request))
     return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = (await request.json()) as Record<string, unknown>;
+    const input = await readJson(request);
     const access = input.access === "admin" ? "admin" : input.access === "member" ? "member" : null;
     const password = typeof input.password === "string" ? input.password.trim() : "";
     if (!access || password.length < 12 || password.length > 256)

@@ -4,6 +4,9 @@ import {
   getEmpireDatabase,
   getRuntimeEnv,
   hasEmpireAccess,
+  assertRequestSize,
+  MULTIPART_BODY_LIMIT_BYTES,
+  readJson,
   sameOrigin,
   unauthorized,
 } from "../_server";
@@ -66,6 +69,7 @@ export async function POST(request: Request) {
   if (!(await hasEmpireAccess(request, true))) return unauthorized();
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
+    assertRequestSize(request, MULTIPART_BODY_LIMIT_BYTES);
     const form = await request.formData();
     const title = cleanText(form.get("title"), 160);
     const summary = cleanText(form.get("summary"), 320);
@@ -176,7 +180,7 @@ export async function DELETE(request: Request) {
   if (!(await hasEmpireAccess(request, true))) return unauthorized();
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = (await request.json()) as Record<string, unknown>;
+    const input = await readJson(request);
     const id = Number(input.id);
     if (!Number.isInteger(id))
       return Response.json(

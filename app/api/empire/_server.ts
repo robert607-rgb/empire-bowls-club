@@ -5,6 +5,22 @@ const encoder = new TextEncoder();
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 8;
+const JSON_BODY_LIMIT_BYTES = 128 * 1024;
+export const MULTIPART_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
+
+export class RequestBodyTooLargeError extends Error {
+  constructor() {
+    super("Request body is too large.");
+    this.name = "RequestBodyTooLargeError";
+  }
+}
+
+export class InvalidRequestBodyError extends Error {
+  constructor() {
+    super("Request body is not valid JSON.");
+    this.name = "InvalidRequestBodyError";
+  }
+}
 
 // These one-way hashes keep the original club access codes working without
 // retaining a readable password in the client bundle or database. Admins can
@@ -45,9 +61,22 @@ async function passwordHash(password: string, salt: string) {
   return hex(new Uint8Array(bits));
 }
 
+function timingSafeStringEqual(left: string, right: string) {
+  const leftBytes = encoder.encode(left);
+  const rightBytes = encoder.encode(right);
+  if (leftBytes.byteLength !== rightBytes.byteLength) {
+    // Compare the input with itself instead of returning early so a malformed
+    // stored hash does not reveal its length through response timing.
+    return !crypto.subtle.timingSafeEqual(leftBytes, leftBytes);
+  }
+  return crypto.subtle.timingSafeEqual(leftBytes, rightBytes);
+}
+
 async function fingerprint(request: Request) {
   const url = new URL(request.url);
-  const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0] ?? "unknown";
+  // Only trust the address Cloudflare supplies. x-forwarded-for is client
+  // controlled when the Worker is run outside Cloudflare.
+  const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
   const bytes = await crypto.subtle.digest("SHA-256", encoder.encode(`${url.host}:${ip.trim()}`));
   return hex(new Uint8Array(bytes));
 }
@@ -109,7 +138,9 @@ export async function authenticateEmpireAccess(request: Request, access: EmpireA
   if ((count?.total ?? 0) >= LOGIN_ATTEMPT_LIMIT) return { ok: false as const, rateLimited: true };
 
   const account = await db.prepare("SELECT access, salt, password_hash FROM empire_access_accounts WHERE access = ?").bind(access).first<AccountRow>();
-  const matches = account && (await passwordHash(password, account.salt)) === account.password_hash;
+  const candidateHash = await passwordHash(password, account?.salt ?? "invalid-account-salt");
+  const storedHash = account?.password_hash ?? "0".repeat(candidateHash.length);
+  const matches = timingSafeStringEqual(candidateHash, storedHash) && Boolean(account);
   if (!matches) {
     await db.prepare("INSERT INTO empire_login_attempts (visitor_hash, attempted_at) VALUES (?, ?)").bind(visitor, new Date().toISOString()).run();
     return { ok: false as const, rateLimited: false };
@@ -246,7 +277,63 @@ export function cleanText(value: unknown, maximum: number) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : "";
 }
 
+export function assertRequestSize(request: Request, maximumBytes: number) {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength && /^\d+$/.test(contentLength) && Number(contentLength) > maximumBytes) {
+    throw new RequestBodyTooLargeError();
+  }
+}
+
+export async function readJson(request: Request): Promise<Record<string, unknown>> {
+  assertRequestSize(request, JSON_BODY_LIMIT_BYTES);
+  if (!request.body) throw new InvalidRequestBodyError();
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > JSON_BODY_LIMIT_BYTES) {
+        await reader.cancel();
+        throw new RequestBodyTooLargeError();
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("JSON body must be an object.");
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new InvalidRequestBodyError();
+  }
+}
+
 export function apiError(error: unknown) {
+  if (error instanceof RequestBodyTooLargeError) {
+    return Response.json(
+      { error: "That request is too large." },
+      { status: 413, headers: { "cache-control": "no-store" } },
+    );
+  }
+  if (error instanceof InvalidRequestBodyError) {
+    return Response.json(
+      { error: "Please send a valid request." },
+      { status: 400, headers: { "cache-control": "no-store" } },
+    );
+  }
   console.error("Empire API error", error);
   return Response.json(
     { error: "We could not complete that request. Please try again." },

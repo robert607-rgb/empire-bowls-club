@@ -3,6 +3,7 @@ import {
   cleanText,
   getEmpireDatabase,
   hasEmpireAccess,
+  readJson,
   sameOrigin,
   unauthorized,
 } from "../_server";
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
   if (!(await hasEmpireAccess(request, true))) return unauthorized();
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = (await request.json()) as Record<string, unknown>;
+    const input = await readJson(request);
     const name = cleanText(input.name, 120),
       address = cleanText(input.address, 500),
       phone = cleanText(input.phone, 40),
@@ -95,7 +96,7 @@ export async function DELETE(request: Request) {
   if (!(await hasEmpireAccess(request, true))) return unauthorized();
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = (await request.json()) as Record<string, unknown>;
+    const input = await readJson(request);
     const id = Number(input.id);
     if (!Number.isInteger(id))
       return Response.json(

@@ -1,4 +1,4 @@
-import { apiError, cleanText, getEmpireDatabase, getRuntimeEnv, hasEmpireAccess, sameOrigin, unauthorized } from "../_server";
+import { apiError, assertRequestSize, cleanText, getEmpireDatabase, getRuntimeEnv, hasEmpireAccess, MULTIPART_BODY_LIMIT_BYTES, sameOrigin, unauthorized } from "../_server";
 
 const categories = new Set(["team_sheet", "club_document", "players_required"]);
 const allowedExtensions = new Set(["pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png"]);
@@ -23,6 +23,7 @@ export async function POST(request: Request) {
   try {
     const { BUCKET } = await getRuntimeEnv();
     if (!BUCKET) return Response.json({ error: "File storage is not available yet." }, { status: 503 });
+    assertRequestSize(request, MULTIPART_BODY_LIMIT_BYTES);
     const form = await request.formData(); const category = cleanText(form.get("category"), 40); const title = cleanText(form.get("title"), 160); const description = cleanText(form.get("description"), 500); const file = form.get("file");
     if (!categories.has(category) || !title || !file || typeof file === "string") return Response.json({ error: "Please select a file, title and update type." }, { status: 400 });
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";

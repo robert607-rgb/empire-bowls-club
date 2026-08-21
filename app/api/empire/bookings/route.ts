@@ -1,4 +1,4 @@
-import { apiError, cleanText, getEmpireDatabase, hasEmpireAccess, sameOrigin, unauthorized } from "../_server";
+import { apiError, cleanText, getEmpireDatabase, hasEmpireAccess, readJson, sameOrigin, unauthorized } from "../_server";
 
 const slots = new Set(["10:00–12:00", "12:00–14:00", "14:00–16:00", "16:00–18:00", "18:00–21:00"]);
 type BookingRow = { id: number; rink_number: number; time_slot: string; booking_name: string };
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   if (!(await hasEmpireAccess(request))) return unauthorized();
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = await request.json() as Record<string, unknown>;
+    const input = await readJson(request);
     const bookingDate = cleanText(input.bookingDate, 10), timeSlot = cleanText(input.timeSlot, 20), bookingName = cleanText(input.bookingName, 100);
     const rinkNumber = typeof input.rinkNumber === "number" ? input.rinkNumber : Number(input.rinkNumber);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || !slots.has(timeSlot) || !Number.isInteger(rinkNumber) || rinkNumber < 1 || rinkNumber > 6 || !bookingName) return Response.json({ error: "Please choose a valid date, rink, session and name." }, { status: 400 });
@@ -33,7 +33,7 @@ export async function DELETE(request: Request) {
   if (!(await hasEmpireAccess(request))) return unauthorized();
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
-    const input = await request.json() as Record<string, unknown>;
+    const input = await readJson(request);
     const id = Number(input.id);
     if (!Number.isInteger(id)) return Response.json({ error: "Choose a valid booking to remove." }, { status: 400 });
     const db = await getEmpireDatabase();
