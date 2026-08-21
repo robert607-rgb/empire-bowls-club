@@ -2815,3 +2815,97 @@ select {
 .quick-facts.single span {
   color: var(--muted-light) !important;
 }
+
+/* Softened Empire palette: keep the modern dark identity, but give the page
+   more daylight and separation so the navy does not feel heavy. */
+:root {
+  --navy: #123b63;
+  --ink: #17324d;
+  --blue: #2d6d9c;
+  --gold: #e4b82c;
+  --red: #bd3049;
+  --cream: #f4f0e4;
+  --sand: #e8dfca;
+  --green: #1c6b58;
+  --line: #cbd5d2;
+  --night: #12375a;
+  --night-soft: #1a4d72;
+  --surface: #245a79;
+  --surface-green: #226a59;
+  --paper: #f2f6f2;
+  --paper-surface: #f1ead9;
+  --muted-light: #d2e2e2;
+  --dark-line: rgba(226, 242, 239, 0.28);
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 8%, rgba(228, 184, 44, 0.11), transparent 26rem),
+    linear-gradient(145deg, #0f3152 0%, #123b60 46%, #145447 100%);
+}
+
+.site-header {
+  background: rgba(18, 55, 90, 0.97);
+}
+
+.hero {
+  background:
+    radial-gradient(circle at 83% 26%, #e6bb38 0 7%, transparent 7.3%),
+    linear-gradient(121deg, #0d3158 0%, #1e5d8c 62%, #1b6e5b 150%);
+}
+
+.upcoming-section {
+  background: linear-gradient(135deg, #16584d, #123f64);
+}
+
+.fixture-grid article,
+.fixture-list article,
+.honours-grid article,
+.benefit-grid article,
+.directory-list article,
+.committee article,
+.winner-list p,
+.contact-cards a {
+  background: #2b6683;
+}
+
+.quick-facts article,
+.member-content .info-list,
+.admin-members-panel,
+.admin-card-upload {
+  background: #2a6480 !important;
+}
+
+.heritage-panel {
+  background: #28705f;
+}
+
+.heritage-panel-navy {
+  background: #1a4d72;
+}
+
+.heritage-pullquote {
+  background: linear-gradient(120deg, #12375a, #1f715d);
+}
+
+.play-hero {
+  background:
+    radial-gradient(circle at 78% 24%, rgba(228, 184, 44, 0.95) 0 5px, transparent 6px),
+    linear-gradient(122deg, #12385f 0%, #236d96 58%, #1c6b58 120%);
+}
+
+.news-ribbon {
+  background: #16476f;
+}
+
+.results-board {
+  background: #16476f;
+}
+
+.location-card {
+  background: #16476f;
+}
+
+.site-header.menu-open nav button {
+  background: #2b6683;
+}
