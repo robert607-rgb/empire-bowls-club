@@ -2909,3 +2909,19 @@ body {
 .site-header.menu-open nav button {
   background: #2b6683;
 }
+
+/* Keep the first-visit instructions readable on their light paper panel. */
+.first-visit > div,
+.first-visit > div ol,
+.first-visit > div li {
+  color: var(--ink);
+}
+
+.first-visit h2,
+.first-visit li b {
+  color: var(--ink) !important;
+}
+
+.first-visit li span {
+  color: #274b6c !important;
+}
