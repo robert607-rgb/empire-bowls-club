@@ -2925,3 +2925,32 @@ body {
 .first-visit li span {
   color: #274b6c !important;
 }
+
+/* The Empire history opens on a light paper canvas. Keep its reading copy
+   distinct from the white-on-dark styles used by the surrounding accordion. */
+.about-layout .accordion-list > details > .heritage-story {
+  color: #17375c;
+}
+
+.heritage-story > h3,
+.heritage-story .heritage-event h4,
+.heritage-story .heritage-archive h3 {
+  color: #092d5d;
+}
+
+.heritage-story > p,
+.heritage-story .heritage-lead-grid p,
+.heritage-story .heritage-archive > div:first-child > p,
+.heritage-story .heritage-source-note {
+  color: #234664;
+}
+
+.heritage-story .heritage-event p,
+.heritage-story .heritage-photo-card figcaption {
+  color: #2d4d69;
+}
+
+.heritage-story .heritage-event time,
+.heritage-story .heritage-photo-card figcaption > b {
+  color: #092d5d;
+}
