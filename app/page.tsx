@@ -69,6 +69,24 @@ const displayDate = (value: string) =>
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
 const today = () => new Date().toISOString().slice(0, 10);
+const EMPIRE_CONTACT_EMAIL = "stevewebster@btinternet.com";
+const EMPIRE_CLUB_NAME = "Empire Bowls Club";
+
+function openEmpireEnquiry(data: FormData) {
+  const body = [
+    `Name: ${String(data.get("name") ?? "").trim()}`,
+    `Email: ${String(data.get("email") ?? "").trim()}`,
+    `Telephone: ${String(data.get("phone") ?? "").trim()}`,
+    "",
+    "Message:",
+    String(data.get("message") ?? "").trim(),
+    "",
+    `Sent via the ${EMPIRE_CLUB_NAME} website.`,
+  ].join("\n");
+  const subject = `Website Enquiry – ${EMPIRE_CLUB_NAME}`;
+  window.location.href = `mailto:${EMPIRE_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 const committee = [
   ["Chairman", "Steve Webster", "07872 111577"],
   ["Secretary", "Ann Norris", "07852 975351"],
@@ -1191,6 +1209,11 @@ function HonoursPage() {
 }
 function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
   const [sent, setSent] = useState(false);
+  const submitEnquiry = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    openEmpireEnquiry(new FormData(event.currentTarget));
+    setSent(true);
+  };
   return (
     <section className="play-page">
       <section className="play-hero">
@@ -1296,12 +1319,7 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
               stevewebster@btinternet.com
             </a>
           </div>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setSent(true);
-            }}
-          >
+          <form onSubmit={submitEnquiry}>
             <label>
               Name
               <input required name="name" />
@@ -1318,12 +1336,14 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
               What would you like to know?
               <textarea
                 name="message"
+                required
                 placeholder="I would like to arrange a first visit…"
               />
             </label>
-            <button className="primary">Send enquiry</button>
+            <button className="primary" type="submit">Send Enquiry</button>
+            <small className="enquiry-help">This will open your email app with your enquiry ready to send.</small>
             {sent && (
-              <Status message="Thank you — Steve will be in touch soon." />
+              <Status message="Your email app should now be ready to send the enquiry." />
             )}
           </form>
         </div>
@@ -1348,21 +1368,7 @@ function ContactPage() {
   const [sent, setSent] = useState(false);
   const submitContact = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const values = new FormData(event.currentTarget);
-    const name = String(values.get("name") ?? "");
-    const email = String(values.get("email") ?? "");
-    const phone = String(values.get("phone") ?? "");
-    const message = String(values.get("message") ?? "");
-    const body = [
-      `Name: ${name}`,
-      `Email: ${email}`,
-      phone ? `Phone: ${phone}` : "",
-      "",
-      message,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    window.location.href = `mailto:stevewebster@btinternet.com?subject=${encodeURIComponent("Empire Bowls Club enquiry")}&body=${encodeURIComponent(body)}`;
+    openEmpireEnquiry(new FormData(event.currentTarget));
     event.currentTarget.reset();
     setSent(true);
   };
@@ -1391,6 +1397,11 @@ function ContactPage() {
               <span>Phone</span>
               <b>Club secretary</b>
               <small>07872 111577</small>
+            </a>
+            <a href={`mailto:${EMPIRE_CONTACT_EMAIL}`}>
+              <span>Email</span>
+              <b>Club secretary</b>
+              <small>{EMPIRE_CONTACT_EMAIL}</small>
             </a>
           </div>
         </div>
@@ -1423,8 +1434,9 @@ function ContactPage() {
             />
           </label>
           <button className="primary" type="submit">
-            Prepare enquiry
+            Send Enquiry
           </button>
+          <small className="enquiry-help">This will open your email app with your enquiry ready to send.</small>
           {sent && (
             <Status message="Your email app should now be ready to send the enquiry." />
           )}

@@ -253,6 +253,16 @@
   background: #e4b82c;
   color: #062761;
 }
+.enquiry-help {
+  display: block;
+  margin-top: 8px;
+  color: #e4eff1;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.contact-form .enquiry-help {
+  color: #53657c;
+}
 @media (max-width: 680px) {
   .intro-grid {
     grid-template-columns: 1fr;
