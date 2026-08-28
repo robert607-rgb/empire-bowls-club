@@ -3820,3 +3820,33 @@ body {
     transform: none;
   }
 }
+
+/* Keep every heritage date optically centred inside its circular marker,
+   including the longer text used for the early-1990s entry. */
+.heritage-event time {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  width: 100%;
+  min-height: 74px;
+  aspect-ratio: 1 / 1;
+  padding: 8px;
+  line-height: 1.12;
+  text-align: center;
+  text-wrap: balance;
+}
+
+@media (max-width: 760px) {
+  .heritage-event time {
+    min-height: 68px;
+    padding: 7px 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .heritage-event time {
+    min-height: 58px;
+    padding: 6px 4px;
+    font-size: 10px;
+  }
+}
