@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 type Access = "member" | "admin";
 type Page =
@@ -21,6 +28,7 @@ type Booking = {
 type Member = {
   id: number;
   name: string;
+  address?: string;
   phone: string;
   email: string;
   membershipType: "Full member" | "Social member";
@@ -71,6 +79,11 @@ const displayDate = (value: string) =>
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPIRE_CONTACT_EMAIL = "stevewebster@btinternet.com";
 const EMPIRE_CLUB_NAME = "Empire Bowls Club";
+const EMPIRE_DATA_UPDATED_EVENT = "empire-data-updated";
+
+function notifyEmpireDataUpdated() {
+  window.dispatchEvent(new Event(EMPIRE_DATA_UPDATED_EVENT));
+}
 
 function openEmpireEnquiry(data: FormData) {
   const body = [
@@ -205,12 +218,14 @@ export default function Home() {
   const openPage = (next: Page) => {
     setPage(next);
     setAccess(null);
+    setPassword("");
     setPortalOpen(false);
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const openPortal = () => {
     setAccess(null);
+    setPassword("");
     setPortalOpen(true);
     setMenuOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -297,11 +312,31 @@ export default function Home() {
 
 function NewsPage() {
   const [items, setItems] = useState<NewsItem[]>([]);
-  useEffect(() => {
-    void fetch("/api/empire/news")
-      .then((response) => (response.ok ? response.json() : { news: [] }))
-      .then((result) => setItems(result.news ?? []));
+  const [loadError, setLoadError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/news", {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("News request failed");
+      const result = await response.json();
+      setItems(result.news ?? []);
+      setLoadError("");
+    } catch {
+      setLoadError("The latest stories could not be loaded right now.");
+    }
   }, []);
+  useEffect(() => {
+    const handleUpdate = () => void refresh();
+    const timer = window.setTimeout(handleUpdate, 0);
+    window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
+  }, [refresh]);
   const displayItems = items.length ? items : starterNews;
   const featured = displayItems[0];
   return (
@@ -313,6 +348,7 @@ function NewsPage() {
           Club moments, match-day stories and little updates that keep our
           community connected.
         </p>
+        {loadError && <p className="news-load-error">{loadError}</p>}
       </div>
       {featured ? (
         <div className={`wrap news-feature news-accent-${featured.accent}`}>
@@ -1872,68 +1908,88 @@ function MemberZone({
   const [memberTab, setMemberTab] = useState<"club" | "directory">("club");
   const [directorySearch, setDirectorySearch] = useState("");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
-  const refresh = async () => {
-    const [bookingResponse, memberResponse, fileResponse] = await Promise.all([
-      fetch(`/api/empire/bookings?date=${date}`, { headers }),
-      fetch("/api/empire/members", { headers }),
-      fetch("/api/empire/uploads", { headers }),
-    ]);
-    if (bookingResponse.ok)
-      setBookings((await bookingResponse.json()).bookings);
-    if (memberResponse.ok) setMembers((await memberResponse.json()).members);
-    if (fileResponse.ok) setFiles((await fileResponse.json()).files);
-  };
+  const refresh = useCallback(async () => {
+    try {
+      const [bookingResponse, memberResponse, fileResponse] = await Promise.all([
+        fetch(`/api/empire/bookings?date=${date}`, { headers }),
+        fetch("/api/empire/members", { headers }),
+        fetch("/api/empire/uploads", { headers }),
+      ]);
+      if (!bookingResponse.ok || !memberResponse.ok || !fileResponse.ok) {
+        throw new Error("Member data request failed");
+      }
+      setBookings((await bookingResponse.json()).bookings ?? []);
+      setMembers((await memberResponse.json()).members ?? []);
+      setFiles((await fileResponse.json()).files ?? []);
+      setError("");
+    } catch {
+      setError("We could not refresh the members area. Please try again.");
+    }
+  }, [date, headers]);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void refresh();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [date]); // eslint-disable-line react-hooks/exhaustive-deps
+    const handleUpdate = () => void refresh();
+    const timer = window.setTimeout(handleUpdate, 0);
+    window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
+  }, [refresh]);
   const submitBooking = async (event: FormEvent) => {
     event.preventDefault();
     if (!selected) return;
     setNotice("");
     setError("");
     const bookingLabel = `${bookingName} · ${bookingType}`;
-    const response = await fetch("/api/empire/bookings", {
-      method: "POST",
-      headers: { ...headers, "content-type": "application/json" },
-      body: JSON.stringify({
-        bookingDate: date,
-        rinkNumber: selected.rink,
-        timeSlot: selected.slot,
-        bookingName: bookingLabel,
-      }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setError(result.error || "We could not save that booking.");
-      return;
+    try {
+      const response = await fetch("/api/empire/bookings", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({
+          bookingDate: date,
+          rinkNumber: selected.rink,
+          timeSlot: selected.slot,
+          bookingName: bookingLabel,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "We could not save that booking.");
+        return;
+      }
+      setNotice(
+        `Rink ${selected.rink} is booked for ${selected.slot} on ${displayDate(date)}.`,
+      );
+      setSelected(null);
+      setBookingName("");
+      setBookingType("Roll Up");
+      void refresh();
+    } catch {
+      setError("We could not save that booking. Please try again.");
     }
-    setNotice(
-      `Rink ${selected.rink} is booked for ${selected.slot} on ${displayDate(date)}.`,
-    );
-    setSelected(null);
-    setBookingName("");
-    setBookingType("Roll Up");
-    void refresh();
   };
   const removeBooking = async (booking: Booking) => {
     if (!window.confirm(`Remove ${booking.bookingName} from this rink?`))
       return;
     setNotice("");
     setError("");
-    const response = await fetch("/api/empire/bookings", {
-      method: "DELETE",
-      headers: { ...headers, "content-type": "application/json" },
-      body: JSON.stringify({ id: booking.id }),
-    });
-    if (!response.ok) {
-      setError("We could not remove that booking.");
-      return;
+    try {
+      const response = await fetch("/api/empire/bookings", {
+        method: "DELETE",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id: booking.id }),
+      });
+      if (!response.ok) {
+        setError("We could not remove that booking.");
+        return;
+      }
+      setNotice("The rink booking has been removed.");
+      void refresh();
+    } catch {
+      setError("We could not remove that booking. Please try again.");
     }
-    setNotice("The rink booking has been removed.");
-    void refresh();
   };
   const bookingFor = (rink: number, slot: string) =>
     bookings.find(
@@ -1955,7 +2011,7 @@ function MemberZone({
             one place.
           </p>
         </div>
-        <button className="outline" onClick={onLeave}>
+        <button className="outline" type="button" onClick={onLeave}>
           Leave area
         </button>
       </div>
@@ -2168,30 +2224,62 @@ function PlayerRequestBoard({ password }: { password: string }) {
   const [requests, setRequests] = useState<PlayerRequest[]>([]);
   const [drafts, setDrafts] = useState<Record<number, string[]>>({});
   const [message, setMessage] = useState("");
-  useEffect(() => {
-    void fetch("/api/empire/player-requests", {
-      headers: apiHeaders("member", password),
-    })
-      .then((r) => r.json())
-      .then((d) => setRequests(d.requests ?? []));
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/player-requests", {
+        headers: apiHeaders("member", password),
+      });
+      if (!response.ok) throw new Error("Player request request failed");
+      const result = await response.json();
+      setRequests(result.requests ?? []);
+      setError("");
+    } catch {
+      setError("We could not load the player requests. Please try again.");
+    }
   }, [password]);
+  useEffect(() => {
+    const handleUpdate = () => void refresh();
+    const timer = window.setTimeout(handleUpdate, 0);
+    window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
+  }, [refresh]);
   const save = async (id: number) => {
-    const response = await fetch("/api/empire/player-requests", {
-      method: "PUT",
-      headers: {
-        ...apiHeaders("member", password),
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        id,
-        names: drafts[id] ?? requests.find((r) => r.id === id)?.names ?? [],
-      }),
-    });
-    setMessage(
-      response.ok
-        ? "Your availability has been saved."
-        : "We could not save those names.",
-    );
+    setMessage("");
+    setError("");
+    try {
+      const response = await fetch("/api/empire/player-requests", {
+        method: "PUT",
+        headers: {
+          ...apiHeaders("member", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          id,
+          names: drafts[id] ?? requests.find((r) => r.id === id)?.names ?? [],
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "We could not save those names.");
+        return;
+      }
+      if (result.request) {
+        setRequests((current) =>
+          current.map((request) =>
+            request.id === id ? result.request : request,
+          ),
+        );
+      }
+      setMessage("Your availability has been saved.");
+    } catch {
+      setError("We could not save those names. Please try again.");
+    }
   };
   return (
     <article className="info-list player-board">
@@ -2232,7 +2320,11 @@ function PlayerRequestBoard({ password }: { password: string }) {
                   </label>
                 ))}
               </div>
-              <button className="primary" onClick={() => void save(r.id)}>
+              <button
+                className="primary"
+                type="button"
+                onClick={() => void save(r.id)}
+              >
                 Save names
               </button>
             </div>
@@ -2242,6 +2334,7 @@ function PlayerRequestBoard({ password }: { password: string }) {
         <p className="empty">There are no player requests at the moment.</p>
       )}
       {message && <Status message={message} />}
+      {error && <Status type="error" message={error} />}
     </article>
   );
 }
@@ -2258,16 +2351,6 @@ function InfoList({
 }) {
   if (title === "Players required")
     return <PlayerRequestBoard password={password} />;
-  const openFile = async (id: number) => {
-    const response = await fetch(`/api/empire/uploads/${id}`, {
-      headers: apiHeaders("member", password),
-    });
-    if (!response.ok) return;
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  };
   return (
     <article className="info-list">
       <h2>{title}</h2>
@@ -2280,12 +2363,14 @@ function InfoList({
                 <b>{file.title}</b>
                 <span>{file.description || file.fileName}</span>
               </div>
-              <button
+              <a
                 className="open-file"
-                onClick={() => void openFile(file.id)}
+                href={`/api/empire/uploads/${file.id}`}
+                target="_blank"
+                rel="noreferrer"
               >
                 Open
-              </button>
+              </a>
             </li>
           ))}
         </ul>
@@ -2313,6 +2398,8 @@ function AdminMemberOverview({
   const [emailGroup, setEmailGroup] = useState<"all" | "full" | "social">(
     "all",
   );
+  const [editing, setEditing] = useState<Member | null>(null);
+  const [editError, setEditError] = useState("");
   const ordered = [...members].sort((a, b) => {
     if (sort === "membershipType")
       return (
@@ -2363,7 +2450,40 @@ function AdminMemberOverview({
       return;
     }
     onChange(members.filter((item) => item.id !== member.id));
+    if (editing?.id === member.id) setEditing(null);
     onMessage(`${member.name} has been removed from the member directory.`);
+    notifyEmpireDataUpdated();
+  };
+  const update = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editing) return;
+    setEditError("");
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const response = await fetch("/api/empire/members", {
+        method: "PUT",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ id: editing.id, ...values }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setEditError(result.error || "We could not update that member.");
+        return;
+      }
+      onChange(
+        members.map((member) =>
+          member.id === editing.id ? result.member : member,
+        ),
+      );
+      setEditing(null);
+      onMessage(`${result.member.name} has been updated in the member directory.`);
+      notifyEmpireDataUpdated();
+    } catch {
+      setEditError("We could not update that member. Please try again.");
+    }
   };
   return (
     <details className="admin-members-tab">
@@ -2375,7 +2495,7 @@ function AdminMemberOverview({
       <div className="admin-members-panel">
         <div className="admin-members-toolbar">
           <p>
-            Review the club directory, sort the list and remove former members.
+            Review the club directory, edit details or remove former members.
           </p>
           <div className="admin-members-controls">
             <label>
@@ -2428,34 +2548,138 @@ function AdminMemberOverview({
               </thead>
               <tbody>
                 {ordered.map((member) => (
-                  <tr key={member.id}>
-                    <td>
-                      <b>{member.name}</b>
-                    </td>
-                    <td>
-                      <span
-                        className={`member-badge ${member.membershipType === "Social member" ? "social" : "full"}`}
-                      >
-                        {member.membershipType}
-                      </span>
-                    </td>
-                    <td>{formatJoinedDate(member.createdAt)}</td>
-                    <td>
-                      <a href={`mailto:${member.email}`}>{member.email}</a>
-                      <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
-                        {member.phone}
-                      </a>
-                    </td>
-                    <td>
-                      <button
-                        className="remove-member"
-                        type="button"
-                        onClick={() => void remove(member)}
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
+                  <Fragment key={member.id}>
+                    <tr>
+                      <td>
+                        <b>{member.name}</b>
+                      </td>
+                      <td>
+                        <span
+                          className={`member-badge ${member.membershipType === "Social member" ? "social" : "full"}`}
+                        >
+                          {member.membershipType}
+                        </span>
+                      </td>
+                      <td>{formatJoinedDate(member.createdAt)}</td>
+                      <td>
+                        <a href={`mailto:${member.email}`}>{member.email}</a>
+                        <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
+                          {member.phone}
+                        </a>
+                      </td>
+                      <td className="member-actions">
+                        <button
+                          className="edit-member"
+                          type="button"
+                          onClick={() => {
+                            setEditing({ ...member, address: member.address ?? "" });
+                            setEditError("");
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="remove-member"
+                          type="button"
+                          onClick={() => void remove(member)}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                    {editing?.id === member.id && (
+                      <tr className="member-edit-row">
+                        <td colSpan={5}>
+                          <form onSubmit={update}>
+                            <div className="member-edit-heading">
+                              <b>Edit {member.name}</b>
+                              <button
+                                type="button"
+                                className="text-button"
+                                onClick={() => setEditing(null)}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                            <div className="form-columns">
+                              <label>
+                                Full name
+                                <input
+                                  name="name"
+                                  value={editing.name}
+                                  onChange={(event) =>
+                                    setEditing({ ...editing, name: event.target.value })
+                                  }
+                                  required
+                                  maxLength={120}
+                                />
+                              </label>
+                              <label>
+                                Membership type
+                                <select
+                                  name="membershipType"
+                                  value={editing.membershipType}
+                                  onChange={(event) =>
+                                    setEditing({
+                                      ...editing,
+                                      membershipType: event.target.value as Member["membershipType"],
+                                    })
+                                  }
+                                >
+                                  <option>Full member</option>
+                                  <option>Social member</option>
+                                </select>
+                              </label>
+                            </div>
+                            <label>
+                              Home address
+                              <textarea
+                                name="address"
+                                value={editing.address ?? ""}
+                                onChange={(event) =>
+                                  setEditing({ ...editing, address: event.target.value })
+                                }
+                                required
+                                maxLength={500}
+                              />
+                            </label>
+                            <div className="form-columns">
+                              <label>
+                                Phone number
+                                <input
+                                  name="phone"
+                                  type="tel"
+                                  value={editing.phone}
+                                  onChange={(event) =>
+                                    setEditing({ ...editing, phone: event.target.value })
+                                  }
+                                  required
+                                  maxLength={40}
+                                />
+                              </label>
+                              <label>
+                                Email address
+                                <input
+                                  name="email"
+                                  type="email"
+                                  value={editing.email}
+                                  onChange={(event) =>
+                                    setEditing({ ...editing, email: event.target.value })
+                                  }
+                                  required
+                                  maxLength={160}
+                                />
+                              </label>
+                            </div>
+                            {editError && <Status type="error" message={editError} />}
+                            <button className="primary" type="submit">
+                              Save member changes
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
@@ -2467,6 +2691,396 @@ function AdminMemberOverview({
     </details>
   );
 }
+
+function AdminUploadOverview({
+  files,
+  password,
+  onChange,
+  onMessage,
+}: {
+  files: ClubFile[];
+  password: string;
+  onChange: (files: ClubFile[]) => void;
+  onMessage: (message: string) => void;
+}) {
+  const [editing, setEditing] = useState<ClubFile | null>(null);
+  const [error, setError] = useState("");
+  const ordered = [...files].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editing) return;
+    setError("");
+    try {
+      const data = new FormData(event.currentTarget);
+      data.set("id", String(editing.id));
+      const response = await fetch("/api/empire/uploads", {
+        method: "PUT",
+        headers: apiHeaders("admin", password),
+        body: data,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The file could not be updated.");
+        return;
+      }
+      onChange(
+        files.map((file) => (file.id === editing.id ? result.file : file)),
+      );
+      setEditing(null);
+      onMessage(`${result.file.title} is now updated in the members area.`);
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The file could not be updated. Please try again.");
+    }
+  };
+  const remove = async (file: ClubFile) => {
+    if (!window.confirm(`Remove ${file.title} from the members area?`)) return;
+    setError("");
+    try {
+      const response = await fetch("/api/empire/uploads", {
+        method: "DELETE",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ id: file.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The file could not be removed.");
+        return;
+      }
+      onChange(files.filter((item) => item.id !== file.id));
+      if (editing?.id === file.id) setEditing(null);
+      onMessage(`${file.title} has been removed from the members area.`);
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The file could not be removed. Please try again.");
+    }
+  };
+  return (
+    <details className="admin-files-tab" open>
+      <summary>
+        <span className="eyebrow">Published files</span>
+        <b>Members area updates</b>
+        <span className="members-count">{files.length} files</span>
+      </summary>
+      <div className="admin-files-panel">
+        <p className="admin-panel-help">
+          Edit a title or replace a file and the members area will use the new
+          version immediately.
+        </p>
+        {editing && (
+          <form className="file-edit-form" onSubmit={save}>
+            <div className="member-edit-heading">
+              <b>Edit {editing.title}</b>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="form-columns">
+              <label>
+                Type of update
+                <select
+                  name="category"
+                  value={editing.category}
+                  onChange={(event) =>
+                    setEditing({
+                      ...editing,
+                      category: event.target.value as ClubFile["category"],
+                    })
+                  }
+                >
+                  <option value="team_sheet">Team sheet</option>
+                  <option value="club_document">Club document</option>
+                  <option value="players_required">Players required file</option>
+                </select>
+              </label>
+              <label>
+                Title
+                <input
+                  name="title"
+                  value={editing.title}
+                  onChange={(event) =>
+                    setEditing({ ...editing, title: event.target.value })
+                  }
+                  required
+                  maxLength={160}
+                />
+              </label>
+            </div>
+            <label>
+              Short description
+              <textarea
+                name="description"
+                value={editing.description}
+                onChange={(event) =>
+                  setEditing({ ...editing, description: event.target.value })
+                }
+                maxLength={500}
+              />
+            </label>
+            <label>
+              Replace file <span className="optional-label">(optional)</span>
+              <input
+                name="file"
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              />
+              <small>Leave this empty to keep the current file.</small>
+            </label>
+            {error && <Status type="error" message={error} />}
+            <button className="primary" type="submit">
+              Save file changes
+            </button>
+          </form>
+        )}
+        {ordered.length ? (
+          <div className="admin-files-list">
+            {ordered.map((file) => (
+              <article key={file.id}>
+                <div>
+                  <b>{file.title}</b>
+                  <span>
+                    {file.category.replaceAll("_", " ")} · {file.fileName}
+                  </span>
+                  {file.description && <small>{file.description}</small>}
+                </div>
+                <button
+                  className="edit-member"
+                  type="button"
+                  onClick={() => {
+                    setEditing({ ...file });
+                    setError("");
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="remove-member"
+                  type="button"
+                  onClick={() => void remove(file)}
+                >
+                  Remove
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="empty">No files have been published yet.</p>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function AdminPlayerRequestOverview({
+  password,
+  onMessage,
+}: {
+  password: string;
+  onMessage: (message: string) => void;
+}) {
+  const [requests, setRequests] = useState<PlayerRequest[]>([]);
+  const [editing, setEditing] = useState<PlayerRequest | null>(null);
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/player-requests", {
+        headers: apiHeaders("admin", password),
+      });
+      if (!response.ok) throw new Error("Player request request failed");
+      const result = await response.json();
+      setRequests(result.requests ?? []);
+      setError("");
+    } catch {
+      setError("We could not load the player sign-up sheets.");
+    }
+  }, [password]);
+  useEffect(() => {
+    const handleUpdate = () => void refresh();
+    const timer = window.setTimeout(handleUpdate, 0);
+    window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
+  }, [refresh]);
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editing) return;
+    setError("");
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const response = await fetch("/api/empire/player-requests", {
+        method: "PUT",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ id: editing.id, ...values }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The player sign-up sheet could not be updated.");
+        return;
+      }
+      setRequests((current) =>
+        current.map((request) =>
+          request.id === editing.id ? result.request : request,
+        ),
+      );
+      setEditing(null);
+      onMessage(`${result.request.match} has been updated for members.`);
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The player sign-up sheet could not be updated. Please try again.");
+    }
+  };
+  const remove = async (request: PlayerRequest) => {
+    if (!window.confirm(`Remove ${request.match} from the members area?`)) return;
+    setError("");
+    try {
+      const response = await fetch("/api/empire/player-requests", {
+        method: "DELETE",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ id: request.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The player sign-up sheet could not be removed.");
+        return;
+      }
+      setRequests((current) => current.filter((item) => item.id !== request.id));
+      if (editing?.id === request.id) setEditing(null);
+      onMessage(`${request.match} has been removed from the members area.`);
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The player sign-up sheet could not be removed. Please try again.");
+    }
+  };
+  return (
+    <details className="admin-files-tab admin-requests-tab" open>
+      <summary>
+        <span className="eyebrow">Player availability</span>
+        <b>Member sign-up sheets</b>
+        <span className="members-count">{requests.length} sheets</span>
+      </summary>
+      <div className="admin-files-panel">
+        <p className="admin-panel-help">
+          Changes here are reflected in the Players required section of the
+          members area.
+        </p>
+        {editing && (
+          <form className="file-edit-form" onSubmit={save}>
+            <div className="member-edit-heading">
+              <b>Edit {editing.match}</b>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setEditing(null)}
+              >
+                Cancel
+              </button>
+            </div>
+            <label>
+              Match
+              <input
+                name="match"
+                value={editing.match}
+                onChange={(event) =>
+                  setEditing({ ...editing, match: event.target.value })
+                }
+                required
+                maxLength={160}
+              />
+            </label>
+            <div className="form-columns">
+              <label>
+                Match date
+                <input
+                  name="date"
+                  type="date"
+                  value={editing.date}
+                  onChange={(event) =>
+                    setEditing({ ...editing, date: event.target.value })
+                  }
+                  required
+                />
+              </label>
+              <label>
+                Players required
+                <input
+                  name="playersRequired"
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={editing.playersRequired}
+                  onChange={(event) =>
+                    setEditing({
+                      ...editing,
+                      playersRequired: Number(event.target.value),
+                    })
+                  }
+                  required
+                />
+              </label>
+            </div>
+            {error && <Status type="error" message={error} />}
+            <button className="primary" type="submit">
+              Save sign-up changes
+            </button>
+          </form>
+        )}
+        {requests.length ? (
+          <div className="admin-files-list">
+            {requests.map((request) => (
+              <article key={request.id}>
+                <div>
+                  <b>{request.match}</b>
+                  <span>
+                    {request.date} · {request.names.length}/{request.playersRequired} names
+                  </span>
+                </div>
+                <button
+                  className="edit-member"
+                  type="button"
+                  onClick={() => {
+                    setEditing({ ...request });
+                    setError("");
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  className="remove-member"
+                  type="button"
+                  onClick={() => void remove(request)}
+                >
+                  Remove
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="empty">No player sign-up sheets have been created yet.</p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 function formatJoinedDate(value: string) {
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
@@ -2477,7 +3091,13 @@ function formatJoinedDate(value: string) {
         year: "numeric",
       }).format(parsed);
 }
-function SecuritySettings({ onMessage }: { onMessage: (message: string) => void }) {
+function SecuritySettings({
+  onMessage,
+  onAccessRevoked,
+}: {
+  onMessage: (message: string) => void;
+  onAccessRevoked: () => void;
+}) {
   const [access, setAccess] = useState<Access>("member");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -2509,6 +3129,7 @@ function SecuritySettings({ onMessage }: { onMessage: (message: string) => void 
       setPassword("");
       setConfirmPassword("");
       onMessage(`${access === "admin" ? "Admin" : "Members"} password updated. That area will need to sign in again.`);
+      if (access === "admin") onAccessRevoked();
     } catch {
       setError("We could not update that password. Please try again.");
     } finally {
@@ -2548,55 +3169,112 @@ function NewsAdminPanel({
   onMessage: (message: string) => void;
 }) {
   const [items, setItems] = useState<NewsItem[]>([]);
+  const [editing, setEditing] = useState<NewsItem | null>(null);
   const [error, setError] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/news", { headers });
+      if (!response.ok) throw new Error("News request failed");
+      setItems((await response.json()).news ?? []);
+      setError("");
+    } catch {
+      setError("We could not load the live stories. Please try again.");
+    }
+  }, [headers]);
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      void fetch("/api/empire/news", { headers }).then(async (response) => {
-        if (response.ok) setItems((await response.json()).news ?? []);
-      });
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [password]); // eslint-disable-line react-hooks/exhaustive-deps
-  const publish = async (event: FormEvent<HTMLFormElement>) => {
+    const handleUpdate = () => void refresh();
+    const timer = window.setTimeout(handleUpdate, 0);
+    window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("focus", handleUpdate);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("focus", handleUpdate);
+    };
+  }, [refresh]);
+  const saveStory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/empire/news", {
-      method: "POST",
-      headers,
-      body: form,
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setError(result.error || "The news story could not be published.");
-      return;
+    const isEditing = Boolean(editing);
+    if (editing) form.set("id", String(editing.id));
+    try {
+      const response = await fetch("/api/empire/news", {
+        method: isEditing ? "PUT" : "POST",
+        headers,
+        body: form,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(
+          result.error ||
+            `The news story could not be ${isEditing ? "updated" : "published"}.`,
+        );
+        return;
+      }
+      event.currentTarget.reset();
+      setItems((current) =>
+        isEditing
+          ? current.map((item) =>
+              item.id === result.news.id ? result.news : item,
+            )
+          : [result.news, ...current],
+      );
+      setEditing(null);
+      onMessage(
+        isEditing
+          ? `“${result.news.title}” is updated on the News page.`
+          : `“${result.news.title}” is now live on the News page.`,
+      );
+      notifyEmpireDataUpdated();
+    } catch {
+      setError(
+        `The news story could not be ${isEditing ? "updated" : "published"}. Please try again.`,
+      );
     }
-    event.currentTarget.reset();
-    setItems((current) => [result.news, ...current]);
-    onMessage(`“${result.news.title}” is now live on the News page.`);
   };
   const remove = async (id: number) => {
     if (!window.confirm("Remove this story from the News page?")) return;
-    const response = await fetch("/api/empire/news", {
-      method: "DELETE",
-      headers: { ...headers, "content-type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (!response.ok) {
-      setError("The news story could not be removed.");
-      return;
+    try {
+      const response = await fetch("/api/empire/news", {
+        method: "DELETE",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The news story could not be removed.");
+        return;
+      }
+      setItems((current) => current.filter((item) => item.id !== id));
+      if (editing?.id === id) setEditing(null);
+      onMessage("The news story has been removed from the website.");
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The news story could not be removed. Please try again.");
     }
-    setItems((current) => current.filter((item) => item.id !== id));
-    onMessage("The news story has been removed from the website.");
   };
   return (
     <section className="news-admin">
-      <form onSubmit={publish}>
+      <form key={editing?.id ?? "new"} onSubmit={saveStory}>
         <p className="eyebrow">Newsroom</p>
-        <h2>Publish a story</h2>
+        <div className="news-form-heading">
+          <h2>{editing ? "Edit a story" : "Publish a story"}</h2>
+          {editing && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setEditing(null)}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
         <p className="form-help">
-          Give members and visitors something memorable to discover.
+          {editing
+            ? "Update the story and the public News page will use the new version."
+            : "Give members and visitors something memorable to discover."}
         </p>
         <label>
           Headline
@@ -2604,13 +3282,17 @@ function NewsAdminPanel({
             name="title"
             required
             maxLength={160}
+            defaultValue={editing?.title ?? ""}
             placeholder="e.g. Empire pair reach the county final"
           />
         </label>
         <div className="form-columns">
           <label>
             News style
-            <select name="category" defaultValue="Club life">
+            <select
+              name="category"
+              defaultValue={editing?.category ?? "Club life"}
+            >
               <option>Club life</option>
               <option>On the green</option>
               <option>Match day</option>
@@ -2620,7 +3302,7 @@ function NewsAdminPanel({
           </label>
           <label>
             Colour mood
-            <select name="accent" defaultValue="gold">
+            <select name="accent" defaultValue={editing?.accent ?? "gold"}>
               <option value="gold">Empire gold</option>
               <option value="green">Green day</option>
               <option value="red">Club red</option>
@@ -2629,23 +3311,31 @@ function NewsAdminPanel({
           </label>
         </div>
         <label className="news-image-field">
-          Story image
+          {editing ? "Replace story image" : "Story image"}
           <input
             name="image"
             type="file"
             accept="image/jpeg,image/png,image/webp"
           />
           <small>
-            Upload a sharp, high-quality image — avoid blurry, dark or pixelated
-            photos. Landscape images work best.
+            {editing
+              ? "Leave this empty to keep the current image."
+              : "Upload a sharp, high-quality image — avoid blurry, dark or pixelated photos. Landscape images work best."}
           </small>
         </label>
+        {editing?.imageUrl && (
+          <label className="checkbox-field">
+            <input name="removeImage" type="checkbox" />
+            Remove the current image
+          </label>
+        )}
         <label>
           Short introduction
           <textarea
             name="summary"
             required
             maxLength={320}
+            defaultValue={editing?.summary ?? ""}
             placeholder="A punchy two-line introduction for the story card."
           />
         </label>
@@ -2655,11 +3345,12 @@ function NewsAdminPanel({
             name="body"
             required
             maxLength={2000}
+            defaultValue={editing?.body ?? ""}
             placeholder="Share the detail, names, score or invitation."
           />
         </label>
         <button className="primary" type="submit">
-          Publish to News
+          {editing ? "Save story changes" : "Publish to News"}
         </button>
         {error && <Status type="error" message={error} />}
       </form>
@@ -2694,6 +3385,16 @@ function NewsAdminPanel({
               </div>
               <button
                 type="button"
+                className="edit-member"
+                onClick={() => {
+                  setEditing(item);
+                  setError("");
+                }}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
                 onClick={() => void remove(item.id)}
                 aria-label={`Remove ${item.title}`}
               >
@@ -2720,77 +3421,99 @@ function AdminZone({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
-  const refresh = async () => {
-    const [memberResponse, fileResponse] = await Promise.all([
-      fetch("/api/empire/members", { headers }),
-      fetch("/api/empire/uploads", { headers }),
-    ]);
-    if (memberResponse.ok) setMembers((await memberResponse.json()).members);
-    if (fileResponse.ok) setFiles((await fileResponse.json()).files);
-  };
+  const refresh = useCallback(async () => {
+    try {
+      const [memberResponse, fileResponse] = await Promise.all([
+        fetch("/api/empire/members", { headers }),
+        fetch("/api/empire/uploads", { headers }),
+      ]);
+      if (!memberResponse.ok || !fileResponse.ok) {
+        throw new Error("Admin data request failed");
+      }
+      setMembers((await memberResponse.json()).members ?? []);
+      setFiles((await fileResponse.json()).files ?? []);
+    } catch {
+      setError("We could not load the admin records. Please try again.");
+    }
+  }, [headers]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void refresh();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [refresh]);
   const addMember = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage("");
     setError("");
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    const response = await fetch("/api/empire/members", {
-      method: "POST",
-      headers: { ...headers, "content-type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setError(result.error || "The member could not be added.");
-      return;
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const response = await fetch("/api/empire/members", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The member could not be added.");
+        return;
+      }
+      event.currentTarget.reset();
+      setMessage(`${result.member.name} has been added to the member directory.`);
+      void refresh();
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The member could not be added. Please try again.");
     }
-    event.currentTarget.reset();
-    setMessage(`${result.member.name} has been added to the member directory.`);
-    void refresh();
   };
   const upload = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage("");
     setError("");
-    const data = new FormData(event.currentTarget);
-    const response = await fetch("/api/empire/uploads", {
-      method: "POST",
-      headers,
-      body: data,
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setError(result.error || "The file could not be uploaded.");
-      return;
+    try {
+      const data = new FormData(event.currentTarget);
+      const response = await fetch("/api/empire/uploads", {
+        method: "POST",
+        headers,
+        body: data,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The file could not be uploaded.");
+        return;
+      }
+      event.currentTarget.reset();
+      setMessage(`${result.file.title} has been published for members.`);
+      void refresh();
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The file could not be uploaded. Please try again.");
     }
-    event.currentTarget.reset();
-    setMessage(`${result.file.title} has been published for members.`);
-    void refresh();
   };
   const createPlayerRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage("");
     setError("");
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    const response = await fetch("/api/empire/player-requests", {
-      method: "POST",
-      headers: { ...headers, "content-type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setError(result.error || "The player request could not be created.");
-      return;
+    try {
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const response = await fetch("/api/empire/player-requests", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The player request could not be created.");
+        return;
+      }
+      event.currentTarget.reset();
+      setMessage(
+        `${result.request.match} is ready for members to add their names.`,
+      );
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The player request could not be created. Please try again.");
     }
-    event.currentTarget.reset();
-    setMessage(
-      `${result.request.match} is ready for members to add their names.`,
-    );
   };
   return (
     <main className="portal-shell zone-shell admin-zone">
@@ -2803,7 +3526,7 @@ function AdminZone({
             sheets.
           </p>
         </div>
-        <button className="outline" onClick={onLeave}>
+        <button className="outline" type="button" onClick={onLeave}>
           Leave area
         </button>
       </div>
@@ -2827,6 +3550,22 @@ function AdminZone({
         members={members}
         password={password}
         onChange={setMembers}
+        onMessage={(nextMessage) => {
+          setError("");
+          setMessage(nextMessage);
+        }}
+      />
+      <AdminUploadOverview
+        files={files}
+        password={password}
+        onChange={setFiles}
+        onMessage={(nextMessage) => {
+          setError("");
+          setMessage(nextMessage);
+        }}
+      />
+      <AdminPlayerRequestOverview
+        password={password}
         onMessage={(nextMessage) => {
           setError("");
           setMessage(nextMessage);
@@ -2932,6 +3671,7 @@ function AdminZone({
           </button>
         </form>
         <SecuritySettings
+          onAccessRevoked={onLeave}
           onMessage={(nextMessage) => {
             setError("");
             setMessage(nextMessage);

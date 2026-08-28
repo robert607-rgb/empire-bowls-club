@@ -10,7 +10,10 @@ export async function GET(request: Request) {
   try {
     const db = await getEmpireDatabase();
     const result = await db.prepare("SELECT id, rink_number, time_slot, booking_name FROM empire_bookings WHERE booking_date = ? ORDER BY rink_number, time_slot").bind(date).all<BookingRow>();
-    return Response.json({ bookings: (result.results ?? []).map((booking) => ({ id: booking.id, rinkNumber: booking.rink_number, timeSlot: booking.time_slot, bookingName: booking.booking_name })) });
+    return Response.json(
+      { bookings: (result.results ?? []).map((booking) => ({ id: booking.id, rinkNumber: booking.rink_number, timeSlot: booking.time_slot, bookingName: booking.booking_name })) },
+      { headers: { "cache-control": "no-store" } },
+    );
   } catch (error) { return apiError(error); }
 }
 

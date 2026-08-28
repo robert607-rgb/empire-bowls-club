@@ -3937,3 +3937,289 @@ body {
   color: var(--empire-deep);
   background: var(--empire-gold);
 }
+
+/* Make every admin-managed record inspectable and editable without losing the
+   compact control panel on smaller screens. */
+.admin-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-files-tab {
+  margin: 0 0 25px;
+  border: 1px solid rgba(228, 184, 44, 0.36);
+  background: var(--paper-surface);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.admin-files-tab > summary {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr) auto;
+  gap: 15px;
+  align-items: center;
+  padding: 18px 21px;
+  color: var(--ink);
+  list-style: none;
+  cursor: pointer;
+}
+
+.admin-files-tab > summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-files-tab > summary .eyebrow {
+  margin: 0;
+  color: var(--gold);
+}
+
+.admin-files-tab > summary b {
+  font: 800 24px Georgia, serif;
+}
+
+.admin-files-tab > summary .members-count {
+  color: #526575;
+  font-size: 12px;
+}
+
+.admin-files-panel {
+  padding: 0 21px 21px;
+  color: var(--ink);
+  border-top: 1px solid #d1c8b4;
+}
+
+.admin-panel-help {
+  margin: 17px 0;
+  color: #526575;
+  font-size: 13px;
+}
+
+.admin-files-list {
+  display: grid;
+  gap: 0;
+}
+
+.admin-files-list article {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 0;
+  border-top: 1px solid #d1c8b4;
+}
+
+.admin-files-list article > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.admin-files-list article b,
+.admin-files-list article span,
+.admin-files-list article small {
+  display: block;
+}
+
+.admin-files-list article b {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-files-list article span,
+.admin-files-list article small {
+  color: #526575;
+  font-size: 11px;
+}
+
+.admin-files-list article small {
+  margin-top: 3px;
+}
+
+.file-edit-form {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+  padding: 17px;
+  background: #f0ead9;
+  border-left: 4px solid var(--gold);
+}
+
+.file-edit-form label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.file-edit-form input,
+.file-edit-form textarea,
+.file-edit-form select {
+  width: 100%;
+  padding: 10px 11px;
+  color: var(--ink);
+  background: #f8f4e9;
+  border: 1px solid #b9c4c4;
+  border-radius: 4px;
+}
+
+.file-edit-form textarea {
+  min-height: 85px;
+  resize: vertical;
+}
+
+.file-edit-form small {
+  color: #526575;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.optional-label {
+  color: #526575;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.member-edit-heading,
+.news-form-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.member-edit-heading b {
+  color: var(--ink);
+  font: 800 18px Georgia, serif;
+}
+
+.member-edit-heading .text-button,
+.news-form-heading .text-button {
+  padding: 5px 0;
+  color: var(--red);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.checkbox-field {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 8px !important;
+  color: var(--ink) !important;
+  font-size: 12px !important;
+}
+
+.checkbox-field input {
+  width: auto;
+  margin: 0;
+}
+
+.edit-member {
+  padding: 5px 8px;
+  color: var(--ink);
+  background: #e8dfc9;
+  border: 1px solid #b9c4c4;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.edit-member:hover,
+.edit-member:focus-visible {
+  color: var(--empire-deep);
+  background: var(--empire-gold);
+}
+
+.news-admin-list article .edit-member {
+  padding: 5px 8px;
+  color: var(--ink);
+  background: #e8dfc9;
+  border: 1px solid #b9c4c4;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.news-admin-list article .edit-member:hover,
+.news-admin-list article .edit-member:focus-visible {
+  color: var(--empire-deep);
+  background: var(--empire-gold);
+}
+
+.member-actions {
+  white-space: nowrap;
+}
+
+.member-actions .edit-member {
+  margin-right: 6px;
+}
+
+.member-edit-row > td {
+  padding: 0;
+  background: #e8dfc9;
+}
+
+.member-edit-row form {
+  display: grid;
+  gap: 12px;
+  padding: 17px;
+}
+
+.member-edit-row form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.member-edit-row form input,
+.member-edit-row form textarea,
+.member-edit-row form select {
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: #f8f4e9;
+  border: 1px solid #b9c4c4;
+  border-radius: 4px;
+}
+
+.member-edit-row form textarea {
+  min-height: 68px;
+  resize: vertical;
+}
+
+.news-load-error {
+  color: #ffd5d8;
+  font-size: 13px;
+}
+
+@media (max-width: 680px) {
+  .admin-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-files-tab > summary {
+    grid-template-columns: 1fr auto;
+  }
+
+  .admin-files-tab > summary .eyebrow {
+    grid-column: 1 / -1;
+  }
+
+  .admin-files-list article {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .admin-files-list article > div {
+    flex-basis: 100%;
+  }
+
+  .member-actions {
+    display: flex;
+    gap: 6px;
+  }
+}
