@@ -996,38 +996,221 @@ function AboutPage() {
               <b>Achievements</b>
               <i>+</i>
             </summary>
-            <div>
-              <p>
-                <b>Kent County Cox Cup</b> — finalists: Max Fisher, Gary
-                Carpenter, Richard Gausby, Roger Gladman, John Horrigan, Dave
-                Munday, Ray Norris, Colin Quinton, Terry Whiteman and Bruce
-                Woodington.
+            <div className="achievement-record">
+              <p className="achievement-intro">
+                Empire’s recent record reaches from local district titles to
+                Kent County finals and the Bowls England national stage. These
+                highlights combine the club’s published achievement archive
+                with county and national competition records, and are shown by
+                season so the successes of Empire bowlers are easy to follow.
               </p>
-              <p>
-                <b>Kent County Ladies Singles</b> — semi-finalist: Jan Munday.{" "}
-                <b>Maude Woods</b> — semi-finalist: Ann Norris.
-              </p>
-              <p>
-                <b>Bexley Borough Mixed Fours</b> — finalists: Aggie and Bruce
-                Woodington, Gill Searing and Gary Carpenter.
-              </p>
-              <p>
-                <b>Dartford & District</b> — Men’s Fours winners: Terry
-                Whiteman, Max Fisher, Richard Gausby and Gary Carpenter; Men’s
-                Pairs winners: Bruce Woodington & Max Fisher; Ladies Champion of
-                Champions winner: Jan Munday.
-              </p>
-              <p>
-                <b>Gravesend & District</b> — Men’s Singles finalist and
-                Champion of Champions finalist: Max Fisher; Men’s Fours winners:
-                Terry Whiteman, Sam Turner, Gary Carpenter and Richard Gausby.
-              </p>
-              <p>
-                <b>North Kent</b> — Two Wood Singles finalist: Terry Whiteman;
-                Men’s Pairs champions: Bruce Woodington & Max Fisher; Men’s
-                Triples champions: Sam Turner, Richard Gausby & Gary Carpenter;
-                Men’s Fours champions: Sam Turner, Colin Quinton, Gary Carpenter
-                & Richard Gausby.
+
+              <section className="achievement-year">
+                <div className="achievement-year-head">
+                  <span>2026</span>
+                  <div>
+                    <p className="achievement-kicker">County & national highlights</p>
+                    <h3>Empire on the biggest stages</h3>
+                  </div>
+                </div>
+                <ul className="achievement-list">
+                  <li>
+                    <strong>Kent County Ladies Singles — champion:</strong> Jan
+                    Munday defeated Emily Ferguson 21–10 in the county final.
+                  </li>
+                  <li>
+                    <strong>Kent County Ladies Pairs — champions:</strong> Nicky
+                    Gausby & Gill Searing defeated Emily Ferguson & Paige Dennis
+                    16–14.
+                  </li>
+                  <li>
+                    <strong>Bowls England National Championships:</strong> Jan
+                    Munday reached the Women’s Singles National Finals at Royal
+                    Leamington Spa, while Nicky Gausby & Gill Searing reached the
+                    Women’s Pairs National Finals after winning their Kent title.
+                  </li>
+                  <li>
+                    <strong>All-England Champion of Champions:</strong> Max
+                    Fisher reached the national last 16, defeating Alan Morton
+                    of Lenham in the last-32 stage.
+                  </li>
+                </ul>
+              </section>
+
+              <section className="achievement-year">
+                <div className="achievement-year-head">
+                  <span>2025</span>
+                  <div>
+                    <p className="achievement-kicker">Kent & district success</p>
+                    <h3>A season of titles across the region</h3>
+                  </div>
+                </div>
+                <ul className="achievement-list">
+                  <li>
+                    <strong>Kent County Cox Cup — finalists:</strong> Empire’s
+                    ten-player side reached the county final. Jan Munday was a
+                    Ladies Singles semi-finalist and Ann Norris a Maude Woods
+                    semi-finalist.
+                  </li>
+                  <li>
+                    <strong>Dartford & District champions:</strong> Terry
+                    Whiteman, Max Fisher, Richard Gausby & Gary Carpenter won the
+                    Men’s Fours; Bruce Woodington & Max Fisher won the Men’s
+                    Pairs; Jan Munday won the Ladies Champion of Champions; and
+                    Gill Searing & Bruce Woodington won the Mixed Pairs.
+                  </li>
+                  <li>
+                    <strong>Gravesend & District champions:</strong> Terry
+                    Whiteman, Sam Turner, Gary Carpenter & Richard Gausby won the
+                    Men’s Fours, with Max Fisher also reaching the Men’s Singles
+                    and Champion of Champions finals.
+                  </li>
+                  <li>
+                    <strong>North Kent champions:</strong> Bruce Woodington & Max
+                    Fisher won the Men’s Pairs; Sam Turner, Richard Gausby & Gary
+                    Carpenter won the Men’s Triples; and Sam Turner, Colin
+                    Quinton, Gary Carpenter & Richard Gausby won the Men’s Fours.
+                  </li>
+                  <li>
+                    <strong>Bexley Borough Men’s Singles — champion:</strong>{" "}
+                    Richard Gausby.
+                  </li>
+                </ul>
+              </section>
+
+              <section className="achievement-year">
+                <div className="achievement-year-head">
+                  <span>2024</span>
+                  <div>
+                    <p className="achievement-kicker">District champions</p>
+                    <h3>Winning combinations in every section</h3>
+                  </div>
+                </div>
+                <ul className="achievement-list">
+                  <li>
+                    <strong>Dartford & District:</strong> Bruce Woodington won
+                    the Men’s Singles; Ray Norris, Terry Whiteman & Bruce
+                    Woodington won the Secretary’s Triples; and Max Fisher was a
+                    Men’s Champion of Champions finalist.
+                  </li>
+                  <li>
+                    <strong>Gravesend & District:</strong> Aggie Woodington & Max
+                    Fisher won the Mixed Pairs; Max Fisher, Gary Carpenter & Bruce
+                    Woodington won the Men’s Triples; Eileen McKinnon, Aggie
+                    Woodington & Jan Munday won the Ladies Triples; and Max
+                    Fisher, Sam Turner, Gary Carpenter & Bruce Woodington won the
+                    Men’s Fours.
+                  </li>
+                  <li>
+                    <strong>Bexley Borough Men’s Pairs — champions:</strong> Bruce
+                    Woodington & Max Fisher.
+                  </li>
+                </ul>
+              </section>
+
+              <section className="achievement-year">
+                <div className="achievement-year-head">
+                  <span>2022</span>
+                  <div>
+                    <p className="achievement-kicker">National, county & district success</p>
+                    <h3>A landmark year for Empire</h3>
+                  </div>
+                </div>
+                <ul className="achievement-list">
+                  <li>
+                    <strong>Bowls England Family Pairs — area champions:</strong>{" "}
+                    Aggie & Bruce Woodington. Aggie Woodington was also a Ladies
+                    Champion of Champions area finalist, while Jan Munday was a
+                    Ladies Senior Singles area finalist.
+                  </li>
+                  <li>
+                    <strong>Kent County:</strong> Aggie Woodington reached the
+                    Ladies Two Bowl Singles semi-final; Max Fisher reached the
+                    Men’s Singles quarter-final; and Martin Groombridge & Gary
+                    Carpenter reached the Men’s Pairs quarter-final.
+                  </li>
+                  <li>
+                    <strong>Dartford & District champions:</strong> Myrtle
+                    Saunders, Aggie Woodington & Jan Munday won the Ladies
+                    Triples, while Jan Munday, Dave Munday & Gary Carpenter won
+                    the Secretary’s Triples.
+                  </li>
+                  <li>
+                    <strong>Gravesend & District:</strong> Bruce Woodington won
+                    the Champion of Champions; and Jan Munday, Dave Munday & Gary
+                    Carpenter won the Secretary’s Triples.
+                  </li>
+                  <li>
+                    <strong>Bexley Borough champions:</strong> Bruce Woodington
+                    won the Men’s Singles, while Max Fisher, Gary Carpenter &
+                    Bruce Woodington won the Men’s Triples.
+                  </li>
+                  <li>
+                    <strong>Team competitions:</strong> Empire reached the
+                    divisional final of the Cox Cup and the final of the RACS
+                    Knockout Cup.
+                  </li>
+                </ul>
+              </section>
+
+              <p className="achievement-sources">
+                <strong>Competition records checked:</strong>{" "}
+                <a
+                  href="https://www.empirebowlsclub.co.uk/community/empire-bowls-club-14829/2022-club-achievements/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Empire’s published achievement archive
+                </a>
+                ,{" "}
+                <a
+                  href="https://www.empirebowlsclub.co.uk/community/empire-bowls-club-14829/2024-club-achievements/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  2024 club record
+                </a>
+                ,{" "}
+                <a
+                  href="https://www.empirebowlsclub.co.uk/community/empire-bowls-club-14829/2025-club-achievements/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  2025 club record
+                </a>
+                ,{" "}
+                <a
+                  href="https://www.kcwba.org.uk/index.php/results"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Kent County Women’s Bowling Association results
+                </a>
+                ,{" "}
+                <a
+                  href="https://www.bowlsenglandcomps.com/competition/fixture/450"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Bowls England Women’s Singles finals
+                </a>
+                , and{" "}
+                <a
+                  href="https://www.bowlsenglandcomps.com/competition/fixture/451"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Women’s Pairs finals
+                </a>
+                . The Max Fisher national result is recorded by{" "}
+                <a
+                  href="https://www.lenhambowlingclub.org.uk/Nationals.html"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Lenham Bowling Club’s 2026 national competition record
+                </a>
+                .
               </p>
             </div>
           </details>
