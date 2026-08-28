@@ -145,6 +145,7 @@ const starterNews: NewsItem[] = [
 const sponsors = [
   {
     name: "Frost Funeral Service",
+    tier: "Empire club sponsor",
     strapline: "Professional, caring funeral services for the local community.",
     image: "/optimized/sponsors/frost-funeral-service.webp",
     website:
@@ -154,6 +155,7 @@ const sponsors = [
   },
   {
     name: "In Action Bowlswear",
+    tier: "Empire club sponsor",
     strapline: "Bowls clothing, equipment and friendly specialist advice.",
     image: "/optimized/sponsors/inaction-bowlswear.webp",
     website: "https://inactionbowlswear.co.uk/",
@@ -161,6 +163,7 @@ const sponsors = [
   },
   {
     name: "Mike’s Maindrain Services",
+    tier: "Empire club sponsor",
     strapline: "Drain, sewer and waste services for homes and businesses.",
     image: "/optimized/sponsors/mikes-maindrain.webp",
     website: "https://www.checkatrade.com/trades/mikesmaindrain",
@@ -169,6 +172,7 @@ const sponsors = [
   },
   {
     name: "NH Heating Services",
+    tier: "Empire club sponsor",
     strapline: "Domestic and commercial heating support across Kent.",
     image: "/optimized/sponsors/nh-heating.webp",
     website: "https://www.nhheating.co.uk/",
@@ -447,7 +451,8 @@ function HomePage({
 }) {
   return (
     <>
-      <section className="hero">
+      <section className="hero empire-hero">
+        <span className="peacock-tail-pattern peacock-tail-pattern-hero" aria-hidden="true" />
         <div className="hero-copy">
           <p className="eyebrow">Established in 1910 · Greenhithe, Kent</p>
           <h1>
@@ -463,6 +468,12 @@ function HomePage({
             <button className="primary" onClick={() => openPage("Play bowls")}>
               Come and try bowls
             </button>
+            <button
+              className="text-button hero-secondary"
+              onClick={() => openPage("About the Club")}
+            >
+              Explore our story <span>→</span>
+            </button>
           </div>
         </div>
         <div className="hero-emblem">
@@ -476,7 +487,8 @@ function HomePage({
           <span>EST. 1910</span>
         </div>
       </section>
-      <section className="quick-facts wrap single">
+      <section className="quick-facts wrap single home-facts">
+        <span className="peacock-tail-pattern peacock-tail-pattern-facts" aria-hidden="true" />
         <article>
           <strong>Established 1910</strong>
           <span>A proud Greenhithe sporting tradition</span>
@@ -498,7 +510,8 @@ function HomePage({
           <span>A friendly first step into the game</span>
         </article>
       </section>
-      <section className="intro-grid wrap">
+      <section className="intro-grid wrap home-intro">
+        <span className="peacock-tail-pattern peacock-tail-pattern-intro" aria-hidden="true" />
         <div>
           <p className="eyebrow">The Empire welcome</p>
           <h2>A club for the game — and the people who make it.</h2>
@@ -534,7 +547,8 @@ function HomePage({
           </div>
         </div>
       </section>
-      <section className="upcoming-section">
+      <section className="upcoming-section home-upcoming">
+        <span className="peacock-tail-pattern peacock-tail-pattern-upcoming" aria-hidden="true" />
         <div className="wrap">
           <div className="section-heading">
             <div>
@@ -578,38 +592,62 @@ function HomePage({
 function SponsorsPage() {
   return (
     <section className="sponsors-page">
+      <span className="peacock-tail-pattern peacock-tail-pattern-sponsors" aria-hidden="true" />
       <div className="wrap sponsors-intro">
-        <p className="eyebrow">Proudly supported</p>
-        <h1>The businesses behind Empire.</h1>
-        <p className="lead">
-          Our sponsors help keep the green thriving. Please support the
-          businesses that support our club.
-        </p>
+        <div>
+          <p className="eyebrow">Proudly supported</p>
+          <h1>The businesses behind Empire.</h1>
+          <p className="lead">
+            Our sponsors help keep the green thriving. Please support the
+            businesses that support our club.
+          </p>
+        </div>
+        <div className="sponsors-intro-seal" aria-hidden="true">
+          <img
+            src="/optimized/empire-crest.webp"
+            alt=""
+            width={512}
+            height={512}
+            decoding="async"
+          />
+          <span>Community partners</span>
+        </div>
       </div>
       <div className="wrap sponsor-grid">
-        {sponsors.map((sponsor) => (
+        {sponsors.map((sponsor, index) => (
           <article className="sponsor-card" key={sponsor.name}>
+            <div className="sponsor-card-topline">
+              <span className="sponsor-tier">{sponsor.tier}</span>
+              <span className="sponsor-number">{String(index + 1).padStart(2, "0")}</span>
+            </div>
             <a
               href={sponsor.website}
               target="_blank"
               rel="noreferrer"
-              aria-label={`${sponsor.name} website`}
+              aria-label={`${sponsor.name} website (opens in a new tab)`}
             >
               <img
                 src={sponsor.image}
-                alt={`${sponsor.name} sponsor artwork`}
+                alt={`${sponsor.name} logo`}
                 loading="lazy"
                 decoding="async"
               />
               <span>
-                Visit sponsor <b>↗</b>
+                Visit website <b>↗</b>
               </span>
             </a>
             <div className="sponsor-card-copy">
-              <p className="eyebrow">Empire sponsor</p>
               <h2>{sponsor.name}</h2>
               <p>{sponsor.strapline}</p>
               {sponsor.note && <small>{sponsor.note}</small>}
+              <a
+                className="sponsor-link"
+                href={sponsor.website}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {sponsor.linkLabel} <span>↗</span>
+              </a>
             </div>
           </article>
         ))}
@@ -627,6 +665,7 @@ function SponsorsPage() {
 function AboutPage() {
   return (
     <section className="page wrap">
+      <span className="peacock-tail-pattern peacock-tail-pattern-about" aria-hidden="true" />
       <p className="eyebrow">About the club</p>
       <h1>A century of community on the green.</h1>
       <p className="lead">
@@ -635,13 +674,27 @@ function AboutPage() {
       </p>
       <div className="about-layout">
         <div className="accordion-list">
-          <details>
+          <details open>
             <summary>
               <span>04</span>
               <b>The Empire story</b>
               <i>+</i>
             </summary>
             <div className="heritage-story">
+              <div className="heritage-hero-collage">
+                <img
+                  src="/optimized/club/empire-players.webp"
+                  alt="Empire Bowls Club members gathered on the green"
+                  width={1200}
+                  height={900}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div>
+                  <span>1910 · Greenhithe</span>
+                  <strong>More than a century on the green.</strong>
+                </div>
+              </div>
               <div className="heritage-lead-grid">
                 <div className="heritage-year-mark">
                   <strong>1910</strong>
