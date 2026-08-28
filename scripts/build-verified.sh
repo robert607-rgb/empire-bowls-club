@@ -18,6 +18,8 @@ if [[ ! -x "${vinext}" ]]; then
   exit 69
 fi
 
+node "${script_dir}/check-auth-runtime.mjs" "${SITES_PROJECT_ROOT}"
+
 echo "Running bounded vinext build..."
 timeout \
   --signal=TERM \

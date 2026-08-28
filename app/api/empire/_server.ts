@@ -5,6 +5,7 @@ const encoder = new TextEncoder();
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 8;
+const PASSWORD_HASH_ITERATIONS = 100_000;
 const JSON_BODY_LIMIT_BYTES = 128 * 1024;
 export const MULTIPART_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
 
@@ -23,18 +24,23 @@ export class InvalidRequestBodyError extends Error {
 }
 
 // These one-way hashes keep the original club access codes working without
-// retaining a readable password in the client bundle or database. Admins can
-// rotate either password later; the replacement is stored only as a hash.
-const initialAccounts: Array<{ access: EmpireAccess; salt: string; hash: string }> = [
+// retaining a readable password in the client bundle or database. The
+// iteration count is the highest value supported by Cloudflare Workers.
+// legacyHash lets the first secure deployment migrate the earlier hashes that
+// were generated with an unsupported iteration count without overwriting any
+// password that an administrator has since chosen.
+const initialAccounts: Array<{ access: EmpireAccess; salt: string; hash: string; legacyHash: string }> = [
   {
     access: "member",
     salt: "1e9b6210bd2fbcb3c318658ed323c61a1c99",
-    hash: "e00267597e8173b5444e283be12dcedf995feb7c890c56538198fbe059e1ac32",
+    hash: "4437b835827dc996cbebce4e3bed0f697a9fc2d3c9dd35efa6a57e62857716a5",
+    legacyHash: "e00267597e8173b5444e283be12dcedf995feb7c890c56538198fbe059e1ac32",
   },
   {
     access: "admin",
     salt: "7940822b5d17baf44aabf7cf04784a233245",
-    hash: "cdd0183505e559201772e9f0860840893963904157583b649a5efd9a4a3378cd",
+    hash: "093a25f0c79deb9af5bf413b71f5aad4efe036f6c30294aa3c1097108ab8e21e",
+    legacyHash: "cdd0183505e559201772e9f0860840893963904157583b649a5efd9a4a3378cd",
   },
 ];
 
@@ -54,7 +60,7 @@ async function passwordHash(password: string, salt: string) {
     ["deriveBits"],
   );
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt: encoder.encode(salt), iterations: 210_000 },
+    { name: "PBKDF2", hash: "SHA-256", salt: encoder.encode(salt), iterations: PASSWORD_HASH_ITERATIONS },
     key,
     256,
   );
@@ -65,11 +71,15 @@ function timingSafeStringEqual(left: string, right: string) {
   const leftBytes = encoder.encode(left);
   const rightBytes = encoder.encode(right);
   if (leftBytes.byteLength !== rightBytes.byteLength) {
-    // Compare the input with itself instead of returning early so a malformed
-    // stored hash does not reveal its length through response timing.
-    return !crypto.subtle.timingSafeEqual(leftBytes, leftBytes);
+    return false;
   }
-  return crypto.subtle.timingSafeEqual(leftBytes, rightBytes);
+  // Web Crypto in the Workers runtime does not expose Node's
+  // crypto.timingSafeEqual helper. Compare every byte without returning early.
+  let difference = 0;
+  for (let index = 0; index < leftBytes.byteLength; index += 1) {
+    difference |= leftBytes[index] ^ rightBytes[index];
+  }
+  return difference === 0;
 }
 
 async function fingerprint(request: Request) {
@@ -261,6 +271,9 @@ export async function getEmpireDatabase() {
       runtime.DB.prepare("CREATE INDEX IF NOT EXISTS empire_login_attempts_visitor_time ON empire_login_attempts (visitor_hash, attempted_at)"),
       ...initialAccounts.map((account) =>
         runtime.DB.prepare("INSERT OR IGNORE INTO empire_access_accounts (access, salt, password_hash, updated_at) VALUES (?, ?, ?, ?)").bind(account.access, account.salt, account.hash, new Date().toISOString()),
+      ),
+      ...initialAccounts.map((account) =>
+        runtime.DB.prepare("UPDATE empire_access_accounts SET salt = ?, password_hash = ?, updated_at = ? WHERE access = ? AND password_hash = ?").bind(account.salt, account.hash, new Date().toISOString(), account.access, account.legacyHash),
       ),
     ])
       .then(() => undefined)
