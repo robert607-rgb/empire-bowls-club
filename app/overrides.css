@@ -3925,3 +3925,15 @@ body {
   .era-bowl { inset: 1px; transform: scale(1.16); }
   .heritage-date { min-height: 19px; padding: 2px 3px; }
 }
+
+/* Keep the home-page call to action readable on the dark site background. */
+.home-intro .outline {
+  color: #f3f6ef;
+  border-color: var(--empire-gold);
+}
+
+.home-intro .outline:hover,
+.home-intro .outline:focus-visible {
+  color: var(--empire-deep);
+  background: var(--empire-gold);
+}
