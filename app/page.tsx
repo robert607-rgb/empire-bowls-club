@@ -97,6 +97,8 @@ function openEmpireEnquiry(data: FormData) {
     `Sent via the ${EMPIRE_CLUB_NAME} website.`,
   ].join("\n");
   const subject = `Website Enquiry – ${EMPIRE_CLUB_NAME}`;
+  (window as Window & { websiteUsageTrackGoal?: (goalName: string) => void })
+    .websiteUsageTrackGoal?.("email-handoff");
   window.location.href = `mailto:${EMPIRE_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -1615,7 +1617,7 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
               stevewebster@btinternet.com
             </a>
           </div>
-          <form onSubmit={submitEnquiry}>
+          <form onSubmit={submitEnquiry} data-usage-goal="email-handoff" data-usage-ignore="true">
             <label>
               Name
               <input required name="name" />
@@ -1701,7 +1703,7 @@ function ContactPage() {
             </a>
           </div>
         </div>
-        <form className="contact-form" onSubmit={submitContact}>
+        <form className="contact-form" onSubmit={submitContact} data-usage-goal="email-handoff" data-usage-ignore="true">
           <p className="eyebrow">Send an enquiry</p>
           <h2>Talk to the club.</h2>
           <p className="form-intro">

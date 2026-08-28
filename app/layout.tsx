@@ -108,7 +108,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://britainfromabove.org.uk" />
       </head>
       <body className="antialiased">
-        <script async src="https://website-usage-dashboard.robert607.chatgpt.site/usage-tracker.js?v=3" data-site="empire-bowls-club" />
+        <script async src="https://website-usage-dashboard.robert607.chatgpt.site/usage-tracker.js?v=4" data-site="empire-bowls-club" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(clubSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         {children}
