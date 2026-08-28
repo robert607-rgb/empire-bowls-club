@@ -737,8 +737,11 @@ function AboutPage() {
               </p>
 
               <div className="heritage-timeline" aria-label="Empire heritage timeline">
-                <article className="heritage-event">
-                  <time dateTime="1908">1908</time>
+                <article className="heritage-event heritage-era-wood">
+                  <time dateTime="1908">
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">1908</span>
+                  </time>
                   <div>
                     <h4>Paper production begins</h4>
                     <p>
@@ -747,8 +750,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time dateTime="1910">1910</time>
+                <article className="heritage-event heritage-era-early">
+                  <time dateTime="1910">
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">1910</span>
+                  </time>
                   <div>
                     <h4>The lawn bowls section is formed</h4>
                     <p>
@@ -758,8 +764,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time dateTime="1919">1919</time>
+                <article className="heritage-event heritage-era-painted">
+                  <time dateTime="1919">
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">1919</span>
+                  </time>
                   <div>
                     <h4>The Empire name is adopted</h4>
                     <p>
@@ -770,8 +779,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time dateTime="1952">1952</time>
+                <article className="heritage-event heritage-era-midcentury">
+                  <time dateTime="1952">
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">1952</span>
+                  </time>
                   <div>
                     <h4>A changing paper industry</h4>
                     <p>
@@ -780,8 +792,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time>Early 1990s</time>
+                <article className="heritage-event heritage-era-late">
+                  <time>
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">Early 1990s</span>
+                  </time>
                   <div>
                     <h4>The mill closes — but the bowls club survives</h4>
                     <p>
@@ -795,8 +810,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time dateTime="2005-04-25">2005</time>
+                <article className="heritage-event heritage-era-early-modern">
+                  <time dateTime="2005-04-25">
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">2005</span>
+                  </time>
                   <div>
                     <h4>Empire Bowls Club Limited</h4>
                     <p>
@@ -814,8 +832,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time dateTime="2016">2016</time>
+                <article className="heritage-event heritage-era-contemporary">
+                  <time dateTime="2016">
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">2016</span>
+                  </time>
                   <div>
                     <h4>The sports ground changes around it</h4>
                     <p>
@@ -827,8 +848,11 @@ function AboutPage() {
                     </p>
                   </div>
                 </article>
-                <article className="heritage-event">
-                  <time>Today</time>
+                <article className="heritage-event heritage-era-modern">
+                  <time>
+                    <span className="era-bowl" aria-hidden="true" />
+                    <span className="heritage-date">Today</span>
+                  </time>
                   <div>
                     <h4>The Empire story continues</h4>
                     <p>

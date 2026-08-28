@@ -3850,3 +3850,79 @@ body {
     font-size: 10px;
   }
 }
+
+/* Let the heritage markers move from the wooden bowls of the mill era to a
+   bright modern bowl, while keeping every date centred and readable. */
+.heritage-event time {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #fffdf7;
+}
+
+.heritage-event time::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.3), transparent 54%);
+  pointer-events: none;
+}
+
+.era-bowl {
+  position: absolute;
+  inset: 2px;
+  z-index: 0;
+  display: block;
+  background-image: url("/optimized/empire-bowl-era-sprite.webp");
+  background-repeat: no-repeat;
+  background-size: 400% 200%;
+  transform: scale(1.18);
+  opacity: 0.25;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.heritage-date {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  max-width: calc(100% - 6px);
+  min-height: 22px;
+  padding: 3px 4px;
+  color: #092d5d;
+  background: rgba(255, 253, 247, 0.7);
+  border-radius: 999px;
+  box-shadow: 0 1px 4px rgba(7, 31, 51, 0.08);
+  line-height: 1.12;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.heritage-era-wood time { border-color: #b78a42; }
+.heritage-era-early time { border-color: #9a773e; }
+.heritage-era-painted time { border-color: #7c8d4a; }
+.heritage-era-midcentury time { border-color: #4e8a6e; }
+.heritage-era-late time { border-color: #2e7b6e; }
+.heritage-era-early-modern time { border-color: #278b82; }
+.heritage-era-contemporary time { border-color: #1e7291; }
+.heritage-era-modern time {
+  border-color: #1b9a8b;
+  box-shadow: 0 0 0 3px rgba(27, 154, 139, 0.1), 0 5px 12px rgba(7, 31, 51, 0.12);
+}
+
+.heritage-era-wood .era-bowl { background-position: 0% 0%; opacity: 0.42; }
+.heritage-era-early .era-bowl { background-position: 33.333% 0%; opacity: 0.39; }
+.heritage-era-painted .era-bowl { background-position: 66.667% 0%; opacity: 0.36; }
+.heritage-era-midcentury .era-bowl { background-position: 100% 0%; opacity: 0.4; }
+.heritage-era-late .era-bowl { background-position: 0% 100%; opacity: 0.48; }
+.heritage-era-early-modern .era-bowl { background-position: 33.333% 100%; opacity: 0.56; }
+.heritage-era-contemporary .era-bowl { background-position: 66.667% 100%; opacity: 0.64; }
+.heritage-era-modern .era-bowl { background-position: 100% 100%; opacity: 0.78; }
+
+@media (max-width: 480px) {
+  .era-bowl { inset: 1px; transform: scale(1.16); }
+  .heritage-date { min-height: 19px; padding: 2px 3px; }
+}
