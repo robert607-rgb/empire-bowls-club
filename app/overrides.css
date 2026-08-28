@@ -3126,9 +3126,13 @@ body {
   overflow: visible;
   background: transparent;
   border: 0;
+  align-items: stretch;
 }
 
 .home-facts article {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
   min-height: 122px;
   border: 1px solid rgba(198, 224, 220, 0.22);
   border-top: 4px solid var(--empire-gold);
@@ -3139,11 +3143,6 @@ body {
 
 .home-facts article:nth-child(3n) {
   border-top-color: #8bd2a7;
-}
-
-.home-facts article:nth-child(2),
-.home-facts article:nth-child(5) {
-  transform: translateY(12px);
 }
 
 .home-facts strong {
