@@ -12,6 +12,7 @@ import {
 type MemberRow = {
   id: number;
   name: string;
+  date_of_birth: string | null;
   address: string;
   phone: string;
   email: string;
@@ -23,7 +24,12 @@ function mapMember(member: MemberRow, includeAddress: boolean) {
   return {
     id: member.id,
     name: member.name,
-    ...(includeAddress ? { address: member.address } : {}),
+    ...(includeAddress
+      ? {
+          address: member.address,
+          dateOfBirth: member.date_of_birth ?? "",
+        }
+      : {}),
     phone: member.phone,
     email: member.email,
     membershipType: member.membership_type,
@@ -33,6 +39,7 @@ function mapMember(member: MemberRow, includeAddress: boolean) {
 
 function readMember(input: Record<string, unknown>) {
   const name = cleanText(input.name, 120);
+  const dateOfBirth = cleanText(input.dateOfBirth, 10);
   const address = cleanText(input.address, 500);
   const phone = cleanText(input.phone, 40);
   const email = cleanText(input.email, 160);
@@ -42,10 +49,23 @@ function readMember(input: Record<string, unknown>) {
       : input.membershipType === "Full member"
         ? "Full member"
         : "";
-  return { name, address, phone, email, membershipType };
+  return { name, dateOfBirth, address, phone, email, membershipType };
 }
 
-function validateMember(member: ReturnType<typeof readMember>) {
+function isValidDateOfBirth(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T12:00:00`);
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value &&
+    value <= new Date().toISOString().slice(0, 10)
+  );
+}
+
+function validateMember(
+  member: ReturnType<typeof readMember>,
+  requireDateOfBirth = false,
+) {
   if (
     !member.name ||
     !member.address ||
@@ -58,6 +78,9 @@ function validateMember(member: ReturnType<typeof readMember>) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(member.email)) {
     return "Please enter a valid email address.";
   }
+  if ((requireDateOfBirth && !member.dateOfBirth) || (member.dateOfBirth && !isValidDateOfBirth(member.dateOfBirth))) {
+    return "Please enter a valid date of birth.";
+  }
   return "";
 }
 
@@ -68,7 +91,7 @@ export async function GET(request: Request) {
     const db = await getEmpireDatabase();
     const result = await db
       .prepare(
-        "SELECT id, name, address, phone, email, membership_type, created_at FROM empire_members ORDER BY name COLLATE NOCASE ASC",
+        "SELECT id, name, date_of_birth, address, phone, email, membership_type, created_at FROM empire_members ORDER BY name COLLATE NOCASE ASC",
       )
       .all<MemberRow>();
     return Response.json(
@@ -91,7 +114,7 @@ export async function POST(request: Request) {
   }
   try {
     const member = readMember(await readJson(request));
-    const validationError = validateMember(member);
+    const validationError = validateMember(member, true);
     if (validationError) {
       return Response.json({ error: validationError }, { status: 400 });
     }
@@ -99,10 +122,11 @@ export async function POST(request: Request) {
     const createdAt = new Date().toISOString();
     const result = await db
       .prepare(
-        "INSERT INTO empire_members (name, address, phone, email, membership_type, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO empire_members (name, date_of_birth, address, phone, email, membership_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
         member.name,
+        member.dateOfBirth,
         member.address,
         member.phone,
         member.email,
@@ -116,6 +140,7 @@ export async function POST(request: Request) {
           {
             id: Number(result.meta.last_row_id),
             name: member.name,
+            date_of_birth: member.dateOfBirth,
             address: member.address,
             phone: member.phone,
             email: member.email,
@@ -150,18 +175,20 @@ export async function PUT(request: Request) {
     }
     const db = await getEmpireDatabase();
     const current = await db
-      .prepare("SELECT id, name, address, phone, email, membership_type, created_at FROM empire_members WHERE id = ?")
+      .prepare("SELECT id, name, date_of_birth, address, phone, email, membership_type, created_at FROM empire_members WHERE id = ?")
       .bind(id)
       .first<MemberRow>();
     if (!current) {
       return Response.json({ error: "That member no longer exists." }, { status: 404 });
     }
+    const dateOfBirth = member.dateOfBirth || current.date_of_birth || null;
     await db
       .prepare(
-        "UPDATE empire_members SET name = ?, address = ?, phone = ?, email = ?, membership_type = ? WHERE id = ?",
+        "UPDATE empire_members SET name = ?, date_of_birth = ?, address = ?, phone = ?, email = ?, membership_type = ? WHERE id = ?",
       )
       .bind(
         member.name,
+        dateOfBirth,
         member.address,
         member.phone,
         member.email,
@@ -174,6 +201,7 @@ export async function PUT(request: Request) {
         {
           ...current,
           name: member.name,
+          date_of_birth: dateOfBirth,
           address: member.address,
           phone: member.phone,
           email: member.email,

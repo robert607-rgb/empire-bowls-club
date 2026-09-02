@@ -1,0 +1,1 @@
+ALTER TABLE `empire_members` ADD `date_of_birth` text;

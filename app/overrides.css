@@ -426,11 +426,11 @@
 }
 .member-table th:nth-child(1),
 .member-table td:nth-child(1) {
-  width: 20%;
+  width: 16%;
 }
 .member-table th:nth-child(2),
 .member-table td:nth-child(2) {
-  width: 18%;
+  width: 15%;
 }
 .member-table th:nth-child(3),
 .member-table td:nth-child(3) {
@@ -438,11 +438,15 @@
 }
 .member-table th:nth-child(4),
 .member-table td:nth-child(4) {
-  width: 37%;
+  width: 15%;
+}
+.member-table th:nth-child(5),
+.member-table td:nth-child(5) {
+  width: 28%;
 }
 .member-table th:last-child,
 .member-table td:last-child {
-  width: 10%;
+  width: 11%;
   white-space: nowrap;
 }
 .member-table td:last-child {
@@ -4276,6 +4280,25 @@ body {
 .news-load-error {
   color: #ffd5d8;
   font-size: 13px;
+}
+
+/* Private dashboard controls sit on Empire's deep-blue surface, so give them
+   a dedicated light foreground instead of inheriting public-page button text. */
+.zone-shell .zone-head .outline {
+  color: #f7f5ed;
+  background: rgba(6, 39, 97, 0.52);
+  border-color: var(--empire-gold);
+}
+
+.zone-shell .zone-head .outline:hover,
+.zone-shell .zone-head .outline:focus-visible {
+  color: var(--empire-deep);
+  background: var(--empire-gold);
+}
+
+.admin-zone > .security-card {
+  min-height: 0;
+  margin-top: 28px;
 }
 
 @media (max-width: 680px) {

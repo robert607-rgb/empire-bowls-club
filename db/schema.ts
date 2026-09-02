@@ -8,6 +8,7 @@ import {
 export const empireMembers = sqliteTable("empire_members", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
+  dateOfBirth: text("date_of_birth"),
   address: text("address").notNull(),
   phone: text("phone").notNull(),
   email: text("email").notNull(),

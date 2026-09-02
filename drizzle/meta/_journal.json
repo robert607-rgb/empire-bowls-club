@@ -22,6 +22,13 @@
       "when": 1786976979168,
       "tag": "0002_dark_zeigeist",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1788372457755,
+      "tag": "0003_first_the_initiative",
+      "breakpoints": true
     }
   ]
 }

@@ -28,6 +28,7 @@ type Booking = {
 type Member = {
   id: number;
   name: string;
+  dateOfBirth?: string;
   address?: string;
   phone: string;
   email: string;
@@ -2563,6 +2564,7 @@ function AdminMemberOverview({
                 <tr>
                   <th>Name</th>
                   <th>Membership</th>
+                  <th>Date of birth</th>
                   <th>Date joined</th>
                   <th>Contact</th>
                   <th>
@@ -2584,6 +2586,7 @@ function AdminMemberOverview({
                           {member.membershipType}
                         </span>
                       </td>
+                      <td>{formatDateOfBirth(member.dateOfBirth)}</td>
                       <td>{formatJoinedDate(member.createdAt)}</td>
                       <td>
                         <a href={`mailto:${member.email}`}>{member.email}</a>
@@ -2613,7 +2616,7 @@ function AdminMemberOverview({
                     </tr>
                     {editing?.id === member.id && (
                       <tr className="member-edit-row">
-                        <td colSpan={5}>
+                        <td colSpan={6}>
                           <form onSubmit={update}>
                             <div className="member-edit-heading">
                               <b>Edit {member.name}</b>
@@ -2653,6 +2656,18 @@ function AdminMemberOverview({
                                   <option>Full member</option>
                                   <option>Social member</option>
                                 </select>
+                              </label>
+                              <label>
+                                Date of birth
+                                <input
+                                  name="dateOfBirth"
+                                  type="date"
+                                  value={editing.dateOfBirth ?? ""}
+                                  onChange={(event) =>
+                                    setEditing({ ...editing, dateOfBirth: event.target.value })
+                                  }
+                                  max={today()}
+                                />
                               </label>
                             </div>
                             <label>
@@ -3115,6 +3130,19 @@ function formatJoinedDate(value: string) {
         year: "numeric",
       }).format(parsed);
 }
+
+function formatDateOfBirth(value?: string) {
+  if (!value) return "—";
+  const parsed = new Date(`${value}T12:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? "—"
+    : new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(parsed);
+}
+
 function SecuritySettings({
   onMessage,
   onAccessRevoked,
@@ -3609,6 +3637,10 @@ function AdminZone({
           </label>
           <div className="form-columns">
             <label>
+              Date of birth
+              <input name="dateOfBirth" type="date" required max={today()} />
+            </label>
+            <label>
               Phone number
               <input name="phone" type="tel" required maxLength={40} />
             </label>
@@ -3694,16 +3726,16 @@ function AdminZone({
             Publish to members area
           </button>
         </form>
-        <SecuritySettings
-          onAccessRevoked={onLeave}
-          onMessage={(nextMessage) => {
-            setError("");
-            setMessage(nextMessage);
-          }}
-        />
       </div>
       <NewsAdminPanel
         password={password}
+        onMessage={(nextMessage) => {
+          setError("");
+          setMessage(nextMessage);
+        }}
+      />
+      <SecuritySettings
+        onAccessRevoked={onLeave}
         onMessage={(nextMessage) => {
           setError("");
           setMessage(nextMessage);
