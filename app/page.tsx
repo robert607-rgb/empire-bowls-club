@@ -1514,6 +1514,15 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
   return (
     <section className="play-page">
       <section className="play-hero">
+        <img
+          className="play-hero-image"
+          src="/optimized/club/empire-bowl-action.webp"
+          alt="An Empire Bowls Club member delivering a bowl during a match"
+          width={1200}
+          height={794}
+          fetchPriority="high"
+          decoding="async"
+        />
         <div className="wrap">
           <p className="eyebrow">Play bowls at Empire</p>
           <h1>
@@ -1568,6 +1577,20 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
             </p>
           </article>
         </div>
+        <figure className="play-action-feature">
+          <img
+            src="/optimized/club/empire-bowl-action-crowd.webp"
+            alt="An Empire Bowls Club player sending a bowl down the green, with fellow members watching"
+            width={1200}
+            height={794}
+            loading="lazy"
+            decoding="async"
+          />
+          <figcaption>
+            <span>Empire in action</span>
+            <strong>There is always someone nearby to help you find your line.</strong>
+          </figcaption>
+        </figure>
         <div className="first-visit">
           <div>
             <p className="eyebrow">Your first session</p>

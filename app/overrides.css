@@ -2899,9 +2899,91 @@ body {
 }
 
 .play-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #12385f;
+}
+
+.play-hero::before {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
   background:
     radial-gradient(circle at 78% 24%, rgba(228, 184, 44, 0.95) 0 5px, transparent 6px),
-    linear-gradient(122deg, #12385f 0%, #236d96 58%, #1c6b58 120%);
+    linear-gradient(90deg, rgba(5, 25, 59, 0.97) 0%, rgba(8, 47, 77, 0.88) 44%, rgba(9, 56, 73, 0.42) 100%);
+  content: "";
+}
+
+.play-hero-image {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 58%;
+}
+
+.play-hero > .wrap {
+  position: relative;
+  z-index: 2;
+}
+
+.play-action-feature {
+  position: relative;
+  min-height: 410px;
+  margin: 0 0 78px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 5px 38px 5px 38px;
+  background: #12385f;
+  box-shadow: 0 20px 38px rgba(5, 28, 48, 0.22);
+}
+
+.play-action-feature::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(5, 25, 59, 0.91) 0%, rgba(6, 39, 97, 0.48) 48%, rgba(6, 39, 97, 0.06) 100%);
+  content: "";
+}
+
+.play-action-feature img {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 54%;
+}
+
+.play-action-feature figcaption {
+  position: absolute;
+  z-index: 2;
+  left: clamp(24px, 5vw, 64px);
+  bottom: clamp(25px, 5vw, 58px);
+  max-width: 510px;
+  color: #fff;
+}
+
+.play-action-feature span,
+.play-action-feature strong {
+  display: block;
+}
+
+.play-action-feature span {
+  margin-bottom: 12px;
+  color: var(--empire-gold);
+  font: 800 11px Arial, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.play-action-feature strong {
+  font: 800 clamp(30px, 4.2vw, 52px)/1.02 Georgia, serif;
+  letter-spacing: -0.035em;
 }
 
 .news-ribbon {
@@ -4197,6 +4279,37 @@ body {
 }
 
 @media (max-width: 680px) {
+  .play-hero {
+    min-height: 500px;
+    display: grid;
+    align-items: end;
+  }
+
+  .play-hero::before {
+    background:
+      linear-gradient(180deg, rgba(5, 25, 59, 0.68) 0%, rgba(5, 25, 59, 0.93) 72%, rgba(5, 25, 59, 0.98) 100%);
+  }
+
+  .play-hero-image {
+    object-position: 58% center;
+  }
+
+  .play-action-feature {
+    min-height: 325px;
+    margin-bottom: 54px;
+    border-radius: 5px 28px 5px 28px;
+  }
+
+  .play-action-feature::after {
+    background: linear-gradient(180deg, rgba(5, 25, 59, 0.04) 0%, rgba(5, 25, 59, 0.92) 100%);
+  }
+
+  .play-action-feature figcaption {
+    left: 24px;
+    right: 24px;
+    bottom: 25px;
+  }
+
   .admin-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
