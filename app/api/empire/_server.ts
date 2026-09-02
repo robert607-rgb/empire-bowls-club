@@ -250,6 +250,18 @@ export async function getEmpireDatabase() {
         content_type TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_team_sheets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        opponent TEXT NOT NULL,
+        competition TEXT NOT NULL,
+        match_date TEXT NOT NULL,
+        rink_count INTEGER NOT NULL,
+        rinks_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      runtime.DB.prepare(
+        "CREATE INDEX IF NOT EXISTS idx_empire_team_sheets_date ON empire_team_sheets (match_date)",
+      ),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_access_accounts (
         access TEXT PRIMARY KEY,
         salt TEXT NOT NULL,

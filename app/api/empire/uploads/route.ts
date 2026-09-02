@@ -11,7 +11,7 @@ import {
   unauthorized,
 } from "../_server";
 
-const categories = new Set(["team_sheet", "club_document", "players_required"]);
+const categories = new Set(["club_document"]);
 const allowedExtensions = new Set([
   "pdf",
   "doc",
@@ -81,7 +81,7 @@ function validateDraft(draft: UploadDraft, requiresFile: boolean) {
     !draft.title ||
     (requiresFile && !draft.file)
   ) {
-    return "Please select a file, title and update type.";
+    return "Please select a club document, title and file.";
   }
   if (draft.file) {
     const extension = draft.file.name.split(".").pop()?.toLowerCase() ?? "";

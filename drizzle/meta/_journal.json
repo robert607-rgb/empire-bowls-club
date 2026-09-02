@@ -29,6 +29,13 @@
       "when": 1788372457755,
       "tag": "0003_first_the_initiative",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788373625637,
+      "tag": "0004_messy_baron_strucker",
+      "breakpoints": true
     }
   ]
 }

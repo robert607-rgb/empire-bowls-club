@@ -43,6 +43,36 @@ type ClubFile = {
   fileName: string;
   createdAt: string;
 };
+const teamFormats = {
+  Singles: ["Player"],
+  Pairs: ["Lead", "Skip"],
+  Triples: ["Lead", "Second", "Skip"],
+  Fours: ["Lead", "Second", "Third", "Skip"],
+} as const;
+type TeamFormat = keyof typeof teamFormats;
+type TeamSheetPlayer = {
+  memberId: number;
+  name: string;
+  position: string;
+};
+type TeamSheetRink = {
+  rink: number;
+  format: TeamFormat;
+  players: TeamSheetPlayer[];
+};
+type TeamSheet = {
+  id: number;
+  opponent: string;
+  competition: string;
+  matchDate: string;
+  rinkCount: number;
+  createdAt: string;
+  rinks: TeamSheetRink[];
+};
+type TeamSheetDraftRink = {
+  format: TeamFormat;
+  memberIds: Array<number | null>;
+};
 type NewsItem = {
   id: number;
   title: string;
@@ -1922,6 +1952,7 @@ function MemberZone({
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [files, setFiles] = useState<ClubFile[]>([]);
+  const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
   const [selected, setSelected] = useState<{
     rink: number;
     slot: string;
@@ -1935,17 +1966,24 @@ function MemberZone({
   const headers = useMemo(() => apiHeaders("member", password), [password]);
   const refresh = useCallback(async () => {
     try {
-      const [bookingResponse, memberResponse, fileResponse] = await Promise.all([
+      const [bookingResponse, memberResponse, fileResponse, teamSheetResponse] = await Promise.all([
         fetch(`/api/empire/bookings?date=${date}`, { headers }),
         fetch("/api/empire/members", { headers }),
         fetch("/api/empire/uploads", { headers }),
+        fetch("/api/empire/team-sheets", { headers }),
       ]);
-      if (!bookingResponse.ok || !memberResponse.ok || !fileResponse.ok) {
+      if (
+        !bookingResponse.ok ||
+        !memberResponse.ok ||
+        !fileResponse.ok ||
+        !teamSheetResponse.ok
+      ) {
         throw new Error("Member data request failed");
       }
       setBookings((await bookingResponse.json()).bookings ?? []);
       setMembers((await memberResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
+      setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
       setError("");
     } catch {
       setError("We could not refresh the members area. Please try again.");
@@ -2177,11 +2215,9 @@ function MemberZone({
       </div>
       {memberTab === "club" ? (
         <section className="member-content">
-          <InfoList
-            title="Team sheets"
-            description="The latest match selections published by the committee."
-            files={group("team_sheet")}
-            password={password}
+          <TeamSheetsPanel
+            sheets={teamSheets}
+            legacyFiles={group("team_sheet")}
           />
           <InfoList
             title="Players required"
@@ -2363,6 +2399,99 @@ function PlayerRequestBoard({ password }: { password: string }) {
     </article>
   );
 }
+
+function TeamSheetsPanel({
+  sheets,
+  legacyFiles,
+}: {
+  sheets: TeamSheet[];
+  legacyFiles: ClubFile[];
+}) {
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  return (
+    <article className="info-list team-sheets-panel">
+      <h2>Team sheets</h2>
+      <p>
+        Match selections from the captains. Open a match to check the teams and
+        see whether you are playing.
+      </p>
+      {sheets.length ? (
+        <div className="team-sheet-list">
+          {sheets.map((sheet) => {
+            const open = selectedId === sheet.id;
+            return (
+              <section className="team-sheet-item" key={sheet.id}>
+                <button
+                  className="team-sheet-card"
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() => setSelectedId(open ? null : sheet.id)}
+                >
+                  <span className="team-sheet-card-kicker">{sheet.competition}</span>
+                  <b>Empire v {sheet.opponent}</b>
+                  <span>
+                    {displayDate(sheet.matchDate)} · {sheet.rinkCount} rink
+                    {sheet.rinkCount === 1 ? "" : "s"}
+                  </span>
+                  <small>{open ? "Hide team" : "View team"}</small>
+                </button>
+                {open && (
+                  <div className="team-sheet-detail">
+                    <h3>Selected teams</h3>
+                    <div className="team-sheet-rink-list">
+                      {sheet.rinks.map((rink) => (
+                        <section className="team-sheet-rink" key={rink.rink}>
+                          <div className="team-sheet-rink-head">
+                            <b>Rink {rink.rink}</b>
+                            <span>{rink.format}</span>
+                          </div>
+                          <ul>
+                            {rink.players.map((player) => (
+                              <li key={`${rink.rink}-${player.position}`}>
+                                <span>{player.position}</span>
+                                <b>{player.name}</b>
+                              </li>
+                            ))}
+                          </ul>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="empty">No match team sheets have been published yet.</p>
+      )}
+      {legacyFiles.length ? (
+        <div className="legacy-team-sheets">
+          <b>Earlier uploaded team sheets</b>
+          <ul>
+            {legacyFiles.map((file) => (
+              <li key={file.id}>
+                <div>
+                  <b>{file.title}</b>
+                  <span>{file.description || file.fileName}</span>
+                </div>
+                <a
+                  className="open-file"
+                  href={`/api/empire/uploads/${file.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function InfoList({
   title,
   description,
@@ -2731,7 +2860,283 @@ function AdminMemberOverview({
   );
 }
 
-function AdminUploadOverview({
+function AdminTeamSheetManager({
+  members,
+  sheets,
+  password,
+  onChange,
+  onMessage,
+}: {
+  members: Member[];
+  sheets: TeamSheet[];
+  password: string;
+  onChange: (sheets: TeamSheet[]) => void;
+  onMessage: (message: string) => void;
+}) {
+  const blankRink = (format: TeamFormat = "Fours"): TeamSheetDraftRink => ({
+    format,
+    memberIds: Array.from({ length: teamFormats[format].length }, () => null),
+  });
+  const [opponent, setOpponent] = useState("");
+  const [competition, setCompetition] = useState("");
+  const [matchDate, setMatchDate] = useState(today());
+  const [rinkCount, setRinkCount] = useState(1);
+  const [rinks, setRinks] = useState<TeamSheetDraftRink[]>([blankRink()]);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const orderedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name));
+  const assignedMemberIds = new Set(
+    rinks.flatMap((rink) => rink.memberIds).filter((id): id is number => id !== null),
+  );
+  const reset = () => {
+    setOpponent("");
+    setCompetition("");
+    setMatchDate(today());
+    setRinkCount(1);
+    setRinks([blankRink()]);
+  };
+  const changeRinkCount = (nextCount: number) => {
+    setRinkCount(nextCount);
+    setRinks((current) =>
+      Array.from({ length: nextCount }, (_, index) => current[index] ?? blankRink()),
+    );
+  };
+  const changeFormat = (rinkIndex: number, format: TeamFormat) => {
+    setRinks((current) =>
+      current.map((rink, index) =>
+        index === rinkIndex
+          ? {
+              format,
+              memberIds: Array.from(
+                { length: teamFormats[format].length },
+                (_, position) => rink.memberIds[position] ?? null,
+              ),
+            }
+          : rink,
+      ),
+    );
+  };
+  const changePlayer = (rinkIndex: number, position: number, value: string) => {
+    setRinks((current) =>
+      current.map((rink, index) => {
+        if (index !== rinkIndex) return rink;
+        const memberIds = [...rink.memberIds];
+        memberIds[position] = value ? Number(value) : null;
+        return { ...rink, memberIds };
+      }),
+    );
+  };
+  const publish = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      const response = await fetch("/api/empire/team-sheets", {
+        method: "POST",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          opponent,
+          competition,
+          matchDate,
+          rinkCount,
+          rinks: rinks.map((rink) => ({
+            format: rink.format,
+            memberIds: rink.memberIds.map((memberId) => memberId ?? 0),
+          })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The team sheet could not be published.");
+        return;
+      }
+      onChange(
+        [...sheets, result.sheet].sort(
+          (a, b) =>
+            new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime(),
+        ),
+      );
+      reset();
+      onMessage(
+        `Team sheet for Empire v ${result.sheet.opponent} has been published for members.`,
+      );
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The team sheet could not be published. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const remove = async (sheet: TeamSheet) => {
+    if (!window.confirm(`Remove the team sheet for Empire v ${sheet.opponent}?`)) return;
+    setError("");
+    try {
+      const response = await fetch("/api/empire/team-sheets", {
+        method: "DELETE",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ id: sheet.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The team sheet could not be removed.");
+        return;
+      }
+      onChange(sheets.filter((item) => item.id !== sheet.id));
+      onMessage(`Team sheet for Empire v ${sheet.opponent} has been removed.`);
+      notifyEmpireDataUpdated();
+    } catch {
+      setError("The team sheet could not be removed. Please try again.");
+    }
+  };
+  return (
+    <section className="team-sheet-admin">
+      <div className="admin-section-heading">
+        <div>
+          <p className="eyebrow">Match selection</p>
+          <h2>Create and publish a team sheet</h2>
+          <p>
+            Choose the match and use the member directory to place players in
+            every rink.
+          </p>
+        </div>
+        <span className="members-count">{sheets.length} published</span>
+      </div>
+      <form className="team-sheet-builder" onSubmit={publish}>
+        <div className="form-columns">
+          <label>
+            Opponent
+            <input
+              value={opponent}
+              onChange={(event) => setOpponent(event.target.value)}
+              placeholder="e.g. Greenhithe BC"
+              required
+              maxLength={160}
+            />
+          </label>
+          <label>
+            League or competition
+            <input
+              value={competition}
+              onChange={(event) => setCompetition(event.target.value)}
+              placeholder="e.g. North West Kent League"
+              required
+              maxLength={160}
+            />
+          </label>
+          <label>
+            Match date
+            <input
+              type="date"
+              value={matchDate}
+              onChange={(event) => setMatchDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Number of rinks
+            <select
+              value={rinkCount}
+              onChange={(event) => changeRinkCount(Number(event.target.value))}
+            >
+              {[1, 2, 3, 4, 5, 6].map((count) => (
+                <option key={count} value={count}>
+                  {count}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="team-sheet-rinks">
+          {rinks.map((rink, rinkIndex) => (
+            <section className="team-sheet-rink" key={rinkIndex}>
+              <div className="team-sheet-rink-head">
+                <b>Rink {rinkIndex + 1}</b>
+                <label>
+                  Format
+                  <select
+                    value={rink.format}
+                    onChange={(event) =>
+                      changeFormat(rinkIndex, event.target.value as TeamFormat)
+                    }
+                  >
+                    {Object.keys(teamFormats).map((format) => (
+                      <option key={format}>{format}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="team-sheet-player-grid">
+                {teamFormats[rink.format].map((position, positionIndex) => (
+                  <label key={position}>
+                    {position}
+                    <select
+                      value={rink.memberIds[positionIndex] ?? ""}
+                      onChange={(event) =>
+                        changePlayer(rinkIndex, positionIndex, event.target.value)
+                      }
+                    >
+                      <option value="">Choose a member</option>
+                      {orderedMembers.map((member) => (
+                        <option
+                          key={member.id}
+                          value={member.id}
+                          disabled={
+                            assignedMemberIds.has(member.id) &&
+                            rink.memberIds[positionIndex] !== member.id
+                          }
+                        >
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+        {!members.length && (
+          <p className="form-note">
+            Add members to the directory before building a team sheet.
+          </p>
+        )}
+        {error && <Status type="error" message={error} />}
+        <button className="primary" type="submit" disabled={saving || !members.length}>
+          {saving ? "Publishing team sheet…" : "Publish team sheet"}
+        </button>
+      </form>
+      {sheets.length ? (
+        <div className="published-team-sheets">
+          {sheets.map((sheet) => (
+            <article key={sheet.id}>
+              <div>
+                <b>Empire v {sheet.opponent}</b>
+                <span>
+                  {sheet.competition} · {displayDate(sheet.matchDate)}
+                </span>
+              </div>
+              <button
+                className="remove-member"
+                type="button"
+                onClick={() => void remove(sheet)}
+              >
+                Remove
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function AdminDocumentOverview({
   files,
   password,
   onChange,
@@ -2802,14 +3207,14 @@ function AdminUploadOverview({
   return (
     <details className="admin-files-tab" open>
       <summary>
-        <span className="eyebrow">Published files</span>
-        <b>Members area updates</b>
-        <span className="members-count">{files.length} files</span>
+        <span className="eyebrow">Club documents</span>
+        <b>Published documents</b>
+        <span className="members-count">{files.length} documents</span>
       </summary>
       <div className="admin-files-panel">
         <p className="admin-panel-help">
-          Edit a title or replace a file and the members area will use the new
-          version immediately.
+          Edit a title or replace a club document and the members area will use
+          the new version immediately.
         </p>
         {editing && (
           <form className="file-edit-form" onSubmit={save}>
@@ -2823,37 +3228,19 @@ function AdminUploadOverview({
                 Cancel
               </button>
             </div>
-            <div className="form-columns">
-              <label>
-                Type of update
-                <select
-                  name="category"
-                  value={editing.category}
-                  onChange={(event) =>
-                    setEditing({
-                      ...editing,
-                      category: event.target.value as ClubFile["category"],
-                    })
-                  }
-                >
-                  <option value="team_sheet">Team sheet</option>
-                  <option value="club_document">Club document</option>
-                  <option value="players_required">Players required file</option>
-                </select>
-              </label>
-              <label>
-                Title
-                <input
-                  name="title"
-                  value={editing.title}
-                  onChange={(event) =>
-                    setEditing({ ...editing, title: event.target.value })
-                  }
-                  required
-                  maxLength={160}
-                />
-              </label>
-            </div>
+            <input type="hidden" name="category" value="club_document" />
+            <label>
+              Title
+              <input
+                name="title"
+                value={editing.title}
+                onChange={(event) =>
+                  setEditing({ ...editing, title: event.target.value })
+                }
+                required
+                maxLength={160}
+              />
+            </label>
             <label>
               Short description
               <textarea
@@ -2887,7 +3274,7 @@ function AdminUploadOverview({
                 <div>
                   <b>{file.title}</b>
                   <span>
-                    {file.category.replaceAll("_", " ")} · {file.fileName}
+                    {file.fileName}
                   </span>
                   {file.description && <small>{file.description}</small>}
                 </div>
@@ -2912,7 +3299,7 @@ function AdminUploadOverview({
             ))}
           </div>
         ) : (
-          <p className="empty">No files have been published yet.</p>
+          <p className="empty">No club documents have been published yet.</p>
         )}
       </div>
     </details>
@@ -3470,20 +3857,23 @@ function AdminZone({
 }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [files, setFiles] = useState<ClubFile[]>([]);
+  const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
   const refresh = useCallback(async () => {
     try {
-      const [memberResponse, fileResponse] = await Promise.all([
+      const [memberResponse, fileResponse, teamSheetResponse] = await Promise.all([
         fetch("/api/empire/members", { headers }),
         fetch("/api/empire/uploads", { headers }),
+        fetch("/api/empire/team-sheets", { headers }),
       ]);
-      if (!memberResponse.ok || !fileResponse.ok) {
+      if (!memberResponse.ok || !fileResponse.ok || !teamSheetResponse.ok) {
         throw new Error("Admin data request failed");
       }
       setMembers((await memberResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
+      setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
     } catch {
       setError("We could not load the admin records. Please try again.");
     }
@@ -3574,8 +3964,8 @@ function AdminZone({
           <p className="eyebrow">Admin Zone</p>
           <h1>Keep the club informed.</h1>
           <p>
-            Add members, upload club information and create live player sign-up
-            sheets.
+            Add members, publish team selections and keep club documents up to
+            date.
           </p>
         </div>
         <button className="outline" type="button" onClick={onLeave}>
@@ -3589,7 +3979,7 @@ function AdminZone({
         </article>
         <article>
           <span>Team sheets</span>
-          <b>{files.filter((file) => file.category === "team_sheet").length}</b>
+          <b>{teamSheets.length}</b>
         </article>
         <article>
           <span>Club documents</span>
@@ -3607,10 +3997,25 @@ function AdminZone({
           setMessage(nextMessage);
         }}
       />
-      <AdminUploadOverview
-        files={files}
+      <AdminTeamSheetManager
+        members={members}
+        sheets={teamSheets}
         password={password}
-        onChange={setFiles}
+        onChange={setTeamSheets}
+        onMessage={(nextMessage) => {
+          setError("");
+          setMessage(nextMessage);
+        }}
+      />
+      <AdminDocumentOverview
+        files={files.filter((file) => file.category === "club_document")}
+        password={password}
+        onChange={(documents) =>
+          setFiles((current) => [
+            ...current.filter((file) => file.category !== "club_document"),
+            ...documents,
+          ])
+        }
         onMessage={(nextMessage) => {
           setError("");
           setMessage(nextMessage);
@@ -3696,15 +4101,9 @@ function AdminZone({
           </button>
         </form>
         <form className="admin-card admin-card-upload" onSubmit={upload}>
-          <p className="eyebrow">Club updates</p>
-          <h2>Upload team sheets or documents</h2>
-          <label>
-            Type of update
-            <select name="category" defaultValue="team_sheet">
-              <option value="team_sheet">Team sheet</option>
-              <option value="club_document">Club document</option>
-            </select>
-          </label>
+          <p className="eyebrow">Club documents</p>
+          <h2>Upload a club document</h2>
+          <input type="hidden" name="category" value="club_document" />
           <label>
             Title
             <input name="title" required maxLength={160} />

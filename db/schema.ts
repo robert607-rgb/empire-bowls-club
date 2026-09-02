@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   sqliteTable,
   text,
@@ -49,6 +50,20 @@ export const empireUploads = sqliteTable("empire_uploads", {
   contentType: text("content_type").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const empireTeamSheets = sqliteTable(
+  "empire_team_sheets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    opponent: text("opponent").notNull(),
+    competition: text("competition").notNull(),
+    matchDate: text("match_date").notNull(),
+    rinkCount: integer("rink_count").notNull(),
+    rinksJson: text("rinks_json").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_empire_team_sheets_date").on(table.matchDate)],
+);
 
 export const empireNews = sqliteTable("empire_news", {
   id: integer("id").primaryKey({ autoIncrement: true }),

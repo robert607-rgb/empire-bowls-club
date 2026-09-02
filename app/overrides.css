@@ -4301,6 +4301,303 @@ body {
   margin-top: 28px;
 }
 
+/* Contact details are links on a mid-blue card; they need their own light
+   foreground rather than inheriting the darker form-help text colour. */
+.contact-cards a small {
+  color: #f3f6ef;
+  font-weight: 700;
+}
+
+.contact-cards a:hover small,
+.contact-cards a:focus-visible small {
+  color: #fff;
+}
+
+/* Team selection is a separate, deliberate workflow: captains build from the
+   directory, while members receive a readable match card rather than a file. */
+.team-sheet-admin {
+  margin: 0 0 25px;
+  color: var(--ink);
+  background: var(--paper-surface);
+  border: 1px solid rgba(228, 184, 44, 0.36);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+}
+
+.admin-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 21px;
+  border-bottom: 1px solid #d1c8b4;
+}
+
+.admin-section-heading .eyebrow,
+.admin-section-heading h2,
+.admin-section-heading p {
+  color: var(--ink);
+}
+
+.admin-section-heading .eyebrow {
+  margin: 0 0 5px;
+  color: var(--gold);
+}
+
+.admin-section-heading h2 {
+  margin: 0;
+  font: 800 25px Georgia, serif;
+}
+
+.admin-section-heading p:not(.eyebrow) {
+  margin: 7px 0 0;
+  max-width: 660px;
+  color: #526575;
+}
+
+.team-sheet-builder {
+  display: grid;
+  gap: 18px;
+  padding: 21px;
+  background: #f0ead9;
+}
+
+.team-sheet-builder label,
+.team-sheet-rink label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.team-sheet-builder input,
+.team-sheet-builder select,
+.team-sheet-rink select {
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: #fffdf6;
+  border: 1px solid #b9c4c4;
+  border-radius: 4px;
+}
+
+.team-sheet-rinks,
+.team-sheet-rink-list {
+  display: grid;
+  gap: 14px;
+}
+
+.team-sheet-rink {
+  padding: 16px;
+  background: #fffdf6;
+  border: 1px solid #d1c8b4;
+}
+
+.team-sheet-rink-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.team-sheet-rink-head > b {
+  color: var(--ink);
+  font: 800 19px Georgia, serif;
+}
+
+.team-sheet-rink-head label {
+  min-width: 150px;
+}
+
+.team-sheet-player-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-note {
+  margin: 0;
+  color: #526575;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.published-team-sheets {
+  display: grid;
+  gap: 0;
+  padding: 0 21px;
+}
+
+.published-team-sheets article {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 0;
+  border-top: 1px solid #d1c8b4;
+}
+
+.published-team-sheets article > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.published-team-sheets b,
+.published-team-sheets span {
+  display: block;
+}
+
+.published-team-sheets b {
+  color: var(--ink);
+}
+
+.published-team-sheets span {
+  margin-top: 3px;
+  color: #526575;
+  font-size: 12px;
+}
+
+.team-sheets-panel {
+  grid-column: span 2;
+}
+
+.team-sheet-list {
+  display: grid;
+  gap: 10px;
+}
+
+.team-sheet-item {
+  overflow: hidden;
+  border: 1px solid #cfc4ac;
+  border-radius: 4px;
+}
+
+.team-sheet-card {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+  padding: 15px;
+  color: var(--ink);
+  text-align: left;
+  background: #e8dfc9;
+  border: 0;
+  border-left: 4px solid var(--gold);
+}
+
+.team-sheet-card:hover,
+.team-sheet-card:focus-visible {
+  background: #ded2b7;
+}
+
+.team-sheet-card-kicker {
+  color: #526575;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.team-sheet-card b {
+  color: var(--ink);
+  font: 800 20px Georgia, serif;
+}
+
+.team-sheet-card > span:not(.team-sheet-card-kicker) {
+  color: #526575;
+  font-size: 12px;
+}
+
+.team-sheet-card small {
+  margin-top: 4px;
+  color: var(--empire-deep);
+  font-weight: 800;
+}
+
+.team-sheet-detail {
+  padding: 16px;
+  background: #fffdf6;
+  border-top: 1px solid #d1c8b4;
+}
+
+.team-sheet-detail h3 {
+  margin: 0 0 12px;
+  color: var(--ink);
+  font: 800 19px Georgia, serif;
+}
+
+.team-sheet-detail .team-sheet-rink {
+  padding: 13px;
+  background: #f5f0e3;
+}
+
+.team-sheet-detail .team-sheet-rink-head {
+  align-items: center;
+  margin-bottom: 9px;
+}
+
+.team-sheet-detail .team-sheet-rink-head > span {
+  padding: 3px 7px;
+  color: var(--empire-deep);
+  background: #eadba8;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.team-sheet-detail ul,
+.legacy-team-sheets ul {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.team-sheet-detail li,
+.legacy-team-sheets li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #d1c8b4;
+}
+
+.team-sheet-detail li span {
+  color: #526575;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.team-sheet-detail li b {
+  color: var(--ink);
+  text-align: right;
+}
+
+.legacy-team-sheets {
+  margin-top: 18px;
+}
+
+.legacy-team-sheets > b {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--ink);
+}
+
+.legacy-team-sheets li > div {
+  min-width: 0;
+}
+
+.legacy-team-sheets li b,
+.legacy-team-sheets li span {
+  display: block;
+}
+
+.legacy-team-sheets li span {
+  color: #526575;
+  font-size: 12px;
+}
+
 @media (max-width: 680px) {
   .play-hero {
     min-height: 500px;
@@ -4357,5 +4654,23 @@ body {
   .member-actions {
     display: flex;
     gap: 6px;
+  }
+
+  .admin-section-heading,
+  .team-sheet-rink-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .team-sheet-rink-head label {
+    width: 100%;
+  }
+
+  .team-sheet-player-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-sheets-panel {
+    grid-column: auto;
   }
 }
