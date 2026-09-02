@@ -569,12 +569,11 @@ function HomePage({
         <div className="green-card club-green-card">
           <img
             className="club-green-image"
-            src="/optimized/club/empire-green-clubhouse.webp"
-            alt="The Empire Bowls Club green and clubhouse beneath a rainbow"
+            src="/optimized/club/empire-players.webp"
+            alt="Empire Bowls Club members gathered on the green"
             width={1200}
             height={900}
-            loading="eager"
-            fetchPriority="high"
+            loading="lazy"
             decoding="async"
           />
           <div className="club-green-copy">
