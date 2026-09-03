@@ -5036,6 +5036,7 @@ body {
 .admin-zone .admin-members-toolbar p,
 .admin-zone .admin-panel-help,
 .admin-zone .fixture-import-help,
+.admin-zone .fixture-import-copy > p:not(.eyebrow),
 .admin-zone .news-admin .form-help,
 .admin-zone .admin-section-heading p:not(.eyebrow) {
   color: #405568 !important;
