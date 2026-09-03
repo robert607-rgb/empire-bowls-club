@@ -483,9 +483,11 @@ export default function Home() {
         >
           <img
             src="/optimized/empire-crest.webp"
+            srcSet="/optimized/empire-crest-256.webp 256w, /optimized/empire-crest.webp 512w"
             alt="Empire Bowls Club crest"
             width={512}
             height={512}
+            sizes="52px"
             decoding="async"
           />
           <span>
@@ -530,9 +532,11 @@ export default function Home() {
       <footer>
         <img
           src="/optimized/empire-crest.webp"
+          srcSet="/optimized/empire-crest-256.webp 256w, /optimized/empire-crest.webp 512w"
           alt=""
           width={512}
           height={512}
+          sizes="52px"
           loading="lazy"
           decoding="async"
         />
@@ -758,9 +762,11 @@ function HomePage({
         <div className="hero-emblem">
           <img
             src="/optimized/empire-crest.webp"
+            srcSet="/optimized/empire-crest-256.webp 256w, /optimized/empire-crest.webp 512w"
             alt="Empire Bowls Club crest"
             width={512}
             height={512}
+            sizes="min(286px, 28vw)"
             decoding="async"
           />
           <span>EST. 1910</span>
@@ -908,9 +914,11 @@ function SponsorsPage() {
         <div className="sponsors-intro-seal" aria-hidden="true">
           <img
             src="/optimized/empire-crest.webp"
+            srcSet="/optimized/empire-crest-256.webp 256w, /optimized/empire-crest.webp 512w"
             alt=""
             width={512}
             height={512}
+            sizes="180px"
             decoding="async"
           />
           <span>Community partners</span>
@@ -931,7 +939,9 @@ function SponsorsPage() {
             >
               <img
                 src={sponsor.image}
+                srcSet={sponsor.image.startsWith("/optimized/sponsors/") ? `${sponsor.image.replace(".webp", "-640.webp")} 640w, ${sponsor.image} 1200w` : undefined}
                 alt={`${sponsor.name} logo`}
+                sizes="(max-width: 680px) 80vw, 360px"
                 loading="lazy"
                 decoding="async"
               />
@@ -987,9 +997,11 @@ function AboutPage() {
               <div className="heritage-hero-collage">
                 <img
                   src="/optimized/club/empire-players.webp"
+                  srcSet="/optimized/club/empire-players-768.webp 768w, /optimized/club/empire-players.webp 1200w"
                   alt="Empire Bowls Club members gathered on the green"
                   width={1200}
                   height={900}
+                  sizes="(max-width: 680px) 90vw, 520px"
                   loading="lazy"
                   decoding="async"
                 />
@@ -1360,9 +1372,11 @@ function AboutPage() {
               <figure className="people-photo">
                 <img
                   src="/optimized/club/empire-players.webp"
+                  srcSet="/optimized/club/empire-players-768.webp 768w, /optimized/club/empire-players.webp 1200w"
                   alt="Empire Bowls Club members gathered together on the green"
                   width={1200}
                   height={900}
+                  sizes="(max-width: 680px) 90vw, 700px"
                   loading="lazy"
                   decoding="async"
                 />
@@ -1791,9 +1805,11 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
         <img
           className="play-hero-image"
           src="/optimized/club/empire-bowl-action.webp"
+          srcSet="/optimized/club/empire-bowl-action-768.webp 768w, /optimized/club/empire-bowl-action.webp 1200w"
           alt="An Empire Bowls Club member delivering a bowl during a match"
           width={1200}
           height={794}
+          sizes="100vw"
           fetchPriority="high"
           decoding="async"
         />
@@ -1854,9 +1870,11 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
         <figure className="play-action-feature">
           <img
             src="/optimized/club/empire-bowl-action-crowd.webp"
+            srcSet="/optimized/club/empire-bowl-action-crowd-768.webp 768w, /optimized/club/empire-bowl-action-crowd.webp 1200w"
             alt="An Empire Bowls Club player sending a bowl down the green, with fellow members watching"
             width={1200}
             height={794}
+            sizes="(max-width: 680px) 90vw, 1180px"
             loading="lazy"
             decoding="async"
           />
@@ -4094,6 +4112,7 @@ function NewsAdminPanel({
                   <img
                     src={item.imageUrl}
                     alt={item.title}
+                    sizes="(max-width: 680px) 90vw, 360px"
                     loading="lazy"
                     decoding="async"
                   />
@@ -4447,28 +4466,31 @@ function AdminZone({
   const [error, setError] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
   useEffect(() => {
-    const storedTab = window.sessionStorage.getItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
-    const storedMessage = window.sessionStorage.getItem(
-      EMPIRE_ADMIN_FLASH_MESSAGE_KEY,
-    );
-    if (
-      storedTab === "overview" ||
-      storedTab === "members" ||
-      storedTab === "team-sheets" ||
-      storedTab === "fixtures" ||
-      storedTab === "player-signups" ||
-      storedTab === "news" ||
-      storedTab === "sponsors" ||
-      storedTab === "documents" ||
-      storedTab === "security"
-    ) {
-      setActiveTab(storedTab);
-      window.sessionStorage.removeItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
-    }
-    if (storedMessage) {
-      setMessage(storedMessage);
-      window.sessionStorage.removeItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY);
-    }
+    const timer = window.setTimeout(() => {
+      const storedTab = window.sessionStorage.getItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
+      const storedMessage = window.sessionStorage.getItem(
+        EMPIRE_ADMIN_FLASH_MESSAGE_KEY,
+      );
+      if (
+        storedTab === "overview" ||
+        storedTab === "members" ||
+        storedTab === "team-sheets" ||
+        storedTab === "fixtures" ||
+        storedTab === "player-signups" ||
+        storedTab === "news" ||
+        storedTab === "sponsors" ||
+        storedTab === "documents" ||
+        storedTab === "security"
+      ) {
+        setActiveTab(storedTab);
+        window.sessionStorage.removeItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
+      }
+      if (storedMessage) {
+        setMessage(storedMessage);
+        window.sessionStorage.removeItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
   const refresh = useCallback(async () => {
     try {

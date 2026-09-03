@@ -101,11 +101,12 @@ export default function RootLayout({
         <link
           rel="preload"
           as="image"
-          href="/optimized/club/empire-green-clubhouse.webp"
+          href="/optimized/club/empire-green-clubhouse-768.webp"
+          imageSrcSet="/optimized/club/empire-green-clubhouse-768.webp 1x, /optimized/club/empire-green-clubhouse.webp 2x"
+          imageSizes="100vw"
           type="image/webp"
           fetchPriority="high"
         />
-        <link rel="preconnect" href="https://britainfromabove.org.uk" />
       </head>
       <body className="antialiased">
         <script async src="https://website-usage-dashboard.robert607.chatgpt.site/usage-tracker.js?v=4" data-site="empire-bowls-club" />

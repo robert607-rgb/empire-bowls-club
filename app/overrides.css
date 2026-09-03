@@ -3440,6 +3440,17 @@ body {
     url("/optimized/club/empire-green-clubhouse.webp") center / cover no-repeat;
 }
 
+@supports (background-image: image-set(url("/optimized/club/empire-green-clubhouse-768.webp") 1x)) {
+  .empire-hero {
+    background-image:
+      linear-gradient(90deg, rgba(6, 26, 50, 0.97) 0%, rgba(8, 47, 77, 0.86) 48%, rgba(15, 76, 78, 0.45) 100%),
+      image-set(
+        url("/optimized/club/empire-green-clubhouse-768.webp") 1x,
+        url("/optimized/club/empire-green-clubhouse.webp") 2x
+      );
+  }
+}
+
 .empire-hero::before {
   position: absolute;
   inset: 0;

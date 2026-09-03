@@ -28,7 +28,9 @@ export async function GET(request: Request) {
       headers: {
         "content-type": row.content_type,
         "content-disposition": `inline; filename=\"${filename}\"`,
-        "cache-control": "public, max-age=300",
+        // The public URL includes the asset's created-at version, so an
+        // updated image receives a new URL and can safely be cached long-term.
+        "cache-control": "public, max-age=31536000, immutable",
         "x-content-type-options": "nosniff",
       },
     });

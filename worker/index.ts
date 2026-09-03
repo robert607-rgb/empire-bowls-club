@@ -52,6 +52,16 @@ function secureResponse(response: Response, pathname: string) {
   if (pathname.startsWith("/api/")) {
     headers.set("cache-control", "no-store, max-age=0");
     headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  } else if (
+    pathname.startsWith("/optimized/") ||
+    pathname === "/favicon.svg" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
+  ) {
+    // Club artwork and public metadata are versioned by deployment and do not
+    // contain member or booking data. Keep them warm between visits without
+    // affecting dynamic API responses.
+    headers.set("cache-control", "public, max-age=604800, stale-while-revalidate=86400");
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
