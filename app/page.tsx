@@ -3826,8 +3826,9 @@ function NewsAdminPanel({
   }, [refresh]);
   const saveStory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setError("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const isEditing = Boolean(editing);
     if (editing) form.set("id", String(editing.id));
     try {
@@ -3844,7 +3845,7 @@ function NewsAdminPanel({
         );
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setItems((current) =>
         isEditing
           ? current.map((item) =>
@@ -4066,8 +4067,9 @@ function FixtureImportPanel({
   }, [refresh]);
   const upload = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setError("");
-    const file = new FormData(event.currentTarget).get("fixtureFile");
+    const file = new FormData(formElement).get("fixtureFile");
     if (!(file instanceof File) || !file.size) {
       setError("Choose the fixture spreadsheet first.");
       return;
@@ -4085,7 +4087,7 @@ function FixtureImportPanel({
         setError(result.error || "The fixture spreadsheet could not be imported.");
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       onMessage(`${result.imported} ${result.imported === 1 ? "fixture has" : "fixtures have"} been published and the required rinks are reserved.`);
       notifyEmpireDataUpdated();
       await refresh();
@@ -4208,10 +4210,11 @@ function AdminZone({
   }, [refresh]);
   const addMember = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setMessage("");
     setError("");
     try {
-      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const values = Object.fromEntries(new FormData(formElement));
       const response = await fetch("/api/empire/members", {
         method: "POST",
         headers: { ...headers, "content-type": "application/json" },
@@ -4222,7 +4225,7 @@ function AdminZone({
         setError(result.error || "The member could not be added.");
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setMessage(`${result.member.name} has been added to the member directory.`);
       void refresh();
       notifyEmpireDataUpdated();
@@ -4232,10 +4235,11 @@ function AdminZone({
   };
   const upload = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setMessage("");
     setError("");
     try {
-      const data = new FormData(event.currentTarget);
+      const data = new FormData(formElement);
       const response = await fetch("/api/empire/uploads", {
         method: "POST",
         headers,
@@ -4246,7 +4250,7 @@ function AdminZone({
         setError(result.error || "The file could not be uploaded.");
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setMessage(`${result.file.title} has been published for members.`);
       void refresh();
       notifyEmpireDataUpdated();
@@ -4256,10 +4260,11 @@ function AdminZone({
   };
   const createPlayerRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setMessage("");
     setError("");
     try {
-      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const values = Object.fromEntries(new FormData(formElement));
       const response = await fetch("/api/empire/player-requests", {
         method: "POST",
         headers: { ...headers, "content-type": "application/json" },
@@ -4270,7 +4275,7 @@ function AdminZone({
         setError(result.error || "The player request could not be created.");
         return;
       }
-      event.currentTarget.reset();
+      formElement.reset();
       setMessage(
         `${result.request.match} is ready for members to add their names.`,
       );
