@@ -43,6 +43,15 @@ const initialAccounts: Array<{ access: EmpireAccess; salt: string; hash: string;
     legacyHash: "cdd0183505e559201772e9f0860840893963904157583b649a5efd9a4a3378cd",
   },
 ];
+const initialCommittee = [
+  ["Chairman", "Steve Webster", "07872 111577"],
+  ["Secretary", "Ann Norris", "07852 975351"],
+  ["Treasurer & Competition Secretary", "Steve Webster", "07872 111577"],
+  ["Weekend Captain, Fixtures Secretary & NWK Representative", "Ray Norris", "07706 084755"],
+  ["Midweek Captain, Bar Manager & County Representative", "Dave Munday", "07890 853525"],
+  ["Head Greenkeeper", "Chris Read", "07976 329351"],
+  ["Safeguarding Officer", "Richard Stone", "07980 389398"],
+] as const;
 
 type AccountRow = { access: EmpireAccess; salt: string; password_hash: string };
 type SessionRow = { access: EmpireAccess; expires_at: string };
@@ -202,6 +211,18 @@ export async function getEmpireDatabase() {
         membership_type TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_committee (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role TEXT NOT NULL,
+        name TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_committee_meta (
+        id INTEGER PRIMARY KEY,
+        seeded_at TEXT NOT NULL
+      )`),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_bookings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         booking_date TEXT NOT NULL,
@@ -288,7 +309,27 @@ export async function getEmpireDatabase() {
         runtime.DB.prepare("UPDATE empire_access_accounts SET salt = ?, password_hash = ?, updated_at = ? WHERE access = ? AND password_hash = ?").bind(account.salt, account.hash, new Date().toISOString(), account.access, account.legacyHash),
       ),
     ])
-      .then(() => undefined)
+      .then(async () => {
+        const seededAt = new Date().toISOString();
+        const seedMarker = await runtime.DB
+          .prepare("INSERT OR IGNORE INTO empire_committee_meta (id, seeded_at) VALUES (1, ?)")
+          .bind(seededAt)
+          .run();
+        if (Number(seedMarker.meta.changes ?? 0) === 0) return;
+        const count = await runtime.DB
+          .prepare("SELECT COUNT(*) AS total FROM empire_committee")
+          .first<{ total: number }>();
+        if (Number(count?.total ?? 0) > 0) return;
+        await runtime.DB.batch(
+          initialCommittee.map(([role, name, phone], index) =>
+            runtime.DB
+              .prepare(
+                "INSERT INTO empire_committee (id, role, name, phone, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+              )
+              .bind(index + 1, role, name, phone, index + 1, seededAt),
+          ),
+        );
+      })
       .catch((error) => {
         ready = null;
         throw error;

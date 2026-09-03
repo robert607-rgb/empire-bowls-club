@@ -13,6 +13,7 @@ type Access = "member" | "admin";
 type AdminTab =
   | "overview"
   | "members"
+  | "committee"
   | "team-sheets"
   | "fixtures"
   | "player-signups"
@@ -71,6 +72,14 @@ type Member = {
   phone: string;
   email: string;
   membershipType: "Full member" | "Social member";
+  createdAt: string;
+};
+type CommitteeMember = {
+  id: number;
+  role: string;
+  name: string;
+  phone: string;
+  sortOrder: number;
   createdAt: string;
 };
 type ClubFile = {
@@ -184,22 +193,14 @@ function openEmpireEnquiry(data: FormData) {
   window.location.href = `mailto:${EMPIRE_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-const committee = [
-  ["Chairman", "Steve Webster", "07872 111577"],
-  ["Secretary", "Ann Norris", "07852 975351"],
-  ["Treasurer & Competition Secretary", "Steve Webster", "07872 111577"],
-  [
-    "Weekend Captain, Fixtures Secretary & NWK Representative",
-    "Ray Norris",
-    "07706 084755",
-  ],
-  [
-    "Midweek Captain, Bar Manager & County Representative",
-    "Dave Munday",
-    "07890 853525",
-  ],
-  ["Head Greenkeeper", "Chris Read", "07976 329351"],
-  ["Safeguarding Officer", "Richard Stone", "07980 389398"],
+const fallbackCommittee: CommitteeMember[] = [
+  { id: -1, role: "Chairman", name: "Steve Webster", phone: "07872 111577", sortOrder: 1, createdAt: "" },
+  { id: -2, role: "Secretary", name: "Ann Norris", phone: "07852 975351", sortOrder: 2, createdAt: "" },
+  { id: -3, role: "Treasurer & Competition Secretary", name: "Steve Webster", phone: "07872 111577", sortOrder: 3, createdAt: "" },
+  { id: -4, role: "Weekend Captain, Fixtures Secretary & NWK Representative", name: "Ray Norris", phone: "07706 084755", sortOrder: 4, createdAt: "" },
+  { id: -5, role: "Midweek Captain, Bar Manager & County Representative", name: "Dave Munday", phone: "07890 853525", sortOrder: 5, createdAt: "" },
+  { id: -6, role: "Head Greenkeeper", name: "Chris Read", phone: "07976 329351", sortOrder: 6, createdAt: "" },
+  { id: -7, role: "Safeguarding Officer", name: "Richard Stone", phone: "07980 389398", sortOrder: 7, createdAt: "" },
 ];
 const fixtureMessage =
   "The fixtures are taking a winter break — we’ll see you next summer with a full schedule of games!";
@@ -976,6 +977,28 @@ function SponsorsPage() {
   );
 }
 function AboutPage() {
+  const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>(fallbackCommittee);
+
+  useEffect(() => {
+    let current = true;
+    const loadCommittee = async () => {
+      try {
+        const response = await fetch("/api/empire/committee", { cache: "no-store" });
+        if (!response.ok) throw new Error("Committee request failed");
+        const result = await response.json();
+        if (current && Array.isArray(result.members)) {
+          setCommitteeMembers(result.members);
+        }
+      } catch {
+        // The saved list remains visible if the database is temporarily unavailable.
+      }
+    };
+    void loadCommittee();
+    return () => {
+      current = false;
+    };
+  }, []);
+
   return (
     <section className="page wrap">
       <span className="peacock-tail-pattern peacock-tail-pattern-about" aria-hidden="true" />
@@ -1361,11 +1384,11 @@ function AboutPage() {
             </summary>
             <div className="people-grid">
               <div className="committee">
-                {committee.map(([role, name, phone]) => (
-                  <article key={role}>
-                    <b>{role}</b>
-                    <span>{name}</span>
-                    <a href={`tel:${phone.replaceAll(" ", "")}`}>{phone}</a>
+                {committeeMembers.map((member) => (
+                  <article key={member.id}>
+                    <b>{member.role}</b>
+                    <span>{member.name}</span>
+                    <a href={`tel:${member.phone.replaceAll(" ", "")}`}>{member.phone}</a>
                   </article>
                 ))}
               </div>
@@ -4479,6 +4502,183 @@ function FixtureImportPanel({
   );
 }
 
+function AdminCommitteePanel({
+  members,
+  password,
+}: {
+  members: CommitteeMember[];
+  password: string;
+}) {
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState({ role: "", name: "", phone: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const headers = useMemo(() => apiHeaders("admin", password), [password]);
+
+  const beginEdit = (member: CommitteeMember) => {
+    setEditing(member.id);
+    setDraft({ role: member.role, name: member.name, phone: member.phone });
+    setError("");
+  };
+
+  const save = async (event: FormEvent<HTMLFormElement>, id?: number) => {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      const response = await fetch("/api/empire/committee", {
+        method: id ? "PUT" : "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify(id ? { id, ...draft } : draft),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The committee record could not be saved.");
+        return;
+      }
+      refreshAdminWorkspace(
+        "committee",
+        id
+          ? `${result.member.name} has been updated on the About Us page.`
+          : `${result.member.name} has been added to the committee list.`,
+      );
+    } catch {
+      setError("The committee record could not be saved. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (member: CommitteeMember) => {
+    if (!window.confirm(`Remove ${member.name} from the committee list?`)) return;
+    setError("");
+    setBusy(true);
+    try {
+      const response = await fetch("/api/empire/committee", {
+        method: "DELETE",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id: member.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The committee record could not be removed.");
+        return;
+      }
+      refreshAdminWorkspace("committee", `${member.name} has been removed from the committee list.`);
+    } catch {
+      setError("The committee record could not be removed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="committee-admin-panel">
+      <div className="committee-admin-intro">
+        <p className="eyebrow">About Us · The people of Empire</p>
+        <h2>Manage committee members</h2>
+        <p>
+          These saved records feed the committee list shown on the public About Us page.
+          Update a name, role or contact number here and the public list will use the new details.
+        </p>
+      </div>
+      <form className="admin-card committee-admin-form" onSubmit={(event) => void save(event)}>
+        <p className="eyebrow">Committee management</p>
+        <h2>Add a committee member</h2>
+        <div className="form-columns">
+          <label>
+            Role
+            <input
+              value={editing === null ? draft.role : ""}
+              onChange={(event) => setDraft({ ...draft, role: event.target.value })}
+              placeholder="e.g. Chairman"
+              required
+              maxLength={160}
+              disabled={editing !== null || busy}
+            />
+          </label>
+          <label>
+            Name
+            <input
+              value={editing === null ? draft.name : ""}
+              onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+              placeholder="Full name"
+              required
+              maxLength={120}
+              disabled={editing !== null || busy}
+            />
+          </label>
+        </div>
+        <label>
+          Contact number
+          <input
+            value={editing === null ? draft.phone : ""}
+            onChange={(event) => setDraft({ ...draft, phone: event.target.value })}
+            type="tel"
+            placeholder="e.g. 07872 111577"
+            required
+            maxLength={40}
+            disabled={editing !== null || busy}
+          />
+        </label>
+        <button className="primary" type="submit" disabled={editing !== null || busy}>
+          Add to committee
+        </button>
+      </form>
+      {error && <Status type="error" message={error} />}
+      <div className="committee-admin-list">
+        <div className="committee-admin-list-heading">
+          <div>
+            <p className="eyebrow">Currently shown on About Us</p>
+            <h3>{members.length ? `${members.length} committee records` : "No committee members yet"}</h3>
+          </div>
+          <span>Changes are saved to the public committee list.</span>
+        </div>
+        {members.length ? (
+          <div className="committee-admin-grid">
+            {members.map((member) => (
+              <article key={member.id}>
+                {editing === member.id ? (
+                  <form onSubmit={(event) => void save(event, member.id)}>
+                    <label>
+                      Role
+                      <input value={draft.role} onChange={(event) => setDraft({ ...draft, role: event.target.value })} required maxLength={160} disabled={busy} />
+                    </label>
+                    <label>
+                      Name
+                      <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} required maxLength={120} disabled={busy} />
+                    </label>
+                    <label>
+                      Contact number
+                      <input value={draft.phone} onChange={(event) => setDraft({ ...draft, phone: event.target.value })} type="tel" required maxLength={40} disabled={busy} />
+                    </label>
+                    <div className="committee-admin-actions">
+                      <button className="primary" type="submit" disabled={busy}>Save changes</button>
+                      <button className="text-button" type="button" onClick={() => { setEditing(null); setDraft({ role: "", name: "", phone: "" }); }} disabled={busy}>Cancel</button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <b>{member.role}</b>
+                    <strong>{member.name}</strong>
+                    <a href={`tel:${member.phone.replaceAll(" ", "")}`}>{member.phone}</a>
+                    <div className="committee-admin-actions">
+                      <button className="edit-member" type="button" onClick={() => beginEdit(member)} disabled={busy}>Edit</button>
+                      <button className="remove-member" type="button" onClick={() => void remove(member)} disabled={busy}>Remove</button>
+                    </div>
+                  </>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="empty">Add the first committee member above.</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function AdminZone({
   password,
   onLeave,
@@ -4487,6 +4687,7 @@ function AdminZone({
   onLeave: () => void;
 }) {
   const [members, setMembers] = useState<Member[]>([]);
+  const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
   const [files, setFiles] = useState<ClubFile[]>([]);
   const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
@@ -4502,6 +4703,7 @@ function AdminZone({
       if (
         storedTab === "overview" ||
         storedTab === "members" ||
+        storedTab === "committee" ||
         storedTab === "team-sheets" ||
         storedTab === "fixtures" ||
         storedTab === "player-signups" ||
@@ -4522,15 +4724,17 @@ function AdminZone({
   }, []);
   const refresh = useCallback(async () => {
     try {
-      const [memberResponse, fileResponse, teamSheetResponse] = await Promise.all([
+      const [memberResponse, committeeResponse, fileResponse, teamSheetResponse] = await Promise.all([
         fetch("/api/empire/members", { headers }),
+        fetch("/api/empire/committee", { headers }),
         fetch("/api/empire/uploads", { headers }),
         fetch("/api/empire/team-sheets", { headers }),
       ]);
-      if (!memberResponse.ok || !fileResponse.ok || !teamSheetResponse.ok) {
+      if (!memberResponse.ok || !committeeResponse.ok || !fileResponse.ok || !teamSheetResponse.ok) {
         throw new Error("Admin data request failed");
       }
       setMembers((await memberResponse.json()).members ?? []);
+      setCommitteeMembers((await committeeResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
       setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
     } catch {
@@ -4540,6 +4744,7 @@ function AdminZone({
   const adminTabs: Array<{ id: AdminTab; label: string; count?: number }> = [
     { id: "overview", label: "Overview" },
     { id: "members", label: "Members", count: members.length },
+    { id: "committee", label: "Committee", count: committeeMembers.length },
     { id: "team-sheets", label: "Team sheets", count: teamSheets.length },
     { id: "fixtures", label: "Fixtures" },
     { id: "player-signups", label: "Player sign-ups" },
@@ -4776,6 +4981,16 @@ function AdminZone({
               setMessage(nextMessage);
             }}
           />
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-committee"
+          role="tabpanel"
+          aria-labelledby="admin-tab-committee"
+          hidden={activeTab !== "committee"}
+        >
+          <AdminCommitteePanel members={committeeMembers} password={password} />
         </section>
 
         <section

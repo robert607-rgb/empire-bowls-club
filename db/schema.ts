@@ -19,6 +19,20 @@ export const empireMembers = sqliteTable("empire_members", {
   createdAt: text("created_at").notNull(),
 });
 
+export const empireCommittee = sqliteTable("empire_committee", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  role: text("role").notNull(),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const empireCommitteeMeta = sqliteTable("empire_committee_meta", {
+  id: integer("id").primaryKey(),
+  seededAt: text("seeded_at").notNull(),
+});
+
 export const empireBookings = sqliteTable(
   "empire_bookings",
   {

@@ -5352,3 +5352,135 @@ body {
     width: 100%;
   }
 }
+
+.committee-admin-panel {
+  display: grid;
+  gap: 24px;
+}
+
+.committee-admin-intro {
+  max-width: 760px;
+}
+
+.committee-admin-intro h2,
+.committee-admin-list-heading h3,
+.committee-admin-form h2 {
+  color: var(--ink);
+}
+
+.committee-admin-intro p:last-child,
+.committee-admin-list-heading > span {
+  color: var(--muted-light);
+}
+
+.committee-admin-intro p:last-child {
+  max-width: 720px;
+  margin-bottom: 0;
+}
+
+.committee-admin-form {
+  max-width: 760px;
+}
+
+.committee-admin-list {
+  padding: 24px;
+  background: var(--paper-surface);
+  border: 1px solid #d1c8b4;
+}
+
+.committee-admin-list-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #d1c8b4;
+}
+
+.committee-admin-list-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.committee-admin-list-heading h3 {
+  margin: 0;
+  font: 800 25px/1.1 Georgia, serif;
+}
+
+.committee-admin-list-heading > span {
+  font-size: 12px;
+  text-align: right;
+}
+
+.committee-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding-top: 18px;
+}
+
+.committee-admin-grid article {
+  min-width: 0;
+  padding: 18px;
+  background: var(--surface);
+  border-left: 4px solid var(--gold);
+}
+
+.committee-admin-grid article > b,
+.committee-admin-grid article > strong,
+.committee-admin-grid article > a {
+  display: block;
+}
+
+.committee-admin-grid article > b {
+  color: var(--muted-light);
+  font-size: 12px;
+}
+
+.committee-admin-grid article > strong {
+  margin: 4px 0 3px;
+  color: var(--paper);
+  font: 800 21px/1.1 Georgia, serif;
+}
+
+.committee-admin-grid article > a {
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.committee-admin-grid article form label {
+  color: var(--ink);
+}
+
+.committee-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.committee-admin-actions .primary {
+  margin-top: 0;
+}
+
+@media (max-width: 680px) {
+  .committee-admin-list {
+    padding: 18px;
+  }
+
+  .committee-admin-list-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .committee-admin-list-heading > span {
+    text-align: left;
+  }
+
+  .committee-admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
