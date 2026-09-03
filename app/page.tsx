@@ -10,6 +10,15 @@ import {
 } from "react";
 
 type Access = "member" | "admin";
+type AdminTab =
+  | "overview"
+  | "members"
+  | "team-sheets"
+  | "fixtures"
+  | "player-signups"
+  | "news"
+  | "documents"
+  | "security";
 type Page =
   | "Home"
   | "About the Club"
@@ -4156,6 +4165,7 @@ function AdminZone({
   const [members, setMembers] = useState<Member[]>([]);
   const [files, setFiles] = useState<ClubFile[]>([]);
   const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
+  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
@@ -4176,6 +4186,20 @@ function AdminZone({
       setError("We could not load the admin records. Please try again.");
     }
   }, [headers]);
+  const adminTabs: Array<{ id: AdminTab; label: string; count?: number }> = [
+    { id: "overview", label: "Overview" },
+    { id: "members", label: "Members", count: members.length },
+    { id: "team-sheets", label: "Team sheets", count: teamSheets.length },
+    { id: "fixtures", label: "Fixtures" },
+    { id: "player-signups", label: "Player sign-ups" },
+    { id: "news", label: "News" },
+    {
+      id: "documents",
+      label: "Documents",
+      count: files.filter((file) => file.category === "club_document").length,
+    },
+    { id: "security", label: "Security" },
+  ];
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void refresh();
@@ -4286,165 +4310,257 @@ function AdminZone({
           </b>
         </article>
       </section>
-      <AdminMemberOverview
-        members={members}
-        password={password}
-        onChange={setMembers}
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
-      <AdminTeamSheetManager
-        members={members}
-        sheets={teamSheets}
-        password={password}
-        onChange={setTeamSheets}
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
-      <AdminDocumentOverview
-        files={files.filter((file) => file.category === "club_document")}
-        password={password}
-        onChange={(documents) =>
-          setFiles((current) => [
-            ...current.filter((file) => file.category !== "club_document"),
-            ...documents,
-          ])
-        }
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
-      <AdminPlayerRequestOverview
-        password={password}
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
-      <FixtureImportPanel
-        password={password}
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
-      <div className="admin-forms">
-        <form className="admin-card admin-card-members" onSubmit={addMember}>
-          <p className="eyebrow">Member management</p>
-          <h2>Add a member</h2>
-          <label>
-            Full name
-            <input name="name" required maxLength={120} />
-          </label>
-          <label>
-            Home address
-            <textarea name="address" required maxLength={500} />
-          </label>
-          <div className="form-columns">
-            <label>
-              Date of birth
-              <input name="dateOfBirth" type="date" required max={today()} />
-            </label>
-            <label>
-              Phone number
-              <input name="phone" type="tel" required maxLength={40} />
-            </label>
-            <label>
-              Email address
-              <input name="email" type="email" required maxLength={160} />
-            </label>
-          </div>
-          <label>
-            Membership type
-            <select name="membershipType" defaultValue="Full member">
-              <option>Full member</option>
-              <option>Social member</option>
-            </select>
-          </label>
-          <button className="primary" type="submit">
-            Add member
-          </button>
-        </form>
-        <form
-          className="admin-card admin-card-players"
-          onSubmit={createPlayerRequest}
+      <div className="admin-tabs">
+        <div className="admin-tab-list" role="tablist" aria-label="Admin sections">
+          {adminTabs.map((tab) => (
+            <button
+              key={tab.id}
+              id={`admin-tab-${tab.id}`}
+              className={`admin-tab${activeTab === tab.id ? " active" : ""}`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`admin-panel-${tab.id}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span>{tab.label}</span>
+              {typeof tab.count === "number" && <b>{tab.count}</b>}
+            </button>
+          ))}
+        </div>
+
+        <section
+          className="admin-tab-panel admin-overview-panel"
+          id="admin-panel-overview"
+          role="tabpanel"
+          aria-labelledby="admin-tab-overview"
+          hidden={activeTab !== "overview"}
         >
-          <p className="eyebrow">Player availability</p>
-          <h2>Create a player sign-up sheet</h2>
-          <label>
-            Match
-            <input
-              name="match"
-              placeholder="e.g. League v Greenhithe"
-              required
-              maxLength={160}
-            />
-          </label>
-          <div className="form-columns">
+          <p className="eyebrow">Admin navigation</p>
+          <h2>Choose what you want to update.</h2>
+          <p>
+            Use the tabs above to manage one part of the club website at a time.
+            Your changes will continue to appear in the relevant public or members area.
+          </p>
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-members"
+          role="tabpanel"
+          aria-labelledby="admin-tab-members"
+          hidden={activeTab !== "members"}
+        >
+          <AdminMemberOverview
+            members={members}
+            password={password}
+            onChange={setMembers}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+          <form className="admin-card admin-card-members admin-add-member" onSubmit={addMember}>
+            <p className="eyebrow">Member management</p>
+            <h2>Add a member</h2>
             <label>
-              Match date
-              <input name="date" type="date" required />
+              Full name
+              <input name="name" required maxLength={120} />
             </label>
             <label>
-              Players required
+              Home address
+              <textarea name="address" required maxLength={500} />
+            </label>
+            <div className="form-columns">
+              <label>
+                Date of birth
+                <input name="dateOfBirth" type="date" required max={today()} />
+              </label>
+              <label>
+                Phone number
+                <input name="phone" type="tel" required maxLength={40} />
+              </label>
+              <label>
+                Email address
+                <input name="email" type="email" required maxLength={160} />
+              </label>
+            </div>
+            <label>
+              Membership type
+              <select name="membershipType" defaultValue="Full member">
+                <option>Full member</option>
+                <option>Social member</option>
+              </select>
+            </label>
+            <button className="primary" type="submit">
+              Add member
+            </button>
+          </form>
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-team-sheets"
+          role="tabpanel"
+          aria-labelledby="admin-tab-team-sheets"
+          hidden={activeTab !== "team-sheets"}
+        >
+          <AdminTeamSheetManager
+            members={members}
+            sheets={teamSheets}
+            password={password}
+            onChange={setTeamSheets}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-fixtures"
+          role="tabpanel"
+          aria-labelledby="admin-tab-fixtures"
+          hidden={activeTab !== "fixtures"}
+        >
+          <FixtureImportPanel
+            password={password}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-player-signups"
+          role="tabpanel"
+          aria-labelledby="admin-tab-player-signups"
+          hidden={activeTab !== "player-signups"}
+        >
+          <AdminPlayerRequestOverview
+            password={password}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+          <form className="admin-card admin-card-players admin-create-signup" onSubmit={createPlayerRequest}>
+            <p className="eyebrow">Player availability</p>
+            <h2>Create a player sign-up sheet</h2>
+            <label>
+              Match
               <input
-                name="playersRequired"
-                type="number"
-                min="1"
-                max="40"
+                name="match"
+                placeholder="e.g. League v Greenhithe"
                 required
+                maxLength={160}
               />
             </label>
-          </div>
-          <button className="primary" type="submit">
-            Create sign-up sheet
-          </button>
-        </form>
-        <form className="admin-card admin-card-upload" onSubmit={upload}>
-          <p className="eyebrow">Club documents</p>
-          <h2>Upload a club document</h2>
-          <input type="hidden" name="category" value="club_document" />
-          <label>
-            Title
-            <input name="title" required maxLength={160} />
-          </label>
-          <label>
-            Short description
-            <textarea name="description" maxLength={500} />
-          </label>
-          <label>
-            Choose file
-            <input
-              name="file"
-              type="file"
-              required
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-            />
-          </label>
-          <button className="primary" type="submit">
-            Publish to members area
-          </button>
-        </form>
+            <div className="form-columns">
+              <label>
+                Match date
+                <input name="date" type="date" required />
+              </label>
+              <label>
+                Players required
+                <input
+                  name="playersRequired"
+                  type="number"
+                  min="1"
+                  max="40"
+                  required
+                />
+              </label>
+            </div>
+            <button className="primary" type="submit">
+              Create sign-up sheet
+            </button>
+          </form>
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-news"
+          role="tabpanel"
+          aria-labelledby="admin-tab-news"
+          hidden={activeTab !== "news"}
+        >
+          <NewsAdminPanel
+            password={password}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-documents"
+          role="tabpanel"
+          aria-labelledby="admin-tab-documents"
+          hidden={activeTab !== "documents"}
+        >
+          <AdminDocumentOverview
+            files={files.filter((file) => file.category === "club_document")}
+            password={password}
+            onChange={(documents) =>
+              setFiles((current) => [
+                ...current.filter((file) => file.category !== "club_document"),
+                ...documents,
+              ])
+            }
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+          <form className="admin-card admin-card-upload admin-upload-document" onSubmit={upload}>
+            <p className="eyebrow">Club documents</p>
+            <h2>Upload a club document</h2>
+            <input type="hidden" name="category" value="club_document" />
+            <label>
+              Title
+              <input name="title" required maxLength={160} />
+            </label>
+            <label>
+              Short description
+              <textarea name="description" maxLength={500} />
+            </label>
+            <label>
+              Choose file
+              <input
+                name="file"
+                type="file"
+                required
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              />
+            </label>
+            <button className="primary" type="submit">
+              Publish to members area
+            </button>
+          </form>
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-security"
+          role="tabpanel"
+          aria-labelledby="admin-tab-security"
+          hidden={activeTab !== "security"}
+        >
+          <SecuritySettings
+            onAccessRevoked={onLeave}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+        </section>
       </div>
-      <NewsAdminPanel
-        password={password}
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
-      <SecuritySettings
-        onAccessRevoked={onLeave}
-        onMessage={(nextMessage) => {
-          setError("");
-          setMessage(nextMessage);
-        }}
-      />
       {message && <Status message={message} />}
       {error && <Status type="error" message={error} />}
     </main>

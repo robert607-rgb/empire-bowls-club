@@ -3,6 +3,133 @@
   text-shadow: 0 2px 5px rgba(0, 0, 0, 0.62);
 }
 
+/* Keep the admin workspace focused: one clearly labelled working area at a time. */
+.admin-tabs {
+  margin-top: 28px;
+}
+
+.admin-tab-list {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding: 0 0 9px;
+  border-bottom: 1px solid #d8d0bb;
+  scrollbar-width: thin;
+}
+
+.admin-tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 14px;
+  color: #53657c;
+  background: #eee8d8;
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-tab:hover {
+  color: var(--navy);
+  background: #e5dcc5;
+}
+
+.admin-tab.active {
+  color: #fff;
+  background: var(--navy);
+  border-color: var(--navy);
+  box-shadow: inset 0 -3px var(--gold);
+}
+
+.admin-tab b {
+  display: inline-grid;
+  min-width: 23px;
+  min-height: 23px;
+  place-items: center;
+  padding: 2px 6px;
+  color: var(--navy);
+  background: #f5d66b;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.admin-tab-panel {
+  min-width: 0;
+  padding-top: 28px;
+}
+
+.admin-overview-panel {
+  padding: 30px;
+  background: #fff;
+  border-left: 5px solid var(--gold);
+  box-shadow: 0 10px 24px rgba(6, 39, 97, 0.08);
+}
+
+.admin-overview-panel h2 {
+  margin-bottom: 9px;
+  color: var(--navy);
+}
+
+.admin-overview-panel p:last-child {
+  max-width: 720px;
+  margin-bottom: 0;
+  color: #53657c;
+}
+
+.admin-tab-panel > .admin-members-tab {
+  margin-top: 0;
+}
+
+.admin-tab-panel > .admin-card,
+.admin-tab-panel > .news-admin,
+.admin-tab-panel > .fixture-import-panel,
+.admin-tab-panel > .team-sheet-admin {
+  margin-top: 24px;
+}
+
+.admin-tab-panel > .admin-card:first-child,
+.admin-tab-panel > .news-admin:first-child,
+.admin-tab-panel > .fixture-import-panel:first-child,
+.admin-tab-panel > .team-sheet-admin:first-child {
+  margin-top: 0;
+}
+
+.admin-tab-panel > .admin-card {
+  width: 100%;
+}
+
+.admin-tab-panel > .admin-card-upload {
+  display: grid;
+}
+
+@media (max-width: 680px) {
+  .admin-tabs {
+    margin-top: 22px;
+  }
+
+  .admin-tab-list {
+    margin-inline: -5%;
+    padding-inline: 5%;
+  }
+
+  .admin-tab {
+    min-height: 42px;
+    padding-inline: 12px;
+  }
+
+  .admin-tab-panel {
+    padding-top: 22px;
+  }
+
+  .admin-overview-panel {
+    padding: 23px;
+  }
+}
+
 .intro-grid {
   grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
   gap: 54px;
