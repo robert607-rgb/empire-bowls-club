@@ -5226,3 +5226,74 @@ body {
   .player-signup-print ol { margin: 18mm 0 0; padding-left: 10mm; }
   .player-signup-print li { min-height: 11mm; padding: 3mm 0; border-bottom: 1px solid #555; font-size: 14pt; }
 }
+
+/* Keep the member directory readable: reserve space for every column so the
+   action controls can never sit over the contact details. */
+.admin-members-panel .member-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.admin-members-panel .member-table {
+  width: 100%;
+  min-width: 1080px;
+  table-layout: fixed;
+}
+
+.admin-members-panel .member-table th,
+.admin-members-panel .member-table td {
+  box-sizing: border-box;
+}
+
+.admin-members-panel .member-table th:nth-child(1),
+.admin-members-panel .member-table td:nth-child(1) { width: 17%; }
+
+.admin-members-panel .member-table th:nth-child(2),
+.admin-members-panel .member-table td:nth-child(2) { width: 14%; }
+
+.admin-members-panel .member-table th:nth-child(3),
+.admin-members-panel .member-table td:nth-child(3) { width: 10%; }
+
+.admin-members-panel .member-table th:nth-child(4),
+.admin-members-panel .member-table td:nth-child(4) { width: 14%; }
+
+.admin-members-panel .member-table th:nth-child(5),
+.admin-members-panel .member-table td:nth-child(5) { width: 13%; }
+
+.admin-members-panel .member-table th:nth-child(6),
+.admin-members-panel .member-table td:nth-child(6) { width: 20%; }
+
+.admin-members-panel .member-table th:nth-child(7),
+.admin-members-panel .member-table td:nth-child(7) { width: 12%; }
+
+.admin-members-panel .member-table td:nth-child(6) a {
+  overflow-wrap: anywhere;
+}
+
+.admin-members-panel .member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+  white-space: normal;
+}
+
+.admin-members-panel .member-actions .edit-member {
+  margin-right: 0;
+}
+
+@media (max-width: 680px) {
+  .admin-members-panel .member-table {
+    min-width: 1000px;
+  }
+
+  .admin-members-panel .member-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-members-panel .member-actions button {
+    width: 100%;
+  }
+}
