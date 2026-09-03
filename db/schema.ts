@@ -27,6 +27,7 @@ export const empireBookings = sqliteTable(
     rinkNumber: integer("rink_number").notNull(),
     timeSlot: text("time_slot").notNull(),
     bookingName: text("booking_name").notNull(),
+    fixtureKey: text("fixture_key"),
     createdAt: text("created_at").notNull(),
   },
   (table) => [
@@ -34,6 +35,31 @@ export const empireBookings = sqliteTable(
       table.bookingDate,
       table.rinkNumber,
       table.timeSlot,
+    ),
+  ],
+);
+
+export const empireFixtures = sqliteTable(
+  "empire_fixtures",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    fixtureDate: text("fixture_date").notNull(),
+    startTime: text("start_time").notNull(),
+    opponent: text("opponent").notNull(),
+    competition: text("competition").notNull(),
+    rinkCount: integer("rink_count").notNull(),
+    rinksJson: text("rinks_json").notNull(),
+    timeSlot: text("time_slot").notNull(),
+    bookingKey: text("booking_key").notNull().unique(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [
+    index("idx_empire_fixtures_date").on(table.fixtureDate),
+    uniqueIndex("empire_fixtures_unique_match").on(
+      table.fixtureDate,
+      table.startTime,
+      table.opponent,
+      table.competition,
     ),
   ],
 );

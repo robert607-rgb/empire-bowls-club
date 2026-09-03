@@ -1,7 +1,7 @@
 import { apiError, cleanText, getEmpireDatabase, hasEmpireAccess, readJson, sameOrigin, unauthorized } from "../_server";
 
 const slots = new Set(["10:00–12:00", "12:00–14:00", "14:00–16:00", "16:00–18:00", "18:00–21:00"]);
-type BookingRow = { id: number; rink_number: number; time_slot: string; booking_name: string };
+type BookingRow = { id: number; rink_number: number; time_slot: string; booking_name: string; fixture_key: string | null };
 
 function isFriday(date: string) {
   return new Date(`${date}T12:00:00Z`).getUTCDay() === 5;
@@ -17,10 +17,10 @@ export async function GET(request: Request) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return Response.json({ error: "Choose a valid booking date." }, { status: 400 });
   try {
     const db = await getEmpireDatabase();
-    const result = await db.prepare("SELECT id, rink_number, time_slot, booking_name FROM empire_bookings WHERE booking_date = ? ORDER BY rink_number, time_slot").bind(date).all<BookingRow>();
+    const result = await db.prepare("SELECT id, rink_number, time_slot, booking_name, fixture_key FROM empire_bookings WHERE booking_date = ? ORDER BY rink_number, time_slot").bind(date).all<BookingRow>();
     const bookings = (result.results ?? [])
       .filter((booking) => !isMaintenanceSlot(date, booking.time_slot))
-      .map((booking) => ({ id: booking.id, rinkNumber: booking.rink_number, timeSlot: booking.time_slot, bookingName: booking.booking_name }));
+      .map((booking) => ({ id: booking.id, rinkNumber: booking.rink_number, timeSlot: booking.time_slot, bookingName: booking.booking_name, fixtureKey: booking.fixture_key }));
     if (isFriday(date)) {
       bookings.push(...[1, 2, 3, 4, 5, 6].map((rinkNumber) => ({
         id: null,
@@ -60,6 +60,10 @@ export async function DELETE(request: Request) {
     const id = Number(input.id);
     if (!Number.isInteger(id)) return Response.json({ error: "Choose a valid booking to remove." }, { status: 400 });
     const db = await getEmpireDatabase();
+    const booking = await db.prepare("SELECT fixture_key FROM empire_bookings WHERE id = ?").bind(id).first<{ fixture_key: string | null }>();
+    if (booking?.fixture_key) {
+      return Response.json({ error: "This rink is reserved by a fixture. Remove the fixture from the Admin Zone to release its rinks." }, { status: 409 });
+    }
     await db.prepare("DELETE FROM empire_bookings WHERE id = ?").bind(id).run();
     return Response.json({ removed: true });
   } catch (error) { return apiError(error); }

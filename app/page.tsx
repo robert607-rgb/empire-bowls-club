@@ -24,6 +24,23 @@ type Booking = {
   rinkNumber: number;
   timeSlot: string;
   bookingName: string;
+  fixtureKey?: string | null;
+};
+type Fixture = {
+  id: number;
+  date: string;
+  time: string;
+  opponent: string;
+  competition: string;
+  rinkCount: number;
+  rinks: number[];
+};
+type FixtureImportRow = {
+  date: string;
+  time: string;
+  opponent: string;
+  competition: string;
+  rinks: number | number[];
 };
 type Member = {
   id: number;
@@ -150,9 +167,9 @@ const committee = [
   ["Head Greenkeeper", "Chris Read", "07976 329351"],
   ["Safeguarding Officer", "Richard Stone", "07980 389398"],
 ];
-const fixtures: Array<{ date: string; event: string; type: string }> = [];
 const fixtureMessage =
   "The fixtures are taking a winter break — we’ll see you next summer with a full schedule of games!";
+const fixtureHighlights: Array<{ date: string; event: string; type: string }> = [];
 const starterNews: NewsItem[] = [
   {
     id: -1,
@@ -240,6 +257,165 @@ function Status({
   type?: "success" | "error";
 }) {
   return <p className={`status ${type}`}>{message}</p>;
+}
+
+type ZipEntry = { compression: number; compressed: Uint8Array };
+
+function zipEntries(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+  let directory = -1;
+  for (let index = bytes.length - 22; index >= Math.max(0, bytes.length - 65557); index -= 1) {
+    if (view.getUint32(index, true) === 0x06054b50) {
+      directory = view.getUint32(index + 16, true);
+      break;
+    }
+  }
+  if (directory < 0) throw new Error("This does not look like a valid .xlsx file.");
+  const entries = new Map<string, ZipEntry>();
+  for (let offset = directory; offset + 46 <= bytes.length && view.getUint32(offset, true) === 0x02014b50;) {
+    const compression = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const nameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    const localOffset = view.getUint32(offset + 42, true);
+    const name = new TextDecoder().decode(bytes.slice(offset + 46, offset + 46 + nameLength));
+    if (view.getUint32(localOffset, true) !== 0x04034b50) throw new Error("The spreadsheet contains an unreadable file entry.");
+    const localNameLength = view.getUint16(localOffset + 26, true);
+    const localExtraLength = view.getUint16(localOffset + 28, true);
+    const start = localOffset + 30 + localNameLength + localExtraLength;
+    entries.set(name, { compression, compressed: bytes.slice(start, start + compressedSize) });
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  return entries;
+}
+
+async function unzipText(entries: Map<string, ZipEntry>, name: string) {
+  const entry = entries.get(name);
+  if (!entry) throw new Error("The spreadsheet is missing a required worksheet.");
+  let content: Uint8Array;
+  if (entry.compression === 0) {
+    content = entry.compressed;
+  } else if (entry.compression === 8 && "DecompressionStream" in window) {
+    const stream = new Blob([new Uint8Array(entry.compressed)])
+      .stream()
+      .pipeThrough(new DecompressionStream("deflate-raw"));
+    content = new Uint8Array(await new Response(stream).arrayBuffer());
+  } else {
+    throw new Error("This browser cannot read the compression used by this spreadsheet.");
+  }
+  return new TextDecoder().decode(content);
+}
+
+function childText(element: Element, name: string) {
+  return Array.from(element.children).find((child) => child.localName === name)?.textContent ?? "";
+}
+
+function columnNumber(reference: string) {
+  const letters = /^([A-Z]+)/i.exec(reference)?.[1] ?? "A";
+  return [...letters.toUpperCase()].reduce((result, letter) => result * 26 + letter.charCodeAt(0) - 64, 0) - 1;
+}
+
+async function readXlsxRows(file: File): Promise<Array<Array<string | number>>> {
+  const entries = zipEntries(await file.arrayBuffer());
+  const decoder = new DOMParser();
+  const sharedStrings = entries.has("xl/sharedStrings.xml")
+    ? Array.from(decoder.parseFromString(await unzipText(entries, "xl/sharedStrings.xml"), "application/xml").getElementsByTagName("si"), (item) => item.textContent ?? "")
+    : [];
+  const workbook = decoder.parseFromString(await unzipText(entries, "xl/workbook.xml"), "application/xml");
+  const firstSheet = workbook.getElementsByTagName("sheet")[0];
+  const relationId = firstSheet?.getAttribute("r:id") ?? "";
+  const relationships = decoder.parseFromString(await unzipText(entries, "xl/_rels/workbook.xml.rels"), "application/xml");
+  const target = Array.from(relationships.getElementsByTagName("Relationship")).find((relationship) => relationship.getAttribute("Id") === relationId)?.getAttribute("Target") ?? "worksheets/sheet1.xml";
+  const worksheetName = `xl/${target.replace(/^\/+/, "").replace(/^\.\//, "")}`;
+  const sheet = decoder.parseFromString(await unzipText(entries, worksheetName), "application/xml");
+  return Array.from(sheet.getElementsByTagName("row"), (row) => {
+    const values: Array<string | number> = [];
+    Array.from(row.getElementsByTagName("c")).forEach((cell) => {
+      const value = childText(cell, "v");
+      const inline = childText(cell, "is");
+      const type = cell.getAttribute("t");
+      const column = columnNumber(cell.getAttribute("r") ?? "A1");
+      if (type === "s") values[column] = sharedStrings[Number(value)] ?? "";
+      else if (type === "inlineStr") values[column] = inline;
+      else if (type === "b") values[column] = value === "1" ? "Yes" : "No";
+      else values[column] = value !== "" && Number.isFinite(Number(value)) ? Number(value) : value;
+    });
+    return values;
+  });
+}
+
+function headerName(value: unknown) {
+  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function spreadsheetDate(value: string | number) {
+  if (typeof value === "number" && value > 1) {
+    return new Date(Date.UTC(1899, 11, 30) + Math.round(value) * 86400000).toISOString().slice(0, 10);
+  }
+  const text = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const parts = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/.exec(text);
+  if (parts) return `${parts[3]}-${parts[2].padStart(2, "0")}-${parts[1].padStart(2, "0")}`;
+  return "";
+}
+
+function spreadsheetTime(value: string | number) {
+  if (typeof value === "number" && value >= 0 && value < 1) {
+    const minutes = Math.round(value * 1440);
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  }
+  const text = String(value).trim().toLowerCase().replace(".", ":");
+  const match = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/.exec(text);
+  if (!match) return "";
+  let hour = Number(match[1]);
+  const minutes = Number(match[2] ?? "0");
+  if (match[3] === "pm" && hour < 12) hour += 12;
+  if (match[3] === "am" && hour === 12) hour = 0;
+  return hour < 24 && minutes < 60 ? `${String(hour).padStart(2, "0")}:${String(minutes).padStart(2, "0")}` : "";
+}
+
+function spreadsheetRinks(value: string | number) {
+  const text = String(value).trim();
+  if (/^\d+$/.test(text)) return Number(text);
+  const range = /^(?:rinks?\s*)?(\d)\s*-\s*(\d)$/i.exec(text);
+  if (range) return Array.from({ length: Number(range[2]) - Number(range[1]) + 1 }, (_, index) => Number(range[1]) + index);
+  const listed = text.match(/\d+/g)?.map(Number) ?? [];
+  return listed.length ? [...new Set(listed)] : null;
+}
+
+async function parseFixtureSpreadsheet(file: File): Promise<FixtureImportRow[]> {
+  if (!file.name.toLowerCase().endsWith(".xlsx")) throw new Error("Please choose an Excel .xlsx workbook.");
+  const rows = await readXlsxRows(file);
+  const headers = rows[0] ?? [];
+  const indexFor = (...names: string[]) => headers.findIndex((header) => names.includes(headerName(header)));
+  const columns = {
+    date: indexFor("date"),
+    time: indexFor("time"),
+    opponent: indexFor("opponent"),
+    competition: indexFor("league", "competition", "leagueorcompetition", "whichleagueofcompetition"),
+    rinks: indexFor("rinks", "rinksneeded", "whichrinksneeded", "rinkneeded"),
+  };
+  if (Object.values(columns).some((index) => index < 0)) {
+    throw new Error("The first row must contain: Date, Time, Opponent, Which League of competition, and Which rinks needed.");
+  }
+  const fixtures: FixtureImportRow[] = [];
+  for (let index = 1; index < rows.length; index += 1) {
+    const row = rows[index];
+    if (!row.some((value) => String(value ?? "").trim())) continue;
+    const date = spreadsheetDate(row[columns.date] ?? "");
+    const time = spreadsheetTime(row[columns.time] ?? "");
+    const opponent = String(row[columns.opponent] ?? "").trim();
+    const competition = String(row[columns.competition] ?? "").trim();
+    const rinks = spreadsheetRinks(row[columns.rinks] ?? "");
+    if (!date || !time || !opponent || !competition || rinks === null || (Array.isArray(rinks) ? rinks.some((rink) => rink < 1 || rink > 6) : rinks < 1 || rinks > 6)) {
+      throw new Error(`Row ${index + 1} is incomplete or has an invalid date, time or rink value.`);
+    }
+    fixtures.push({ date, time, opponent, competition, rinks });
+  }
+  if (!fixtures.length) throw new Error("There are no fixture rows below the headings.");
+  return fixtures;
 }
 
 export default function Home() {
@@ -631,8 +807,8 @@ function HomePage({
             </button>
           </div>
           <div className="fixture-grid">
-            {fixtures.length > 0 ? (
-              fixtures.map((fixture) => (
+            {fixtureHighlights.length > 0 ? (
+              fixtureHighlights.map((fixture) => (
                 <article key={fixture.event}>
                   <span>{fixture.type}</span>
                   <b>{fixture.date}</b>
@@ -1435,6 +1611,14 @@ function AboutPage() {
   );
 }
 function FixturesPage() {
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    void fetch("/api/empire/fixtures")
+      .then((response) => (response.ok ? response.json() : { fixtures: [] }))
+      .then((result) => setFixtures(result.fixtures ?? []))
+      .finally(() => setLoaded(true));
+  }, []);
   return (
     <section className="page wrap">
       <p className="eyebrow">Fixtures & results</p>
@@ -1446,24 +1630,23 @@ function FixturesPage() {
       {fixtures.length > 0 ? (
         <div className="fixture-list">
           {fixtures.map((fixture) => (
-            <article key={fixture.event}>
+            <article key={fixture.id}>
               <div>
-                <span>{fixture.type}</span>
-                <b>{fixture.date}</b>
+                <span>{fixture.competition}</span>
+                <b>{displayDate(fixture.date)} · {fixture.time}</b>
               </div>
-              <h2>{fixture.event}</h2>
+              <h2>Empire v {fixture.opponent}</h2>
               <p>
-                Please check the members area and club noticeboard for confirmed
-                team details, times and any late changes.
+                {fixture.rinkCount} {fixture.rinkCount === 1 ? "rink" : "rinks"} reserved · Please check the members area and club noticeboard for team details and any late changes.
               </p>
             </article>
           ))}
         </div>
       ) : (
         <div className="fixture-empty" role="status">
-          <span>Seasonal update</span>
-          <h2>The fixtures are taking a winter break.</h2>
-          <p>{fixtureMessage}</p>
+          <span>{loaded ? "Seasonal update" : "Loading fixtures"}</span>
+          <h2>{loaded ? "No fixtures have been published yet." : "Checking the fixture list…"}</h2>
+          <p>{loaded ? fixtureMessage : ""}</p>
         </div>
       )}
       <div className="notice-banner">
@@ -2095,8 +2278,7 @@ function MemberZone({
           </label>
         </div>
         <p className="booking-date">
-          Availability for <b>{displayDate(date)}</b>. Click an existing booking
-          to remove it; Friday green maintenance is protected.
+          Availability for <b>{displayDate(date)}</b>. Personal bookings can be removed here; league fixture rinks are managed in the Admin Zone. Friday green maintenance is protected.
         </p>
         <div className="booking-scroll">
           <table>
@@ -2118,9 +2300,9 @@ function MemberZone({
                       <td key={rink}>
                         <button
                           className={booking ? "taken" : "available"}
-                          disabled={booking?.id === null}
+                          disabled={booking?.id === null || Boolean(booking?.fixtureKey)}
                           onClick={() => {
-                            if (booking && booking.id !== null) {
+                            if (booking && booking.id !== null && !booking.fixtureKey) {
                               void removeBooking(booking);
                             } else {
                               setSelected({ rink, slot });
@@ -2135,7 +2317,7 @@ function MemberZone({
                               <span>
                                 {booking.bookingName.split(" · ")[1] ||
                                   "Booked"}{" "}
-                                {booking.id === null ? "· Unavailable" : "· Remove"}
+                                {booking.id === null ? "· Unavailable" : booking.fixtureKey ? "· Fixture booking" : "· Remove"}
                               </span>
                             </>
                           ) : (
@@ -3849,6 +4031,121 @@ function NewsAdminPanel({
     </section>
   );
 }
+function FixtureImportPanel({
+  password,
+  onMessage,
+}: {
+  password: string;
+  onMessage: (message: string) => void;
+}) {
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const headers = useMemo(() => apiHeaders("admin", password), [password]);
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/fixtures", { headers });
+      if (!response.ok) throw new Error("Fixture request failed");
+      setFixtures((await response.json()).fixtures ?? []);
+    } catch {
+      setError("We could not load the fixture list.");
+    }
+  }, [headers]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
+  const upload = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    const file = new FormData(event.currentTarget).get("fixtureFile");
+    if (!(file instanceof File) || !file.size) {
+      setError("Choose the fixture spreadsheet first.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const fixtureRows = await parseFixtureSpreadsheet(file);
+      const response = await fetch("/api/empire/fixtures", {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ fixtures: fixtureRows }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The fixture spreadsheet could not be imported.");
+        return;
+      }
+      event.currentTarget.reset();
+      onMessage(`${result.imported} ${result.imported === 1 ? "fixture has" : "fixtures have"} been published and the required rinks are reserved.`);
+      notifyEmpireDataUpdated();
+      await refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "The fixture spreadsheet could not be read.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async (fixture: Fixture) => {
+    if (!window.confirm(`Remove Empire v ${fixture.opponent} on ${displayDate(fixture.date)} and release its rinks?`)) return;
+    setError("");
+    try {
+      const response = await fetch("/api/empire/fixtures", {
+        method: "DELETE",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id: fixture.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The fixture could not be removed.");
+        return;
+      }
+      onMessage(`Empire v ${fixture.opponent} has been removed and its rinks are available again.`);
+      notifyEmpireDataUpdated();
+      await refresh();
+    } catch {
+      setError("The fixture could not be removed.");
+    }
+  };
+  return (
+    <section className="fixture-import-panel" aria-labelledby="fixture-import-heading">
+      <div className="fixture-import-copy">
+        <p className="eyebrow">Fixtures</p>
+        <h2 id="fixture-import-heading">Import league fixtures</h2>
+        <p>Upload one Excel workbook. Every row is checked before anything is added, then the listed rinks are reserved automatically.</p>
+      </div>
+      <form onSubmit={upload} className="fixture-import-form">
+        <label>
+          Excel fixture sheet
+          <input name="fixtureFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required disabled={busy} />
+        </label>
+        <p className="fixture-import-help">Headings: Date, Time, Opponent, Which League of competition, Which rinks needed. Use a number (for example, 4) for any four free rinks, or a list such as 1, 3, 5 for specific rinks.</p>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Checking fixture sheet…" : "Import fixtures and reserve rinks"}</button>
+      </form>
+      {error && <Status type="error" message={error} />}
+      <div className="fixture-admin-list">
+        <div>
+          <p className="eyebrow">Published fixtures</p>
+          <h3>{fixtures.length ? `${fixtures.length} in the list` : "No fixtures imported yet"}</h3>
+        </div>
+        {fixtures.length ? (
+          <ul>
+            {fixtures.map((fixture) => (
+              <li key={fixture.id}>
+                <div>
+                  <b>Empire v {fixture.opponent}</b>
+                  <span>{displayDate(fixture.date)} · {fixture.time} · {fixture.competition} · {fixture.rinkCount} {fixture.rinkCount === 1 ? "rink" : "rinks"}</span>
+                </div>
+                <button type="button" onClick={() => void remove(fixture)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 function AdminZone({
   password,
   onLeave,
@@ -4023,6 +4320,13 @@ function AdminZone({
         }}
       />
       <AdminPlayerRequestOverview
+        password={password}
+        onMessage={(nextMessage) => {
+          setError("");
+          setMessage(nextMessage);
+        }}
+      />
+      <FixtureImportPanel
         password={password}
         onMessage={(nextMessage) => {
           setError("");
