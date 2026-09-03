@@ -4944,3 +4944,110 @@ body {
     grid-column: auto;
   }
 }
+
+/* Admin form legibility: keep every editable area on a solid, high-contrast
+   surface even when the wider site uses the darker Empire colour palette. */
+.admin-zone .admin-card,
+.admin-zone .news-admin,
+.admin-zone .fixture-import-panel,
+.admin-zone .team-sheet-admin,
+.admin-zone .security-card,
+.admin-zone .admin-members-tab,
+.admin-zone .admin-files-tab,
+.admin-zone .admin-members-panel,
+.admin-zone .admin-files-panel {
+  color: var(--ink) !important;
+  background: #f3eddd !important;
+}
+
+.admin-zone .admin-card,
+.admin-zone .news-admin,
+.admin-zone .fixture-import-panel,
+.admin-zone .team-sheet-admin,
+.admin-zone .security-card {
+  border: 1px solid rgba(228, 184, 44, 0.5);
+  border-top-width: 5px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+}
+
+.admin-zone .admin-card h2,
+.admin-zone .admin-card label,
+.admin-zone .news-admin h2,
+.admin-zone .news-admin h3,
+.admin-zone .news-admin label,
+.admin-zone .fixture-import-panel h2,
+.admin-zone .fixture-import-panel label,
+.admin-zone .team-sheet-admin h2,
+.admin-zone .team-sheet-admin h3,
+.admin-zone .team-sheet-admin label,
+.admin-zone .security-card h2,
+.admin-zone .security-card label {
+  color: #062761 !important;
+}
+
+.admin-zone :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 13px;
+  color: #12243a !important;
+  background: #fffefa !important;
+  border: 2px solid #8799a8 !important;
+  border-radius: 7px;
+  box-shadow: 0 2px 5px rgba(6, 39, 97, 0.08);
+  font-size: 16px;
+  line-height: 1.35;
+  opacity: 1;
+}
+
+.admin-zone textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.admin-zone :is(input, textarea)::placeholder {
+  color: #5f6f7d !important;
+  opacity: 1;
+}
+
+.admin-zone :is(input, textarea, select):focus-visible {
+  border-color: #bd253e !important;
+  outline: 3px solid rgba(228, 184, 44, 0.48);
+  outline-offset: 2px;
+}
+
+.admin-zone input[type="file"] {
+  padding: 7px;
+  cursor: pointer;
+}
+
+.admin-zone input[type="file"]::file-selector-button {
+  min-height: 32px;
+  margin-right: 12px;
+  padding: 7px 12px;
+  color: #062761;
+  background: #f3cf55;
+  border: 1px solid #c59b14;
+  border-radius: 5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-zone .admin-members-toolbar p,
+.admin-zone .admin-panel-help,
+.admin-zone .fixture-import-help,
+.admin-zone .news-admin .form-help,
+.admin-zone .admin-section-heading p:not(.eyebrow) {
+  color: #405568 !important;
+}
+
+.admin-zone .admin-members-panel,
+.admin-zone .admin-files-panel {
+  border-color: #c9bea6 !important;
+}
+
+@media (max-width: 680px) {
+  .admin-zone :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    font-size: 16px;
+  }
+}
