@@ -5051,3 +5051,178 @@ body {
     font-size: 16px;
   }
 }
+
+.games-selected {
+  display: inline-grid;
+  min-width: 28px;
+  min-height: 28px;
+  place-items: center;
+  color: #062761;
+  background: #f3cf55;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fixture-result,
+.fixture-admin-result {
+  color: #0f644b !important;
+  font-weight: 800;
+}
+
+.fixture-admin-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.fixture-result-form {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 9px;
+  align-items: end;
+  padding: 12px;
+  background: #f0ead9;
+  border-left: 4px solid var(--gold);
+}
+
+.fixture-result-form label {
+  flex: 1;
+  display: grid;
+  gap: 5px;
+  color: #062761;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fixture-result-form input {
+  min-height: 40px;
+}
+
+.fixture-result-form .text-button {
+  padding: 10px 0;
+  color: var(--red);
+  background: transparent;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.sponsor-admin {
+  display: grid;
+  gap: 14px;
+}
+
+.sponsor-admin > form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+}
+
+.sponsor-admin > form label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.sponsor-admin > form .primary {
+  align-self: end;
+  justify-self: start;
+}
+
+.sponsor-admin-list {
+  display: grid;
+  gap: 0;
+  padding-top: 8px;
+  border-top: 1px solid #c9bea6;
+}
+
+.sponsor-admin-list h3 {
+  margin: 11px 0;
+  color: #062761;
+  font: 800 19px Georgia, serif;
+}
+
+.sponsor-admin-list article {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 0;
+  border-top: 1px solid #d8cfb9;
+}
+
+.sponsor-admin-list img {
+  width: 62px;
+  height: 46px;
+  object-fit: contain;
+  background: #fffefa;
+  border: 1px solid #c9bea6;
+  border-radius: 4px;
+}
+
+.sponsor-admin-list article > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.sponsor-admin-list b,
+.sponsor-admin-list span,
+.sponsor-admin-list a {
+  display: block;
+}
+
+.sponsor-admin-list b { color: #062761; }
+.sponsor-admin-list span { color: #405568; font-size: 12px; }
+.sponsor-admin-list a { margin-top: 3px; color: #0f644b; font-size: 12px; font-weight: 800; }
+
+.sponsor-admin-list button {
+  color: #8c1d2c;
+  background: #fff0f0;
+  border: 1px solid #dca5ae;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.print-signup {
+  margin-left: 8px;
+}
+
+.player-signup-print {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  .fixture-admin-actions,
+  .fixture-result-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sponsor-admin > form {
+    grid-template-columns: 1fr;
+  }
+
+  .print-signup {
+    width: 100%;
+    margin: 9px 0 0;
+  }
+}
+
+@media print {
+  body * { visibility: hidden !important; }
+  .player-signup-print,
+  .player-signup-print * { visibility: visible !important; }
+  .player-signup-print {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    padding: 26mm 22mm;
+    color: #000 !important;
+    background: #fff !important;
+    font-family: Arial, sans-serif;
+  }
+  .player-signup-print p { margin: 0 0 8px; color: #222 !important; }
+  .player-signup-print h1 { margin: 0 0 10px; color: #000 !important; font: 700 28pt Georgia, serif; }
+  .player-signup-print ol { margin: 18mm 0 0; padding-left: 10mm; }
+  .player-signup-print li { min-height: 11mm; padding: 3mm 0; border-bottom: 1px solid #555; font-size: 14pt; }
+}

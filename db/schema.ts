@@ -51,6 +51,7 @@ export const empireFixtures = sqliteTable(
     rinksJson: text("rinks_json").notNull(),
     timeSlot: text("time_slot").notNull(),
     bookingKey: text("booking_key").notNull().unique(),
+    resultText: text("result_text"),
     createdAt: text("created_at").notNull(),
   },
   (table) => [
@@ -109,5 +110,16 @@ export const empireNewsAssets = sqliteTable("empire_news_assets", {
   objectKey: text("object_key").notNull(),
   fileName: text("file_name").notNull(),
   contentType: text("content_type").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+export const empireSponsors = sqliteTable("empire_sponsors", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  website: text("website").notNull(),
+  logoObjectKey: text("logo_object_key").notNull(),
+  logoFileName: text("logo_file_name").notNull(),
+  logoContentType: text("logo_content_type").notNull(),
   createdAt: text("created_at").notNull(),
 });

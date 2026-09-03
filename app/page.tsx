@@ -17,6 +17,7 @@ type AdminTab =
   | "fixtures"
   | "player-signups"
   | "news"
+  | "sponsors"
   | "documents"
   | "security";
 type Page =
@@ -43,6 +44,17 @@ type Fixture = {
   competition: string;
   rinkCount: number;
   rinks: number[];
+  result: string;
+};
+type Sponsor = {
+  id?: number;
+  name: string;
+  tier: string;
+  strapline: string;
+  image: string;
+  website: string;
+  linkLabel: string;
+  note?: string;
 };
 type FixtureImportRow = {
   date: string;
@@ -227,7 +239,7 @@ const starterNews: NewsItem[] = [
     publishedAt: "2024-11-01T09:00:00.000Z",
   },
 ];
-const sponsors = [
+const sponsors: Sponsor[] = [
   {
     name: "Frost Funeral Service",
     tier: "Empire club sponsor",
@@ -856,6 +868,31 @@ function HomePage({
   );
 }
 function SponsorsPage() {
+  const [managedSponsors, setManagedSponsors] = useState<Sponsor[]>([]);
+  useEffect(() => {
+    void fetch("/api/empire/sponsors")
+      .then((response) => (response.ok ? response.json() : { sponsors: [] }))
+      .then((result) =>
+        setManagedSponsors(
+          (result.sponsors ?? []).map((sponsor: {
+            id: number;
+            title: string;
+            description: string;
+            logoUrl: string;
+            website: string;
+          }) => ({
+            id: sponsor.id,
+            name: sponsor.title,
+            tier: "Empire club sponsor",
+            strapline: sponsor.description,
+            image: sponsor.logoUrl,
+            website: sponsor.website,
+            linkLabel: "Visit website",
+          })),
+        ),
+      );
+  }, []);
+  const allSponsors = [...sponsors, ...managedSponsors];
   return (
     <section className="sponsors-page">
       <span className="peacock-tail-pattern peacock-tail-pattern-sponsors" aria-hidden="true" />
@@ -880,8 +917,8 @@ function SponsorsPage() {
         </div>
       </div>
       <div className="wrap sponsor-grid">
-        {sponsors.map((sponsor, index) => (
-          <article className="sponsor-card" key={sponsor.name}>
+        {allSponsors.map((sponsor, index) => (
+          <article className="sponsor-card" key={sponsor.id ?? sponsor.name}>
             <div className="sponsor-card-topline">
               <span className="sponsor-tier">{sponsor.tier}</span>
               <span className="sponsor-number">{String(index + 1).padStart(2, "0")}</span>
@@ -1661,6 +1698,7 @@ function FixturesPage() {
               <p>
                 {fixture.rinkCount} {fixture.rinkCount === 1 ? "rink" : "rinks"} reserved · Please check the members area and club noticeboard for team details and any late changes.
               </p>
+              {fixture.result && <p className="fixture-result"><b>Result:</b> {fixture.result}</p>}
             </article>
           ))}
         </div>
@@ -2491,6 +2529,7 @@ function PlayerRequestBoard({ password }: { password: string }) {
   const [drafts, setDrafts] = useState<Record<number, string[]>>({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [printRequest, setPrintRequest] = useState<PlayerRequest | null>(null);
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/empire/player-requests", {
@@ -2515,6 +2554,11 @@ function PlayerRequestBoard({ password }: { password: string }) {
       window.removeEventListener("focus", handleUpdate);
     };
   }, [refresh]);
+  useEffect(() => {
+    const clearPrintRequest = () => setPrintRequest(null);
+    window.addEventListener("afterprint", clearPrintRequest);
+    return () => window.removeEventListener("afterprint", clearPrintRequest);
+  }, []);
   const save = async (id: number) => {
     setMessage("");
     setError("");
@@ -2593,6 +2637,16 @@ function PlayerRequestBoard({ password }: { password: string }) {
               >
                 Save names
               </button>
+              <button
+                className="outline print-signup"
+                type="button"
+                onClick={() => {
+                  setPrintRequest({ ...r, names });
+                  window.setTimeout(() => window.print(), 0);
+                }}
+              >
+                Print / save as PDF
+              </button>
             </div>
           );
         })
@@ -2601,6 +2655,18 @@ function PlayerRequestBoard({ password }: { password: string }) {
       )}
       {message && <Status message={message} />}
       {error && <Status type="error" message={error} />}
+      {printRequest && (
+        <section className="player-signup-print" aria-hidden="true">
+          <p>Empire Bowls Club</p>
+          <h1>{printRequest.match}</h1>
+          <p>{displayDate(printRequest.date)} · Player sign-up sheet</p>
+          <ol>
+            {Array.from({ length: printRequest.playersRequired }, (_, index) => (
+              <li key={index}>{printRequest.names[index] || "____________________________"}</li>
+            ))}
+          </ol>
+        </section>
+      )}
     </article>
   );
 }
@@ -2742,11 +2808,13 @@ function InfoList({
 
 function AdminMemberOverview({
   members,
+  teamSheets,
   password,
   onChange,
   onMessage,
 }: {
   members: Member[];
+  teamSheets: TeamSheet[];
   password: string;
   onChange: (members: Member[]) => void;
   onMessage: (message: string) => void;
@@ -2759,6 +2827,17 @@ function AdminMemberOverview({
   );
   const [editing, setEditing] = useState<Member | null>(null);
   const [editError, setEditError] = useState("");
+  const selectionYear = new Date().getFullYear();
+  const gamesByMember = new Map<number, number>();
+  for (const sheet of teamSheets) {
+    if (!sheet.matchDate.startsWith(`${selectionYear}-`)) continue;
+    const selectedIds = new Set(
+      sheet.rinks.flatMap((rink) => rink.players.map((player) => player.memberId)),
+    );
+    for (const memberId of selectedIds) {
+      gamesByMember.set(memberId, (gamesByMember.get(memberId) ?? 0) + 1);
+    }
+  }
   const ordered = [...members].sort((a, b) => {
     if (sort === "membershipType")
       return (
@@ -2898,6 +2977,7 @@ function AdminMemberOverview({
                 <tr>
                   <th>Name</th>
                   <th>Membership</th>
+                  <th>{selectionYear} games</th>
                   <th>Date of birth</th>
                   <th>Date joined</th>
                   <th>Contact</th>
@@ -2918,6 +2998,11 @@ function AdminMemberOverview({
                           className={`member-badge ${member.membershipType === "Social member" ? "social" : "full"}`}
                         >
                           {member.membershipType}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="games-selected">
+                          {gamesByMember.get(member.id) ?? 0}
                         </span>
                       </td>
                       <td>{formatDateOfBirth(member.dateOfBirth)}</td>
@@ -2950,7 +3035,7 @@ function AdminMemberOverview({
                     </tr>
                     {editing?.id === member.id && (
                       <tr className="member-edit-row">
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <form onSubmit={update}>
                             <div className="member-edit-heading">
                               <b>Edit {member.name}</b>
@@ -4048,6 +4133,125 @@ function NewsAdminPanel({
     </section>
   );
 }
+function SponsorAdminPanel({
+  password,
+  onMessage,
+}: {
+  password: string;
+  onMessage: (message: string) => void;
+}) {
+  const [sponsors, setSponsors] = useState<Array<{
+    id: number;
+    title: string;
+    description: string;
+    website: string;
+    logoUrl: string;
+  }>>([]);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const headers = useMemo(() => apiHeaders("admin", password), [password]);
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/sponsors", { headers });
+      if (!response.ok) throw new Error("Sponsor request failed");
+      setSponsors((await response.json()).sponsors ?? []);
+      setError("");
+    } catch {
+      setError("We could not load the sponsor list.");
+    }
+  }, [headers]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void refresh(), 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
+  const addSponsor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    setError("");
+    setBusy(true);
+    try {
+      const response = await fetch("/api/empire/sponsors", {
+        method: "POST",
+        headers,
+        body: new FormData(formElement),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The sponsor could not be added.");
+        return;
+      }
+      formElement.reset();
+      refreshAdminWorkspace("sponsors", `${result.sponsor.title} has been added to the Sponsors page.`);
+      return;
+    } catch {
+      setError("The sponsor could not be added. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const removeSponsor = async (sponsor: { id: number; title: string }) => {
+    if (!window.confirm(`Remove ${sponsor.title} from the Sponsors page?`)) return;
+    setError("");
+    try {
+      const response = await fetch("/api/empire/sponsors", {
+        method: "DELETE",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id: sponsor.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The sponsor could not be removed.");
+        return;
+      }
+      onMessage(`${sponsor.title} has been removed from the Sponsors page.`);
+      refreshAdminWorkspace("sponsors", `${sponsor.title} has been removed from the Sponsors page.`);
+    } catch {
+      setError("The sponsor could not be removed. Please try again.");
+    }
+  };
+  return (
+    <section className="admin-card sponsor-admin" aria-labelledby="sponsor-admin-heading">
+      <p className="eyebrow">Sponsors</p>
+      <h2 id="sponsor-admin-heading">Add a sponsor</h2>
+      <p className="form-help">Add a logo, short description and website. It will appear on the public Sponsors page immediately after publishing.</p>
+      <form onSubmit={addSponsor}>
+        <label>
+          Sponsor name
+          <input name="title" required maxLength={160} disabled={busy} />
+        </label>
+        <label>
+          Short description
+          <textarea name="description" required maxLength={500} disabled={busy} />
+        </label>
+        <label>
+          Website address
+          <input name="website" type="url" placeholder="https://example.com" required maxLength={300} disabled={busy} />
+        </label>
+        <label>
+          Sponsor logo
+          <input name="logo" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required disabled={busy} />
+        </label>
+        <button className="primary" type="submit" disabled={busy}>{busy ? "Adding sponsor…" : "Add sponsor"}</button>
+      </form>
+      {error && <Status type="error" message={error} />}
+      <div className="sponsor-admin-list">
+        <h3>{sponsors.length ? "Added sponsors" : "No added sponsors yet"}</h3>
+        {sponsors.map((sponsor) => (
+          <article key={sponsor.id}>
+            <img src={sponsor.logoUrl} alt="" />
+            <div>
+              <b>{sponsor.title}</b>
+              <span>{sponsor.description}</span>
+              <a href={sponsor.website} target="_blank" rel="noreferrer">Open website ↗</a>
+            </div>
+            <button type="button" onClick={() => void removeSponsor(sponsor)}>Remove</button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function FixtureImportPanel({
   password,
   onMessage,
@@ -4058,6 +4262,8 @@ function FixtureImportPanel({
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [editingResult, setEditingResult] = useState<number | null>(null);
+  const [resultDraft, setResultDraft] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
   const refresh = useCallback(async () => {
     try {
@@ -4127,6 +4333,34 @@ function FixtureImportPanel({
       setError("The fixture could not be removed.");
     }
   };
+  const saveResult = async (fixture: Fixture) => {
+    setError("");
+    try {
+      const response = await fetch("/api/empire/fixtures", {
+        method: "PUT",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id: fixture.id, result: resultDraft }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "The fixture result could not be saved.");
+        return;
+      }
+      setFixtures((current) =>
+        current.map((item) => (item.id === fixture.id ? result.fixture : item)),
+      );
+      setEditingResult(null);
+      refreshAdminWorkspace(
+        "fixtures",
+        result.fixture.result
+          ? `Result for Empire v ${fixture.opponent} has been published.`
+          : `Result for Empire v ${fixture.opponent} has been cleared.`,
+      );
+      return;
+    } catch {
+      setError("The fixture result could not be saved. Please try again.");
+    }
+  };
   return (
     <section className="fixture-import-panel" aria-labelledby="fixture-import-heading">
       <div className="fixture-import-copy">
@@ -4155,8 +4389,40 @@ function FixtureImportPanel({
                 <div>
                   <b>Empire v {fixture.opponent}</b>
                   <span>{displayDate(fixture.date)} · {fixture.time} · {fixture.competition} · {fixture.rinkCount} {fixture.rinkCount === 1 ? "rink" : "rinks"}</span>
+                  {fixture.result && <span className="fixture-admin-result">Result: {fixture.result}</span>}
                 </div>
-                <button type="button" onClick={() => void remove(fixture)}>Remove</button>
+                <div className="fixture-admin-actions">
+                  <button
+                    type="button"
+                    className="edit-member"
+                    onClick={() => {
+                      setEditingResult(fixture.id);
+                      setResultDraft(fixture.result);
+                    }}
+                  >
+                    {fixture.result ? "Edit result" : "Add result"}
+                  </button>
+                  <button type="button" onClick={() => void remove(fixture)}>Remove</button>
+                </div>
+                {editingResult === fixture.id && (
+                  <form className="fixture-result-form" onSubmit={(event) => {
+                    event.preventDefault();
+                    void saveResult(fixture);
+                  }}>
+                    <label>
+                      Result
+                      <input
+                        value={resultDraft}
+                        onChange={(event) => setResultDraft(event.target.value)}
+                        maxLength={120}
+                        placeholder="e.g. Won 64–51"
+                        autoFocus
+                      />
+                    </label>
+                    <button className="primary" type="submit">Publish result</button>
+                    <button className="text-button" type="button" onClick={() => setEditingResult(null)}>Cancel</button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>
@@ -4192,6 +4458,7 @@ function AdminZone({
       storedTab === "fixtures" ||
       storedTab === "player-signups" ||
       storedTab === "news" ||
+      storedTab === "sponsors" ||
       storedTab === "documents" ||
       storedTab === "security"
     ) {
@@ -4227,6 +4494,7 @@ function AdminZone({
     { id: "fixtures", label: "Fixtures" },
     { id: "player-signups", label: "Player sign-ups" },
     { id: "news", label: "News" },
+    { id: "sponsors", label: "Sponsors" },
     {
       id: "documents",
       label: "Documents",
@@ -4395,6 +4663,7 @@ function AdminZone({
         >
           <AdminMemberOverview
             members={members}
+            teamSheets={teamSheets}
             password={password}
             onChange={setMembers}
             onMessage={(nextMessage) => {
@@ -4531,6 +4800,22 @@ function AdminZone({
           hidden={activeTab !== "news"}
         >
           <NewsAdminPanel
+            password={password}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-sponsors"
+          role="tabpanel"
+          aria-labelledby="admin-tab-sponsors"
+          hidden={activeTab !== "sponsors"}
+        >
+          <SponsorAdminPanel
             password={password}
             onMessage={(nextMessage) => {
               setError("");

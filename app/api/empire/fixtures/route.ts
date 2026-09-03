@@ -26,6 +26,7 @@ type FixtureRow = {
   rinks_json: string;
   time_slot: string;
   booking_key: string;
+  result_text: string | null;
   created_at: string;
 };
 
@@ -83,6 +84,7 @@ function mapFixture(row: FixtureRow) {
     competition: row.competition,
     rinkCount: row.rink_count,
     rinks: parseStoredRinks(row.rinks_json),
+    result: row.result_text ?? "",
   };
 }
 
@@ -111,13 +113,41 @@ export async function GET() {
     const db = await getEmpireDatabase();
     const result = await db
       .prepare(
-        "SELECT id, fixture_date, start_time, opponent, competition, rink_count, rinks_json, time_slot, booking_key, created_at FROM empire_fixtures ORDER BY fixture_date ASC, start_time ASC, opponent ASC",
+        "SELECT id, fixture_date, start_time, opponent, competition, rink_count, rinks_json, time_slot, booking_key, result_text, created_at FROM empire_fixtures ORDER BY fixture_date ASC, start_time ASC, opponent ASC",
       )
       .all<FixtureRow>();
     return Response.json(
       { fixtures: (result.results ?? []).map(mapFixture) },
       { headers: { "cache-control": "no-store" } },
     );
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function PUT(request: Request) {
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  try {
+    const input = await readJson(request);
+    const id = Number(input.id);
+    const result = cleanText(input.result, 120);
+    if (!Number.isInteger(id)) {
+      return Response.json({ error: "Choose a valid fixture." }, { status: 400 });
+    }
+    const db = await getEmpireDatabase();
+    const current = await db
+      .prepare(
+        "SELECT id, fixture_date, start_time, opponent, competition, rink_count, rinks_json, time_slot, booking_key, result_text, created_at FROM empire_fixtures WHERE id = ?",
+      )
+      .bind(id)
+      .first<FixtureRow>();
+    if (!current) return Response.json({ error: "Fixture not found." }, { status: 404 });
+    await db
+      .prepare("UPDATE empire_fixtures SET result_text = ? WHERE id = ?")
+      .bind(result || null, id)
+      .run();
+    return Response.json({ fixture: mapFixture({ ...current, result_text: result || null }) });
   } catch (error) {
     return apiError(error);
   }
