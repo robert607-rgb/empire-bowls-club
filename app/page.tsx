@@ -20,7 +20,7 @@ type Page =
   | "Play bowls"
   | "Contact";
 type Booking = {
-  id: number;
+  id: number | null;
   rinkNumber: number;
   timeSlot: string;
   bookingName: string;
@@ -2096,7 +2096,7 @@ function MemberZone({
         </div>
         <p className="booking-date">
           Availability for <b>{displayDate(date)}</b>. Click an existing booking
-          to remove it.
+          to remove it; Friday green maintenance is protected.
         </p>
         <div className="booking-scroll">
           <table>
@@ -2118,8 +2118,9 @@ function MemberZone({
                       <td key={rink}>
                         <button
                           className={booking ? "taken" : "available"}
+                          disabled={booking?.id === null}
                           onClick={() => {
-                            if (booking) {
+                            if (booking && booking.id !== null) {
                               void removeBooking(booking);
                             } else {
                               setSelected({ rink, slot });
@@ -2134,7 +2135,7 @@ function MemberZone({
                               <span>
                                 {booking.bookingName.split(" · ")[1] ||
                                   "Booked"}{" "}
-                                · Remove
+                                {booking.id === null ? "· Unavailable" : "· Remove"}
                               </span>
                             </>
                           ) : (
@@ -3451,7 +3452,7 @@ function AdminPlayerRequestOverview({
                   name="playersRequired"
                   type="number"
                   min="1"
-                  max="20"
+                  max="40"
                   value={editing.playersRequired}
                   onChange={(event) =>
                     setEditing({
@@ -4091,7 +4092,7 @@ function AdminZone({
                 name="playersRequired"
                 type="number"
                 min="1"
-                max="20"
+                max="40"
                 required
               />
             </label>

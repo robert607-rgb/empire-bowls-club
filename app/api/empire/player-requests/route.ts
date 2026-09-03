@@ -52,7 +52,7 @@ function validateDetails(details: ReturnType<typeof readDetails>) {
     !/^\d{4}-\d{2}-\d{2}$/.test(details.date) ||
     !Number.isInteger(details.playersRequired) ||
     details.playersRequired < 1 ||
-    details.playersRequired > 20
+    details.playersRequired > 40
   ) {
     return "Please enter a match, date and number of players required.";
   }
