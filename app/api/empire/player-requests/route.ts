@@ -59,6 +59,40 @@ function validateDetails(details: ReturnType<typeof readDetails>) {
   return "";
 }
 
+async function removeDuplicateBlankRequests(
+  db: Awaited<ReturnType<typeof getEmpireDatabase>>,
+  rows: PlayerRequestRow[],
+) {
+  const keepByMatchAndDate = new Map<string, PlayerRequestRow>();
+  const duplicateIds = new Set<number>();
+
+  for (const row of rows) {
+    if (readNames(row.names_json).length) continue;
+    const key = `${row.match_name.trim().toLowerCase()}\u0000${row.match_date}`;
+    const current = keepByMatchAndDate.get(key);
+    if (!current) {
+      keepByMatchAndDate.set(key, row);
+      continue;
+    }
+    const keepCurrent =
+      current.players_required > row.players_required ||
+      (current.players_required === row.players_required && current.id < row.id);
+    const kept = keepCurrent ? current : row;
+    const duplicate = keepCurrent ? row : current;
+    keepByMatchAndDate.set(key, kept);
+    duplicateIds.add(duplicate.id);
+  }
+
+  if (duplicateIds.size) {
+    await db.batch(
+      [...duplicateIds].map((id) =>
+        db.prepare("DELETE FROM empire_player_requests WHERE id = ?").bind(id),
+      ),
+    );
+  }
+  return rows.filter((row) => !duplicateIds.has(row.id));
+}
+
 export async function GET(request: Request) {
   if (!(await hasEmpireAccess(request))) return unauthorized();
   try {
@@ -68,9 +102,10 @@ export async function GET(request: Request) {
         "SELECT id, match_name, match_date, players_required, names_json FROM empire_player_requests ORDER BY match_date ASC, id ASC",
       )
       .all<PlayerRequestRow>();
+    const requests = await removeDuplicateBlankRequests(db, result.results ?? []);
     return Response.json(
       {
-        requests: (result.results ?? []).map(mapRequest),
+        requests: requests.map(mapRequest),
       },
       { headers: { "cache-control": "no-store" } },
     );
@@ -91,6 +126,18 @@ export async function POST(request: Request) {
       return Response.json({ error: validationError }, { status: 400 });
     }
     const db = await getEmpireDatabase();
+    const existing = await db
+      .prepare(
+        "SELECT id FROM empire_player_requests WHERE lower(trim(match_name)) = lower(trim(?)) AND match_date = ?",
+      )
+      .bind(details.match, details.date)
+      .first<{ id: number }>();
+    if (existing) {
+      return Response.json(
+        { error: "A player sign-up sheet for that match and date already exists." },
+        { status: 409 },
+      );
+    }
     const createdAt = new Date().toISOString();
     const result = await db
       .prepare(
