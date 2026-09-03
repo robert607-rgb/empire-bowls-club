@@ -137,9 +137,22 @@ const today = () => new Date().toISOString().slice(0, 10);
 const EMPIRE_CONTACT_EMAIL = "stevewebster@btinternet.com";
 const EMPIRE_CLUB_NAME = "Empire Bowls Club";
 const EMPIRE_DATA_UPDATED_EVENT = "empire-data-updated";
+const EMPIRE_ADMIN_FLASH_MESSAGE_KEY = "empire-admin-flash-message";
+const EMPIRE_ADMIN_ACTIVE_TAB_KEY = "empire-admin-active-tab";
 
 function notifyEmpireDataUpdated() {
   window.dispatchEvent(new Event(EMPIRE_DATA_UPDATED_EVENT));
+}
+
+function refreshAdminWorkspace(tab: AdminTab, message: string) {
+  try {
+    window.sessionStorage.setItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY, tab);
+    window.sessionStorage.setItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY, message);
+  } catch {
+    // The admin action has already succeeded. Reloading still makes the new
+    // record visible if storage is unavailable in the visitor's browser.
+  }
+  window.location.reload();
 }
 
 function openEmpireEnquiry(data: FormData) {
@@ -3152,10 +3165,11 @@ function AdminTeamSheetManager({
         ),
       );
       reset();
-      onMessage(
+      refreshAdminWorkspace(
+        "team-sheets",
         `Team sheet for Empire v ${result.sheet.opponent} has been published for members.`,
       );
-      notifyEmpireDataUpdated();
+      return;
     } catch {
       setError("The team sheet could not be published. Please try again.");
     } finally {
@@ -3846,20 +3860,13 @@ function NewsAdminPanel({
         return;
       }
       formElement.reset();
-      setItems((current) =>
-        isEditing
-          ? current.map((item) =>
-              item.id === result.news.id ? result.news : item,
-            )
-          : [result.news, ...current],
-      );
-      setEditing(null);
-      onMessage(
+      refreshAdminWorkspace(
+        "news",
         isEditing
           ? `“${result.news.title}” is updated on the News page.`
           : `“${result.news.title}” is now live on the News page.`,
       );
-      notifyEmpireDataUpdated();
+      return;
     } catch {
       setError(
         `The news story could not be ${isEditing ? "updated" : "published"}. Please try again.`,
@@ -4088,9 +4095,11 @@ function FixtureImportPanel({
         return;
       }
       formElement.reset();
-      onMessage(`${result.imported} ${result.imported === 1 ? "fixture has" : "fixtures have"} been published and the required rinks are reserved.`);
-      notifyEmpireDataUpdated();
-      await refresh();
+      refreshAdminWorkspace(
+        "fixtures",
+        `${result.imported} ${result.imported === 1 ? "fixture has" : "fixtures have"} been published and the required rinks are reserved.`,
+      );
+      return;
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "The fixture spreadsheet could not be read.");
     } finally {
@@ -4171,6 +4180,29 @@ function AdminZone({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
+  useEffect(() => {
+    const storedTab = window.sessionStorage.getItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
+    const storedMessage = window.sessionStorage.getItem(
+      EMPIRE_ADMIN_FLASH_MESSAGE_KEY,
+    );
+    if (
+      storedTab === "overview" ||
+      storedTab === "members" ||
+      storedTab === "team-sheets" ||
+      storedTab === "fixtures" ||
+      storedTab === "player-signups" ||
+      storedTab === "news" ||
+      storedTab === "documents" ||
+      storedTab === "security"
+    ) {
+      setActiveTab(storedTab);
+      window.sessionStorage.removeItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
+    }
+    if (storedMessage) {
+      setMessage(storedMessage);
+      window.sessionStorage.removeItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY);
+    }
+  }, []);
   const refresh = useCallback(async () => {
     try {
       const [memberResponse, fileResponse, teamSheetResponse] = await Promise.all([
@@ -4226,9 +4258,11 @@ function AdminZone({
         return;
       }
       formElement.reset();
-      setMessage(`${result.member.name} has been added to the member directory.`);
-      void refresh();
-      notifyEmpireDataUpdated();
+      refreshAdminWorkspace(
+        "members",
+        `${result.member.name} has been added to the member directory.`,
+      );
+      return;
     } catch {
       setError("The member could not be added. Please try again.");
     }
@@ -4251,9 +4285,11 @@ function AdminZone({
         return;
       }
       formElement.reset();
-      setMessage(`${result.file.title} has been published for members.`);
-      void refresh();
-      notifyEmpireDataUpdated();
+      refreshAdminWorkspace(
+        "documents",
+        `${result.file.title} has been published for members.`,
+      );
+      return;
     } catch {
       setError("The file could not be uploaded. Please try again.");
     }
@@ -4276,10 +4312,11 @@ function AdminZone({
         return;
       }
       formElement.reset();
-      setMessage(
+      refreshAdminWorkspace(
+        "player-signups",
         `${result.request.match} is ready for members to add their names.`,
       );
-      notifyEmpireDataUpdated();
+      return;
     } catch {
       setError("The player request could not be created. Please try again.");
     }
