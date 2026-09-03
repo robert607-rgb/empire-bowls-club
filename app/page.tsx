@@ -2204,7 +2204,9 @@ function MemberZone({
   const [bookingType, setBookingType] = useState("Roll Up");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [memberTab, setMemberTab] = useState<"club" | "directory">("club");
+  const [memberTab, setMemberTab] = useState<
+    "team" | "players" | "documents" | "directory"
+  >("team");
   const [directorySearch, setDirectorySearch] = useState("");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
   const refresh = useCallback(async () => {
@@ -2440,34 +2442,60 @@ function MemberZone({
         aria-label="Members area sections"
       >
         <button
-          className={memberTab === "club" ? "active" : ""}
+          className={memberTab === "team" ? "active" : ""}
           role="tab"
-          aria-selected={memberTab === "club"}
-          onClick={() => setMemberTab("club")}
+          aria-selected={memberTab === "team"}
+          aria-controls="member-team-sheets"
+          onClick={() => setMemberTab("team")}
         >
-          Club information
+          Team sheets
+        </button>
+        <button
+          className={memberTab === "players" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "players"}
+          aria-controls="member-player-requests"
+          onClick={() => setMemberTab("players")}
+        >
+          Players required
+        </button>
+        <button
+          className={memberTab === "documents" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "documents"}
+          aria-controls="member-documents"
+          onClick={() => setMemberTab("documents")}
+        >
+          Club documents
         </button>
         <button
           className={memberTab === "directory" ? "active" : ""}
           role="tab"
           aria-selected={memberTab === "directory"}
+          aria-controls="member-directory"
           onClick={() => setMemberTab("directory")}
         >
           Club directory
         </button>
       </div>
-      {memberTab === "club" ? (
-        <section className="member-content">
+      {memberTab === "team" ? (
+        <section className="member-content" id="member-team-sheets">
           <TeamSheetsPanel
             sheets={teamSheets}
             legacyFiles={group("team_sheet")}
           />
+        </section>
+      ) : memberTab === "players" ? (
+        <section className="member-content" id="member-player-requests">
           <InfoList
             title="Players required"
             description="Let captains know when you are available to play."
             files={group("players_required")}
             password={password}
           />
+        </section>
+      ) : memberTab === "documents" ? (
+        <section className="member-content" id="member-documents">
           <InfoList
             title="Club documents"
             description="Policies, notices and other club information."
@@ -2476,7 +2504,7 @@ function MemberZone({
           />
         </section>
       ) : (
-        <section className="directory">
+        <section className="directory" id="member-directory">
           <div className="directory-head">
             <p className="eyebrow">Member directory</p>
             <h2>Club contact details</h2>

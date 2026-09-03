@@ -2708,6 +2708,49 @@ details,
   border-color: var(--gold);
 }
 
+/* Members Zone: each secondary service gets a full-width workspace, while
+   the rink booking panel remains permanently visible above the tab set. */
+.member-area-tabs {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 0;
+}
+
+.member-area-tabs button {
+  min-height: 48px;
+  padding-inline: 20px;
+  white-space: nowrap;
+}
+
+.member-content {
+  display: block;
+  margin-top: 0;
+  padding-top: 32px;
+}
+
+.member-content > .info-list {
+  width: 100%;
+  min-height: 0;
+}
+
+.member-content > .info-list.team-sheets-panel {
+  grid-column: auto;
+}
+
+@media (max-width: 680px) {
+  .member-area-tabs {
+    flex-wrap: nowrap;
+    margin-inline: -2px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .member-area-tabs button {
+    flex: 0 0 auto;
+  }
+}
+
 .member-content .info-list,
 .admin-members-panel,
 .admin-card-upload {
