@@ -85,8 +85,9 @@ export const metadata: Metadata = {
     images: ["/optimized/og-empire-clubhouse.jpg"],
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: [{ url: "/empire-favicon.png", type: "image/png", sizes: "96x96" }],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 };
 
