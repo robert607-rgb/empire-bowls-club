@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://empire-bowls-club.robert607.chatgpt.site/sitemap.xml
+Sitemap: https://empirebowlsclub.co.uk/sitemap.xml

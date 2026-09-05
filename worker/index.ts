@@ -52,6 +52,8 @@ function secureResponse(response: Response, pathname: string) {
   if (pathname.startsWith("/api/")) {
     headers.set("cache-control", "no-store, max-age=0");
     headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+  } else if (pathname === "/robots.txt" || pathname === "/sitemap.xml") {
+    headers.set("cache-control", "public, max-age=300, must-revalidate");
   } else if (
     pathname.startsWith("/optimized/") ||
     pathname === "/favicon.svg" ||
@@ -75,6 +77,27 @@ function secureResponse(response: Response, pathname: string) {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    // Migrate known HugoFox pages directly to their corresponding public page.
+    const legacy = url.pathname.match(/^\/community\/empire-bowls-club-14829(?:\/(.*?))?\/?$/i);
+    const slug = legacy?.[1]?.replace(/\/$/, "").toLowerCase() ?? "";
+    const legacyPages: Record<string, string> = {
+      "": "/", "home": "/", "about-us": "/about", "about": "/about", "about-our-club": "/about",
+      "the-committee": "/about", "empires-sponsors": "/sponsors",
+      "contact": "/contact", "contact-us": "/contact", "news": "/news",
+      "fixtures": "/fixtures", "play-bowls": "/play-bowls",
+    };
+    const legacyTarget = legacy ? (legacyPages[slug] ??
+      (/^\d{4}-club-(?:achievements|champions)\d*$/.test(slug) ? "/about" : undefined)) : undefined;
+    if ((request.method === "GET" || request.method === "HEAD") && legacyTarget !== undefined) {
+      return secureResponse(Response.redirect(`https://empirebowlsclub.co.uk${legacyTarget}${url.search}`, 301), url.pathname);
+    }
+    if ((request.method === "GET" || request.method === "HEAD") &&
+        (url.hostname === "www.empirebowlsclub.co.uk" ||
+         (url.hostname === "empirebowlsclub.co.uk" && url.protocol === "http:")) &&
+        !url.pathname.startsWith("/api/")) {
+      return secureResponse(Response.redirect(`https://empirebowlsclub.co.uk${url.pathname}${url.search}`, 301), url.pathname);
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

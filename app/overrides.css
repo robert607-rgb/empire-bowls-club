@@ -891,13 +891,13 @@
     padding: 10px 0 2px;
     border-top: 1px solid #dcd5c4;
   }
-  .site-header nav button {
+  .site-header nav :is(button, a) {
     min-height: 46px;
     padding: 10px 12px;
     background: #f4f0e3;
     text-align: left;
   }
-  .site-header nav button.active {
+  .site-header nav :is(button, a).active {
     background: #062761;
     color: #fff;
     box-shadow: inset 4px 0 #e4b82c;
@@ -1246,7 +1246,7 @@
     scrollbar-width: thin;
     scrollbar-color: #d6aa1f transparent;
   }
-  .site-header nav button {
+  .site-header nav :is(button, a) {
     flex: 0 0 auto;
     padding: 8px 10px;
     font-size: 12px;
@@ -2316,16 +2316,16 @@ iframe {
   color: #f0cd63;
 }
 
-.site-header nav button {
+.site-header nav :is(button, a) {
   color: #dce9e8;
 }
 
-.site-header nav button:hover,
-.site-header nav button:focus-visible {
+.site-header nav :is(button, a):hover,
+.site-header nav :is(button, a):focus-visible {
   color: #f4d66f;
 }
 
-.site-header nav button.active {
+.site-header nav :is(button, a).active {
   color: #f4d66f;
   box-shadow: inset 0 -3px var(--gold);
 }
@@ -2805,7 +2805,7 @@ select {
     font-size: 17px;
   }
 
-  .site-header nav button {
+  .site-header nav :is(button, a) {
     padding-inline: 6px;
     font-size: 12px;
   }
@@ -2909,7 +2909,7 @@ select {
     border-top: 1px solid var(--dark-line);
   }
 
-  .site-header.menu-open nav button {
+  .site-header.menu-open nav :is(button, a) {
     min-width: 0;
     min-height: 44px;
     padding: 9px 10px;
@@ -2919,7 +2919,7 @@ select {
     overflow-wrap: anywhere;
   }
 
-  .site-header.menu-open nav button.active {
+  .site-header.menu-open nav :is(button, a).active {
     color: var(--night);
     background: var(--gold);
     box-shadow: none;
@@ -3315,7 +3315,7 @@ body {
   background: #16476f;
 }
 
-.site-header.menu-open nav button {
+.site-header.menu-open nav :is(button, a) {
   background: #2b6683;
 }
 
@@ -3391,18 +3391,18 @@ body {
 }
 
 .site-header .brand,
-.site-header nav button {
+.site-header nav :is(button, a) {
   color: #f3f6ef;
 }
 
 .site-header .brand small,
-.site-header nav button.active,
-.site-header nav button:hover,
-.site-header nav button:focus-visible {
+.site-header nav :is(button, a).active,
+.site-header nav :is(button, a):hover,
+.site-header nav :is(button, a):focus-visible {
   color: var(--empire-gold);
 }
 
-.site-header nav button.active {
+.site-header nav :is(button, a).active {
   box-shadow: inset 0 -3px var(--empire-gold);
 }
 
@@ -4002,13 +4002,13 @@ body {
     height: 58px;
   }
 
-  .site-header.menu-open nav button {
+  .site-header.menu-open nav :is(button, a) {
     color: #f5f6ef;
     background: #164f70;
     border-radius: 4px 13px 4px 4px;
   }
 
-  .site-header.menu-open nav button.active {
+  .site-header.menu-open nav :is(button, a).active {
     color: var(--empire-deep);
     background: var(--empire-gold);
   }
@@ -5484,3 +5484,5 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.site-header nav a { text-decoration: none; font-family: inherit; cursor: pointer; border: 0; }

@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-  <url>
-    <loc>https://empire-bowls-club.robert607.chatgpt.site/</loc>
-    <lastmod>2026-08-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-    <image:image>
-      <image:loc>https://empire-bowls-club.robert607.chatgpt.site/optimized/club/empire-green-clubhouse.webp</image:loc>
-    </image:image>
-  </url>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://empirebowlsclub.co.uk/</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/about</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/news</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/sponsors</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/fixtures</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/honours</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/play-bowls</loc></url>
+  <url><loc>https://empirebowlsclub.co.uk/contact</loc></url>
 </urlset>

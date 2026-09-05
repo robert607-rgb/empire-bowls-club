@@ -3,7 +3,7 @@ import "./globals.css";
 import "./overrides.css";
 import "./booking.css";
 
-const siteUrl = "https://empire-bowls-club.robert607.chatgpt.site";
+const siteUrl = "https://empirebowlsclub.co.uk";
 const clubSchema = {
   "@context": "https://schema.org",
   "@type": "SportsActivityLocation",
