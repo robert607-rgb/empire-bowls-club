@@ -1,6 +1,8 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import sitemapXml from "../public/sitemap.xml?raw";
+import robotsTxt from "../public/robots.txt?raw";
 
 interface Env {
   ASSETS: Fetcher;
@@ -97,6 +99,14 @@ const worker = {
          (url.hostname === "empirebowlsclub.co.uk" && url.protocol === "http:")) &&
         !url.pathname.startsWith("/api/")) {
       return secureResponse(Response.redirect(`https://empirebowlsclub.co.uk${url.pathname}${url.search}`, 301), url.pathname);
+    }
+
+    if ((request.method === "GET" || request.method === "HEAD") &&
+        (url.pathname === "/sitemap.xml" || url.pathname === "/robots.txt")) {
+      const sitemap = url.pathname === "/sitemap.xml";
+      return secureResponse(new Response(request.method === "HEAD" ? null : (sitemap ? sitemapXml : robotsTxt), {
+        headers: { "content-type": sitemap ? "application/xml; charset=utf-8" : "text/plain; charset=utf-8" },
+      }), url.pathname);
     }
 
     if (url.pathname === "/_vinext/image") {

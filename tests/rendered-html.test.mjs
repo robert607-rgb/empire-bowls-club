@@ -63,3 +63,22 @@ test("old Google links redirect once and public pages have their own canonical U
   const missing = await worker.fetch(new Request("https://empirebowlsclub.co.uk/not-a-real-page"), env, ctx);
   assert.equal(missing.status, 404);
 });
+
+
+test("crawler files are served without relying on static asset fallback", async () => {
+  const { default: worker } = await import("../dist/server/index.js");
+  const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+  for (const path of ["/sitemap.xml", "/robots.txt"]) {
+    const response = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`), env, ctx);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type"), path.endsWith("xml") ? /application\/xml/ : /text\/plain/);
+    const body = await response.text();
+    assert.ok(body.includes("https://empirebowlsclub.co.uk/"));
+    assert.ok(!body.includes("<html"));
+    if (path.endsWith("xml")) assert.equal((body.match(/<loc>/g) || []).length, 8);
+    const head = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`, { method: "HEAD" }), env, ctx);
+    assert.equal(head.status, 200);
+    assert.equal(await head.text(), "");
+  }
+});
