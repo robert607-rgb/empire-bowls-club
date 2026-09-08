@@ -110,7 +110,7 @@ export default function RootLayout({
         />
       </head>
       <body className="antialiased">
-        <script async src="https://website-usage-dashboard.robert607.chatgpt.site/usage-tracker.js?v=4" data-site="empire-bowls-club" />
+
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(clubSchema) }} />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
         {children}
