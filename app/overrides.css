@@ -5384,6 +5384,21 @@ body {
   font-weight: 800;
 }
 
+.admin-members-panel .email-member-login {
+  padding: 5px 8px;
+  color: #0f644b;
+  background: #e5f2e9;
+  border: 1px solid #a8cfb5;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-members-panel .email-member-login:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .admin-members-panel .member-actions {
   display: flex;
   flex-wrap: wrap;

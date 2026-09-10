@@ -3220,6 +3220,22 @@ function AdminMemberOverview({
                           New code
                         </button>
                         <button
+                          className="email-member-login"
+                          type="button"
+                          disabled={!member.loginCode}
+                          onClick={() => {
+                            if (member.loginCode) {
+                              openMemberLoginEmail({
+                                name: member.name,
+                                email: member.email,
+                                loginCode: member.loginCode,
+                              });
+                            }
+                          }}
+                        >
+                          Email details
+                        </button>
+                        <button
                           className="remove-member"
                           type="button"
                           onClick={() => void remove(member)}
