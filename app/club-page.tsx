@@ -4876,10 +4876,10 @@ function AdminZone({
         setActiveTab(storedTab);
         window.sessionStorage.removeItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
       }
-      if (storedMessage) {
+      if (storedMessage && !storedMessage.startsWith("Member login codes:")) {
         setMessage(storedMessage);
-        window.sessionStorage.removeItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY);
       }
+      window.sessionStorage.removeItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
