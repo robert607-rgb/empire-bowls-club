@@ -1,10 +1,14 @@
 import {
   apiError,
   cleanText,
+  ensureMemberLoginCode,
+  ensureMissingMemberLoginCodes,
   getEmpireAccess,
   getEmpireDatabase,
   hasEmpireAccess,
+  issueMemberLoginCode,
   readJson,
+  readMemberLoginCodes,
   sameOrigin,
   unauthorized,
 } from "../_server";
@@ -94,10 +98,20 @@ export async function GET(request: Request) {
         "SELECT id, name, date_of_birth, address, phone, email, membership_type, created_at FROM empire_members ORDER BY name COLLATE NOCASE ASC",
       )
       .all<MemberRow>();
+    const rows = result.results ?? [];
+    if (access === "admin") {
+      await ensureMissingMemberLoginCodes(rows.map((member) => member.id));
+    }
+    const loginCodes = access === "admin"
+      ? await readMemberLoginCodes(rows.map((member) => member.id))
+      : [];
+    const codesByMemberId = new Map(loginCodes.map((item) => [item.memberId, item.code]));
     return Response.json(
       {
-        members: (result.results ?? []).map((member) =>
-          mapMember(member, access === "admin"),
+        members: rows.map((member) =>
+          access === "admin"
+            ? { ...mapMember(member, true), loginCode: codesByMemberId.get(member.id) ?? "" }
+            : mapMember(member, false),
         ),
       },
       { headers: { "cache-control": "no-store" } },
@@ -134,6 +148,7 @@ export async function POST(request: Request) {
         createdAt,
       )
       .run();
+    const loginCode = await issueMemberLoginCode(Number(result.meta.last_row_id));
     return Response.json(
       {
         member: mapMember(
@@ -149,6 +164,7 @@ export async function POST(request: Request) {
           },
           true,
         ),
+        loginCode,
       },
       { status: 201 },
     );
@@ -196,6 +212,7 @@ export async function PUT(request: Request) {
         id,
       )
       .run();
+    const loginCode = await ensureMemberLoginCode(id);
     return Response.json({
       member: mapMember(
         {
@@ -209,6 +226,7 @@ export async function PUT(request: Request) {
         },
         true,
       ),
+      ...(loginCode ? { loginCode } : {}),
     });
   } catch (error) {
     return apiError(error);
@@ -227,8 +245,30 @@ export async function DELETE(request: Request) {
       return Response.json({ error: "Choose a valid member." }, { status: 400 });
     }
     const db = await getEmpireDatabase();
+    await db.prepare("DELETE FROM empire_member_credentials WHERE member_id = ?").bind(id).run();
     await db.prepare("DELETE FROM empire_members WHERE id = ?").bind(id).run();
     return Response.json({ removed: true });
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) {
+    return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  }
+  try {
+    const input = await readJson(request);
+    const id = Number(input.id);
+    if (!Number.isInteger(id)) {
+      return Response.json({ error: "Choose a valid member." }, { status: 400 });
+    }
+    const loginCode = await issueMemberLoginCode(id);
+    if (!loginCode) {
+      return Response.json({ error: "That member no longer exists." }, { status: 404 });
+    }
+    return Response.json({ loginCode }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return apiError(error);
   }

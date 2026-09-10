@@ -75,6 +75,7 @@ type Member = {
   email: string;
   membershipType: "Full member" | "Social member";
   createdAt: string;
+  loginCode?: string;
 };
 type CommitteeMember = {
   id: number;
@@ -2125,14 +2126,18 @@ function Portal({
 }) {
   const [loginError, setLoginError] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
-  const login = async (kind: Access, supplied: string) => {
+  const login = async (kind: Access, supplied: string, firstName = "") => {
     setLoggingIn(true);
     setLoginError("");
     try {
       const response = await fetch("/api/empire/auth", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ access: kind, password: supplied }),
+        body: JSON.stringify(
+          kind === "member"
+            ? { access: kind, firstName, code: supplied }
+            : { access: kind, password: supplied },
+        ),
       });
       const result = await response.json();
       if (!response.ok) {
@@ -2163,22 +2168,21 @@ function Portal({
         <h1>Club access, made simple.</h1>
         <p>
           Members can book a rink, check the latest club information and find
-          match availability sheets. Committee members can securely manage these
-          updates in the admin area.
+          match availability sheets using the first name and four-digit code
+          issued to them by the club. Committee members can securely manage
+          these updates in the admin area.
         </p>
       </section>
       <section className="login-grid">
-        <LoginCard
+        <MemberLoginCard
           title="Members Zone"
           description="Book a rink, see club information and view the member directory."
-          passwordHint="Members password"
           busy={loggingIn}
-          onLogin={(value) => login("member", value)}
+          onLogin={(firstName, code) => login("member", code, firstName)}
         />
         <LoginCard
           title="Admin Zone"
           description="Add members and publish team sheets, club documents and player-request forms."
-          passwordHint="Admin password"
           busy={loggingIn}
           onLogin={(value) => login("admin", value)}
         />
@@ -2187,16 +2191,70 @@ function Portal({
     </main>
   );
 }
-function LoginCard({
+function MemberLoginCard({
   title,
   description,
-  passwordHint,
   busy,
   onLogin,
 }: {
   title: string;
   description: string;
-  passwordHint: string;
+  busy: boolean;
+  onLogin: (firstName: string, code: string) => void | Promise<void>;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [code, setCode] = useState("");
+  return (
+    <form
+      className="login-card"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onLogin(firstName.trim(), code);
+      }}
+    >
+      <p className="eyebrow">Private area</p>
+      <h2>{title}</h2>
+      <p>{description}</p>
+      <label>
+        First name
+        <input
+          value={firstName}
+          onChange={(event) => setFirstName(event.target.value)}
+          type="text"
+          autoComplete="given-name"
+          maxLength={120}
+          required
+          disabled={busy}
+        />
+      </label>
+      <label>
+        Four-digit member code
+        <input
+          value={code}
+          onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 4))}
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]{4}"
+          autoComplete="one-time-code"
+          maxLength={4}
+          required
+          disabled={busy}
+        />
+      </label>
+      <button className="primary" disabled={busy}>
+        {busy ? "Checking access…" : `Enter ${title}`}
+      </button>
+    </form>
+  );
+}
+function LoginCard({
+  title,
+  description,
+  busy,
+  onLogin,
+}: {
+  title: string;
+  description: string;
   busy: boolean;
   onLogin: (value: string) => void | Promise<void>;
 }) {
@@ -2213,7 +2271,7 @@ function LoginCard({
       <h2>{title}</h2>
       <p>{description}</p>
       <label>
-        {passwordHint}
+        Admin password
         <input
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -2995,6 +3053,32 @@ function AdminMemberOverview({
       setEditError("We could not update that member. Please try again.");
     }
   };
+  const regenerateCode = async (member: Member) => {
+    if (!window.confirm(`Issue a new four-digit login code for ${member.name}? Their current code will stop working.`)) return;
+    try {
+      const response = await fetch("/api/empire/members", {
+        method: "PATCH",
+        headers: {
+          ...apiHeaders("admin", password),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ id: member.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        onMessage(result.error || "We could not issue a new member login code.");
+        return;
+      }
+      onMessage(`${member.name}'s new member login code is ${result.loginCode}. Give it to them privately.`);
+      onChange(
+        members.map((item) =>
+          item.id === member.id ? { ...item, loginCode: result.loginCode } : item,
+        ),
+      );
+    } catch {
+      onMessage("We could not issue a new member login code. Please try again.");
+    }
+  };
   return (
     <details className="admin-members-tab">
       <summary>
@@ -3005,7 +3089,7 @@ function AdminMemberOverview({
       <div className="admin-members-panel">
         <div className="admin-members-toolbar">
           <p>
-            Review the club directory, edit details or remove former members.
+            Review the club directory, see each member’s login code, edit details or remove former members.
           </p>
           <div className="admin-members-controls">
             <label>
@@ -3053,6 +3137,7 @@ function AdminMemberOverview({
                   <th>Date of birth</th>
                   <th>Date joined</th>
                   <th>Contact</th>
+                  <th>Login code</th>
                   <th>
                     <span className="sr-only">Actions</span>
                   </th>
@@ -3085,6 +3170,9 @@ function AdminMemberOverview({
                           {member.phone}
                         </a>
                       </td>
+                      <td>
+                        <code className="member-login-code">{member.loginCode || "—"}</code>
+                      </td>
                       <td className="member-actions">
                         <button
                           className="edit-member"
@@ -3097,6 +3185,13 @@ function AdminMemberOverview({
                           Edit
                         </button>
                         <button
+                          className="issue-member-code"
+                          type="button"
+                          onClick={() => void regenerateCode(member)}
+                        >
+                          New code
+                        </button>
+                        <button
                           className="remove-member"
                           type="button"
                           onClick={() => void remove(member)}
@@ -3107,7 +3202,7 @@ function AdminMemberOverview({
                     </tr>
                     {editing?.id === member.id && (
                       <tr className="member-edit-row">
-                        <td colSpan={7}>
+                        <td colSpan={8}>
                           <form onSubmit={update}>
                             <div className="member-edit-heading">
                               <b>Edit {member.name}</b>
@@ -3900,7 +3995,7 @@ function SecuritySettings({
   onMessage: (message: string) => void;
   onAccessRevoked: () => void;
 }) {
-  const [access, setAccess] = useState<Access>("member");
+  const [access] = useState<Access>("admin");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -3930,8 +4025,8 @@ function SecuritySettings({
       }
       setPassword("");
       setConfirmPassword("");
-      onMessage(`${access === "admin" ? "Admin" : "Members"} password updated. That area will need to sign in again.`);
-      if (access === "admin") onAccessRevoked();
+      onMessage("Admin password updated. The admin area will need to sign in again.");
+      onAccessRevoked();
     } catch {
       setError("We could not update that password. Please try again.");
     } finally {
@@ -3941,15 +4036,8 @@ function SecuritySettings({
   return (
     <form className="admin-card security-card" onSubmit={updatePassword}>
       <p className="eyebrow">Security</p>
-      <h2>Update an access password</h2>
-      <p>Use a unique password of at least 12 characters. Changing it signs that area out on other devices.</p>
-      <label>
-        Area
-        <select value={access} onChange={(event) => setAccess(event.target.value as Access)}>
-          <option value="member">Members Zone</option>
-          <option value="admin">Admin Zone</option>
-        </select>
-      </label>
+      <h2>Update the admin password</h2>
+      <p>Members now use their own four-digit codes. Use a unique admin password of at least 12 characters; changing it signs the admin area out on other devices.</p>
       <label>
         New password
         <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" minLength={12} maxLength={256} autoComplete="new-password" required />
@@ -4736,10 +4824,21 @@ function AdminZone({
       if (!memberResponse.ok || !committeeResponse.ok || !fileResponse.ok || !teamSheetResponse.ok) {
         throw new Error("Admin data request failed");
       }
-      setMembers((await memberResponse.json()).members ?? []);
+      const memberData = await memberResponse.json();
+      setMembers(memberData.members ?? []);
       setCommitteeMembers((await committeeResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
       setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
+      const membersWithLoginCodes = (memberData.members ?? []).filter(
+        (member: Member) => member.loginCode,
+      );
+      if (membersWithLoginCodes.length) {
+        setMessage(
+          `Member login codes: ${membersWithLoginCodes
+            .map((member: Member) => `${member.name}: ${member.loginCode}`)
+            .join(" · ")}`,
+        );
+      }
     } catch {
       setError("We could not load the admin records. Please try again.");
     }
@@ -4786,7 +4885,7 @@ function AdminZone({
       formElement.reset();
       refreshAdminWorkspace(
         "members",
-        `${result.member.name} has been added to the member directory.`,
+        `${result.member.name} has been added. Their member login code is ${result.loginCode}. Give this four-digit code to them privately; it is also shown in the admin Members directory.`,
       );
       return;
     } catch {

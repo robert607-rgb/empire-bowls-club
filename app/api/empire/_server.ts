@@ -31,12 +31,6 @@ export class InvalidRequestBodyError extends Error {
 // password that an administrator has since chosen.
 const initialAccounts: Array<{ access: EmpireAccess; salt: string; hash: string; legacyHash: string }> = [
   {
-    access: "member",
-    salt: "1e9b6210bd2fbcb3c318658ed323c61a1c99",
-    hash: "4437b835827dc996cbebce4e3bed0f697a9fc2d3c9dd35efa6a57e62857716a5",
-    legacyHash: "e00267597e8173b5444e283be12dcedf995feb7c890c56538198fbe059e1ac32",
-  },
-  {
     access: "admin",
     salt: "7940822b5d17baf44aabf7cf04784a233245",
     hash: "093a25f0c79deb9af5bf413b71f5aad4efe036f6c30294aa3c1097108ab8e21e",
@@ -54,6 +48,13 @@ const initialCommittee = [
 ] as const;
 
 type AccountRow = { access: EmpireAccess; salt: string; password_hash: string };
+type MemberCredentialRow = {
+  member_id: number;
+  salt: string;
+  code_hash: string;
+  encrypted_code: string;
+  code_fingerprint: string;
+};
 type SessionRow = { access: EmpireAccess; expires_at: string };
 
 function hex(bytes: Uint8Array) {
@@ -74,6 +75,148 @@ async function passwordHash(password: string, salt: string) {
     256,
   );
   return hex(new Uint8Array(bits));
+}
+
+function memberFirstName(name: string) {
+  return name.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+}
+
+function newMemberLoginCode() {
+  const random = new Uint32Array(1);
+  crypto.getRandomValues(random);
+  return String(random[0] % 10000).padStart(4, "0");
+}
+
+function bytesFromHex(value: string) {
+  if (!/^[a-f0-9]+$/i.test(value) || value.length % 2 !== 0) throw new Error("Invalid encrypted member code.");
+  const bytes = new Uint8Array(value.length / 2);
+  for (let index = 0; index < bytes.length; index += 1) {
+    bytes[index] = Number.parseInt(value.slice(index * 2, index * 2 + 2), 16);
+  }
+  return bytes;
+}
+
+async function memberCodeKey(usage: KeyUsage[]) {
+  const runtime = await getRuntimeEnv();
+  const secret = runtime.EMPIRE_MEMBER_CODE_KEY ?? "";
+  if (!/^[a-f0-9]{64}$/i.test(secret)) {
+    throw new Error("Member login code encryption is not configured.");
+  }
+  return crypto.subtle.importKey("raw", bytesFromHex(secret), usage[0] === "sign" ? "HMAC" : "AES-GCM", false, usage);
+}
+
+async function encryptMemberLoginCode(code: string) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await memberCodeKey(["encrypt"]);
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(code));
+  return `${hex(iv)}:${hex(new Uint8Array(encrypted))}`;
+}
+
+async function decryptMemberLoginCode(value: string) {
+  const [ivHex, encryptedHex] = value.split(":");
+  const key = await memberCodeKey(["decrypt"]);
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: bytesFromHex(ivHex ?? "") },
+    key,
+    bytesFromHex(encryptedHex ?? ""),
+  );
+  return new TextDecoder().decode(decrypted);
+}
+
+async function memberCodeFingerprint(code: string) {
+  const runtime = await getRuntimeEnv();
+  const secret = runtime.EMPIRE_MEMBER_CODE_KEY ?? "";
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`${secret}:${code}`));
+  return hex(new Uint8Array(digest));
+}
+
+async function saveMemberLoginCode(
+  db: D1Database,
+  memberId: number,
+  code: string,
+  replace = false,
+) {
+  const salt = hex(crypto.getRandomValues(new Uint8Array(18)));
+  const hash = await passwordHash(code, salt);
+  const encryptedCode = await encryptMemberLoginCode(code);
+  const codeFingerprint = await memberCodeFingerprint(code);
+  const conflict = await db
+    .prepare("SELECT member_id FROM empire_member_credentials WHERE code_fingerprint = ?")
+    .bind(codeFingerprint)
+    .first<{ member_id: number }>();
+  if (conflict && conflict.member_id !== memberId) return { code, inserted: false };
+  const now = new Date().toISOString();
+  if (replace) {
+    await db
+      .prepare("UPDATE empire_member_credentials SET salt = ?, code_hash = ?, encrypted_code = ?, code_fingerprint = ?, updated_at = ? WHERE member_id = ?")
+      .bind(salt, hash, encryptedCode, codeFingerprint, now, memberId)
+      .run();
+    return { code, inserted: true };
+  }
+  const result = await db
+    .prepare("INSERT OR IGNORE INTO empire_member_credentials (member_id, salt, code_hash, encrypted_code, code_fingerprint, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(memberId, salt, hash, encryptedCode, codeFingerprint, now, now)
+    .run();
+  return { code, inserted: Number(result.meta.changes ?? 0) > 0 };
+}
+
+async function createUniqueMemberLoginCode(db: D1Database, memberId: number, replace = false) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    const code = newMemberLoginCode();
+    const saved = await saveMemberLoginCode(db, memberId, code, replace);
+    if (saved.inserted) return code;
+  }
+  throw new Error("Could not create a unique member login code.");
+}
+
+export async function ensureMemberLoginCode(memberId: number) {
+  const db = await getEmpireDatabase();
+  const existing = await db
+    .prepare("SELECT member_id FROM empire_member_credentials WHERE member_id = ?")
+    .bind(memberId)
+    .first<{ member_id: number }>();
+  if (existing) return null;
+  return createUniqueMemberLoginCode(db, memberId);
+}
+
+export async function issueMemberLoginCode(memberId: number) {
+  const db = await getEmpireDatabase();
+  const member = await db
+    .prepare("SELECT id FROM empire_members WHERE id = ?")
+    .bind(memberId)
+    .first<{ id: number }>();
+  if (!member) return null;
+  return createUniqueMemberLoginCode(db, memberId, true);
+}
+
+export async function ensureMissingMemberLoginCodes(memberIds: number[]) {
+  if (!memberIds.length) return [] as Array<{ memberId: number; code: string }>;
+  const db = await getEmpireDatabase();
+  const existing = await db
+    .prepare(`SELECT member_id FROM empire_member_credentials WHERE member_id IN (${memberIds.map(() => "?").join(", ")})`)
+    .bind(...memberIds)
+    .all<{ member_id: number }>();
+  const existingIds = new Set((existing.results ?? []).map((row) => row.member_id));
+  const created: Array<{ memberId: number; code: string }> = [];
+  for (const memberId of memberIds) {
+    if (existingIds.has(memberId)) continue;
+    created.push({ memberId, code: await createUniqueMemberLoginCode(db, memberId) });
+  }
+  return created;
+}
+
+export async function readMemberLoginCodes(memberIds: number[]) {
+  if (!memberIds.length) return [] as Array<{ memberId: number; code: string }>;
+  const db = await getEmpireDatabase();
+  const result = await db
+    .prepare(`SELECT member_id, encrypted_code FROM empire_member_credentials WHERE member_id IN (${memberIds.map(() => "?").join(", ")})`)
+    .bind(...memberIds)
+    .all<{ member_id: number; encrypted_code: string }>();
+  const codes: Array<{ memberId: number; code: string }> = [];
+  for (const row of result.results ?? []) {
+    codes.push({ memberId: row.member_id, code: await decryptMemberLoginCode(row.encrypted_code) });
+  }
+  return codes;
 }
 
 function timingSafeStringEqual(left: string, right: string) {
@@ -120,6 +263,7 @@ export async function getRuntimeEnv() {
   return (await import("cloudflare:workers")).env as unknown as {
     DB: D1Database;
     BUCKET: R2Bucket;
+    EMPIRE_MEMBER_CODE_KEY?: string;
   };
 }
 
@@ -148,27 +292,84 @@ export function sameOrigin(request: Request) {
   return Boolean(origin && origin === new URL(request.url).origin);
 }
 
+async function loginRateLimit(db: D1Database, visitor: string) {
+  const windowStart = new Date(Date.now() - LOGIN_WINDOW_MS).toISOString();
+  await db
+    .prepare("DELETE FROM empire_login_attempts WHERE attempted_at < ?")
+    .bind(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+    .run();
+  const count = await db
+    .prepare("SELECT COUNT(*) AS total FROM empire_login_attempts WHERE visitor_hash = ? AND attempted_at >= ?")
+    .bind(visitor, windowStart)
+    .first<{ total: number }>();
+  return Number(count?.total ?? 0) < LOGIN_ATTEMPT_LIMIT;
+}
+
+async function recordFailedLogin(db: D1Database, visitor: string) {
+  await db
+    .prepare("INSERT INTO empire_login_attempts (visitor_hash, attempted_at) VALUES (?, ?)")
+    .bind(visitor, new Date().toISOString())
+    .run();
+}
+
+async function createEmpireSession(db: D1Database, access: EmpireAccess) {
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  const token = crypto.randomUUID();
+  await db
+    .prepare("INSERT INTO empire_sessions (token, access, expires_at, created_at) VALUES (?, ?, ?, ?)")
+    .bind(token, access, expiresAt.toISOString(), new Date().toISOString())
+    .run();
+  return { token, expiresAt };
+}
+
 export async function authenticateEmpireAccess(request: Request, access: EmpireAccess, password: string) {
   const db = await getEmpireDatabase();
   const visitor = await fingerprint(request);
-  const windowStart = new Date(Date.now() - LOGIN_WINDOW_MS).toISOString();
-  await db.prepare("DELETE FROM empire_login_attempts WHERE attempted_at < ?").bind(new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()).run();
-  const count = await db.prepare("SELECT COUNT(*) AS total FROM empire_login_attempts WHERE visitor_hash = ? AND attempted_at >= ?").bind(visitor, windowStart).first<{ total: number }>();
-  if ((count?.total ?? 0) >= LOGIN_ATTEMPT_LIMIT) return { ok: false as const, rateLimited: true };
+  if (!(await loginRateLimit(db, visitor))) return { ok: false as const, rateLimited: true };
 
   const account = await db.prepare("SELECT access, salt, password_hash FROM empire_access_accounts WHERE access = ?").bind(access).first<AccountRow>();
   const candidateHash = await passwordHash(password, account?.salt ?? "invalid-account-salt");
   const storedHash = account?.password_hash ?? "0".repeat(candidateHash.length);
   const matches = timingSafeStringEqual(candidateHash, storedHash) && Boolean(account);
   if (!matches) {
-    await db.prepare("INSERT INTO empire_login_attempts (visitor_hash, attempted_at) VALUES (?, ?)").bind(visitor, new Date().toISOString()).run();
+    await recordFailedLogin(db, visitor);
     return { ok: false as const, rateLimited: false };
   }
   await db.prepare("DELETE FROM empire_login_attempts WHERE visitor_hash = ?").bind(visitor).run();
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
-  const token = crypto.randomUUID();
-  await db.prepare("INSERT INTO empire_sessions (token, access, expires_at, created_at) VALUES (?, ?, ?, ?)").bind(token, access, expiresAt.toISOString(), new Date().toISOString()).run();
-  return { ok: true as const, token, expiresAt };
+  const session = await createEmpireSession(db, access);
+  return { ok: true as const, ...session };
+}
+
+export async function authenticateEmpireMember(request: Request, firstName: string, code: string) {
+  const db = await getEmpireDatabase();
+  const visitor = await fingerprint(request);
+  if (!(await loginRateLimit(db, visitor))) return { ok: false as const, rateLimited: true };
+
+  const firstNameKey = memberFirstName(firstName);
+  const candidates = await db
+    .prepare(
+      `SELECT m.id, c.salt, c.code_hash
+       FROM empire_members m
+       INNER JOIN empire_member_credentials c ON c.member_id = m.id
+       WHERE lower(substr(trim(m.name), 1, instr(trim(m.name) || ' ', ' ') - 1)) = ?`,
+    )
+    .bind(firstNameKey)
+    .all<MemberCredentialRow & { id: number }>();
+  let matches = false;
+  for (const candidate of candidates.results ?? []) {
+    const candidateHash = await passwordHash(code, candidate.salt);
+    matches = timingSafeStringEqual(candidateHash, candidate.code_hash) || matches;
+  }
+  if (!matches) {
+    if (!(candidates.results ?? []).length) {
+      await passwordHash(code, "invalid-member-salt");
+    }
+    await recordFailedLogin(db, visitor);
+    return { ok: false as const, rateLimited: false };
+  }
+  await db.prepare("DELETE FROM empire_login_attempts WHERE visitor_hash = ?").bind(visitor).run();
+  const session = await createEmpireSession(db, "member");
+  return { ok: true as const, ...session };
 }
 
 export async function endEmpireSession(request: Request) {
@@ -210,6 +411,15 @@ export async function getEmpireDatabase() {
         email TEXT NOT NULL,
         membership_type TEXT NOT NULL,
         created_at TEXT NOT NULL
+      )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_member_credentials (
+        member_id INTEGER PRIMARY KEY,
+        salt TEXT NOT NULL,
+        code_hash TEXT NOT NULL,
+        encrypted_code TEXT NOT NULL,
+        code_fingerprint TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )`),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_committee (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -308,6 +518,7 @@ export async function getEmpireDatabase() {
       ...initialAccounts.map((account) =>
         runtime.DB.prepare("UPDATE empire_access_accounts SET salt = ?, password_hash = ?, updated_at = ? WHERE access = ? AND password_hash = ?").bind(account.salt, account.hash, new Date().toISOString(), account.access, account.legacyHash),
       ),
+      runtime.DB.prepare("DELETE FROM empire_access_accounts WHERE access = 'member'"),
     ])
       .then(async () => {
         const seededAt = new Date().toISOString();
