@@ -157,7 +157,7 @@ const displayDate = (value: string) =>
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
 const today = () => new Date().toISOString().slice(0, 10);
-const EMPIRE_CONTACT_EMAIL = "stevewebster@btinternet.com";
+const EMPIRE_CONTACT_EMAIL = "Secretary@empirebowlsclub.co.uk";
 const EMPIRE_CLUB_NAME = "Empire Bowls Club";
 const EMPIRE_DATA_UPDATED_EVENT = "empire-data-updated";
 const EMPIRE_ADMIN_FLASH_MESSAGE_KEY = "empire-admin-flash-message";
@@ -224,7 +224,7 @@ const starterNews: NewsItem[] = [
     title: "New bowlers are always welcome",
     summary:
       "Never played before? Come and have a go with friendly members, loan equipment and a relaxed introduction.",
-    body: "Bowls is a game for all ages and abilities. Contact Steve to arrange a first visit and discover the Empire welcome for yourself.",
+    body: "Bowls is a game for all ages and abilities. Contact the club secretary to arrange a first visit and discover the Empire welcome for yourself.",
     category: "Welcome",
     accent: "green",
     imageUrl: "",
@@ -1950,11 +1950,11 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
             <p className="eyebrow">Ready when you are</p>
             <h2>Come and try it for yourself.</h2>
             <p>
-              Send a short message and Steve will get back to you to arrange a
-              friendly introduction.
+              Send a short message and the club secretary will get back to you
+              to arrange a friendly introduction.
             </p>
-            <a className="email-link" href="mailto:stevewebster@btinternet.com">
-              stevewebster@btinternet.com
+            <a className="email-link" href={`mailto:${EMPIRE_CONTACT_EMAIL}`}>
+              {EMPIRE_CONTACT_EMAIL}
             </a>
           </div>
           <form onSubmit={submitEnquiry} data-usage-goal="email-handoff" data-usage-ignore="true">
