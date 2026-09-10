@@ -76,9 +76,19 @@ function secureResponse(response: Response, pathname: string) {
 // dangerouslyAllowSVG: true in next.config.js and uncomment below:
 // const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
 
+function isKnownScannerPath(pathname: string) {
+  return /^\/(?:wp(?:-|\/|$)|wordpress(?:\/|$)|xmlrpc\.php$|index\.php(?:\/|$)|shared\/(?:attachments|scripts)\.asp$|\.env(?:\.|$)|vendor\/phpunit(?:\/|$)|phpmyadmin(?:\/|$)|adminer\.php$|cgi-bin(?:\/|$)|autodiscover(?:\/|$)|owa(?:\/|$)|actuator(?:\/|$))/i.test(pathname);
+}
+
+function scannerNotFound() {
+  return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff", "x-robots-tag": "noindex, nofollow, noarchive" } });
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (isKnownScannerPath(url.pathname)) return scannerNotFound();
 
     // Migrate known HugoFox pages directly to their corresponding public page.
     const legacy = url.pathname.match(/^\/community\/empire-bowls-club-14829(?:\/(.*?))?\/?$/i);
