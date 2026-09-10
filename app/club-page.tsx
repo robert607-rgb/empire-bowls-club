@@ -196,6 +196,34 @@ function openEmpireEnquiry(data: FormData) {
   window.location.href = `mailto:${EMPIRE_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+function openMemberLoginEmail(member: {
+  name: string;
+  email: string;
+  loginCode: string;
+}) {
+  const firstName = member.name.trim().split(/\s+/)[0] || member.name.trim();
+  const subject = "Your Empire Bowls Club Members Zone login details";
+  const body = [
+    `Hello ${firstName},`,
+    "",
+    "Welcome to Empire Bowls Club.",
+    "",
+    "Your Members Zone login details are:",
+    `Username: ${firstName}`,
+    `Four-digit member code: ${member.loginCode}`,
+    "",
+    "To sign in, open the Empire Bowls Club website and press Member Zone. Enter your first name and four-digit member code.",
+    "",
+    "In the Members Zone you can: book and manage rink bookings; view team sheets and match details; respond to player sign-up requests; and view club documents and the member directory.",
+    "",
+    "Please keep your code private. Contact the club secretary if you need a new one.",
+    "",
+    "Empire Bowls Club",
+    `Club contact: ${EMPIRE_CONTACT_EMAIL}`,
+  ].join("\n");
+  window.location.href = `mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 const fallbackCommittee: CommitteeMember[] = [
   { id: -1, role: "Chairman", name: "Steve Webster", phone: "07872 111577", sortOrder: 1, createdAt: "" },
   { id: -2, role: "Secretary", name: "Ann Norris", phone: "07852 975351", sortOrder: 2, createdAt: "" },
@@ -3317,6 +3345,43 @@ function AdminMemberOverview({
   );
 }
 
+function MemberLoginEmailCard({
+  member,
+  onDismiss,
+}: {
+  member: { name: string; email: string; loginCode: string };
+  onDismiss: () => void;
+}) {
+  const firstName = member.name.trim().split(/\s+/)[0] || member.name.trim();
+  return (
+    <section className="admin-card member-login-email-card">
+      <p className="eyebrow">New member access</p>
+      <h2>Email login details to {member.name}</h2>
+      <p>
+        A ready-to-send email is prepared for <b>{member.email}</b>. It includes
+        the username <b>{firstName}</b>, their four-digit code and what they can
+        do in the Members Zone.
+      </p>
+      <p className="form-help">
+        The draft opens in the admin’s default email app. Select the secretary
+        mailbox, if needed, and press Send when you are happy with it.
+      </p>
+      <div className="member-login-email-actions">
+        <button
+          className="primary"
+          type="button"
+          onClick={() => openMemberLoginEmail(member)}
+        >
+          Open email draft
+        </button>
+        <button className="text-button" type="button" onClick={onDismiss}>
+          Dismiss
+        </button>
+      </div>
+    </section>
+  );
+}
+
 function AdminTeamSheetManager({
   members,
   sheets,
@@ -4784,6 +4849,11 @@ function AdminZone({
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [newMemberLogin, setNewMemberLogin] = useState<{
+    name: string;
+    email: string;
+    loginCode: string;
+  } | null>(null);
   const headers = useMemo(() => apiHeaders("admin", password), [password]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -4829,16 +4899,6 @@ function AdminZone({
       setCommitteeMembers((await committeeResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
       setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
-      const membersWithLoginCodes = (memberData.members ?? []).filter(
-        (member: Member) => member.loginCode,
-      );
-      if (membersWithLoginCodes.length) {
-        setMessage(
-          `Member login codes: ${membersWithLoginCodes
-            .map((member: Member) => `${member.name}: ${member.loginCode}`)
-            .join(" · ")}`,
-        );
-      }
     } catch {
       setError("We could not load the admin records. Please try again.");
     }
@@ -4882,11 +4942,26 @@ function AdminZone({
         setError(result.error || "The member could not be added.");
         return;
       }
-      formElement.reset();
-      refreshAdminWorkspace(
-        "members",
-        `${result.member.name} has been added. Their member login code is ${result.loginCode}. Give this four-digit code to them privately; it is also shown in the admin Members directory.`,
+      const createdMember: Member = {
+        ...result.member,
+        loginCode: result.loginCode,
+      };
+      setMembers((current) =>
+        [...current.filter((member) => member.id !== createdMember.id), createdMember].sort(
+          (a, b) => a.name.localeCompare(b.name),
+        ),
       );
+      setNewMemberLogin({
+        name: createdMember.name,
+        email: createdMember.email,
+        loginCode: createdMember.loginCode ?? "",
+      });
+      formElement.reset();
+      setMessage(
+        `${createdMember.name} has been added. Use the button below to prepare their login email.`,
+      );
+      notifyEmpireDataUpdated();
+      void refresh();
       return;
     } catch {
       setError("The member could not be added. Please try again.");
@@ -5028,6 +5103,12 @@ function AdminZone({
               setMessage(nextMessage);
             }}
           />
+          {newMemberLogin && (
+            <MemberLoginEmailCard
+              member={newMemberLogin}
+              onDismiss={() => setNewMemberLogin(null)}
+            />
+          )}
           <form className="admin-card admin-card-members admin-add-member" onSubmit={addMember}>
             <p className="eyebrow">Member management</p>
             <h2>Add a member</h2>

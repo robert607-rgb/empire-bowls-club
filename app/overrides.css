@@ -1119,6 +1119,40 @@
 .admin-card-members {
   border-top-color: #12654a !important;
 }
+
+.member-login-email-card {
+  border-top-color: #bd253e !important;
+}
+
+.member-login-email-card h2 {
+  margin-bottom: 10px;
+}
+
+.member-login-email-card p {
+  max-width: 780px;
+}
+
+.member-login-email-card .form-help {
+  margin-top: 8px;
+  color: #405568;
+}
+
+.member-login-email-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.member-login-email-actions .primary {
+  margin-top: 0;
+}
+
+.member-login-email-actions .text-button {
+  color: #062761;
+}
+
 .admin-card-players {
   border-top-color: #e4b82c !important;
 }
