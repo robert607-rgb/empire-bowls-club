@@ -123,7 +123,7 @@ export async function GET() {
   try {
     return Response.json(
       { news: await listNews() },
-      { headers: { "cache-control": "no-store" } },
+      { headers: { "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400" } },
     );
   } catch (error) {
     return apiError(error);

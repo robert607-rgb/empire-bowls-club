@@ -76,7 +76,7 @@ export async function GET() {
       .all<SponsorRow>();
     return Response.json(
       { sponsors: (result.results ?? []).map(mapSponsor) },
-      { headers: { "cache-control": "no-store" } },
+      { headers: { "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400" } },
     );
   } catch (error) {
     return apiError(error);
