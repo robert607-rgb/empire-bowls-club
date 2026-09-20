@@ -218,7 +218,11 @@ function openMemberLoginEmail(member: {
   email: string;
   loginCode: string;
 }) {
-  const firstName = member.name.trim().split(/\s+/)[0] || member.name.trim();
+  const fullName = member.name.trim();
+  const firstName = fullName.split(/\s+/)[0] || fullName;
+  const email = member.email.trim();
+  const loginCode = member.loginCode.trim();
+  if (!firstName || !email || !/^\d{4}$/.test(loginCode)) return;
   const subject = "Your Empire Bowls Club Members Zone login details";
   const body = [
     `Hello ${firstName},`,
@@ -238,7 +242,7 @@ function openMemberLoginEmail(member: {
     "Empire Bowls Club",
     `Club contact: ${EMPIRE_CONTACT_EMAIL}`,
   ].join("\n");
-  window.location.href = `mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 const fallbackCommittee: CommitteeMember[] = [
@@ -3164,7 +3168,9 @@ function AdminMemberOverview({
       }
       onChange(
         members.map((member) =>
-          member.id === editing.id ? result.member : member,
+          member.id === editing.id
+            ? { ...result.member, loginCode: result.loginCode ?? member.loginCode }
+            : member,
         ),
       );
       setEditing(null);
@@ -3470,6 +3476,9 @@ function MemberLoginEmailCard({
         A ready-to-send email is prepared for <b>{member.email}</b>. It includes
         the username <b>{firstName}</b>, their four-digit code and what they can
         do in the Members Zone.
+      </p>
+      <p className="member-login-preview">
+        <b>Username:</b> {firstName} &nbsp;·&nbsp; <b>Four-digit code:</b> {member.loginCode}
       </p>
       <p className="form-help">
         The draft opens in the admin’s default email app. Select the secretary
