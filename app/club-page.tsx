@@ -3947,26 +3947,38 @@ function AdminDocumentOverview({
   );
 }
 
+const MAX_GALLERY_PHOTO_BYTES = 15 * 1024 * 1024;
+
 async function convertToGalleryWebp(file: File) {
-  if (file.type === "image/webp" && file.name.toLowerCase().endsWith(".webp")) return file;
-  if (!(file.type === "image/jpeg" || file.type === "image/png")) {
+  if (file.type === "image/webp" && file.name.toLowerCase().endsWith(".webp") && file.size <= MAX_GALLERY_PHOTO_BYTES) return file;
+  if (!(file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp")) {
     throw new Error(`${file.name} is not a JPG, PNG or WebP image.`);
   }
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   try {
     const longestEdge = Math.max(bitmap.width, bitmap.height);
-    const scale = Math.min(1, 2560 / longestEdge);
+    let targetLongestEdge = Math.min(1, 2560 / longestEdge) * longestEdge;
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("Your browser could not prepare this image.");
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.9));
-    if (!blob) throw new Error(`Could not convert ${file.name} to WebP.`);
-    if (blob.size > 5 * 1024 * 1024) throw new Error(`${file.name} is still too large after conversion. Please choose a smaller image.`);
     const name = `${file.name.replace(/\.[^.]+$/, "") || "gallery-photo"}.webp`;
-    return new File([blob], name, { type: "image/webp", lastModified: file.lastModified });
+    const qualitySteps = [0.9, 0.82, 0.74, 0.66, 0.58];
+    for (let resizeAttempt = 0; resizeAttempt < 4; resizeAttempt += 1) {
+      const scale = targetLongestEdge / longestEdge;
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Your browser could not prepare this image.");
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      for (const quality of qualitySteps) {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+        if (!blob) continue;
+        if (blob.size <= MAX_GALLERY_PHOTO_BYTES) {
+          return new File([blob], name, { type: "image/webp", lastModified: file.lastModified });
+        }
+      }
+      if (targetLongestEdge <= 1400) break;
+      targetLongestEdge = Math.max(1400, Math.round(targetLongestEdge * 0.8));
+    }
+    throw new Error(`${file.name} could not be compressed below 15MB. Please choose a smaller image.`);
   } finally {
     bitmap.close();
   }
@@ -4110,7 +4122,7 @@ function AdminGalleryPanel({
         <p className="admin-panel-help">JPG and PNG photos are converted to high-quality WebP before upload. Large photos are sized for fast viewing while keeping a crisp image. Bigger albums are uploaded in safe batches automatically.</p>
         <label>Album title<input name="title" required maxLength={160} placeholder="e.g. 2026 Open Day" /></label>
         <label>Short description <span className="optional-label">(optional)</span><textarea name="description" maxLength={500} placeholder="A little about the day or occasion" /></label>
-        <label>Choose photos<input name="photos" type="file" required multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" /><small>Up to 24 photos at a time. Each photo is converted before it leaves this device.</small></label>
+        <label>Choose photos<input name="photos" type="file" required multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" /><small>Up to 24 photos at a time. Each photo is converted to WebP before upload and can be up to 15MB.</small></label>
         {error && <Status type="error" message={error} />}
         <button className="primary" type="submit" disabled={saving}>{saving ? "Preparing and publishing photos…" : "Publish photo album"}</button>
       </form>

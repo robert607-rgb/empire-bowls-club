@@ -12,7 +12,7 @@ import {
 } from "../_server";
 
 const MAX_PHOTOS_PER_ALBUM = 24;
-const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 
 type AlbumRow = {
   album_id: number;
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     }
     const photoDetails = photos.map(safePhoto);
     if (photoDetails.some((photo) => !photo)) {
-      return Response.json({ error: "Photos must be WebP images of 5MB or less. JPG and PNG files are converted before upload." }, { status: 400 });
+      return Response.json({ error: "Photos must be WebP images of 15MB or less. JPG and PNG files are converted before upload." }, { status: 400 });
     }
     const { BUCKET } = await getRuntimeEnv();
     if (!BUCKET) return Response.json({ error: "Image storage is not available yet." }, { status: 503 });
