@@ -203,9 +203,36 @@ export async function DELETE(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const input = await readJson(request);
-    const id = Number(input.id);
-    if (!Number.isInteger(id)) return Response.json({ error: "Choose a valid gallery album." }, { status: 400 });
     const db = await getEmpireDatabase();
+    if ("photoId" in input) {
+      const photoId = Number(input.photoId);
+      if (!Number.isInteger(photoId)) return Response.json({ error: "Choose a valid gallery photo." }, { status: 400 });
+      const photo = await db.prepare(
+        "SELECT id, album_id, object_key FROM empire_gallery_photos WHERE id = ?",
+      ).bind(photoId).first<{ id: number; album_id: number; object_key: string }>();
+      if (!photo) return Response.json({ error: "That gallery photo no longer exists." }, { status: 404 });
+      const photoCount = await db.prepare(
+        "SELECT COUNT(*) AS count FROM empire_gallery_photos WHERE album_id = ?",
+      ).bind(photo.album_id).first<{ count: number }>();
+      const albumRemoved = Number(photoCount?.count ?? 0) <= 1;
+      const removals: D1PreparedStatement[] = [
+        db.prepare("DELETE FROM empire_gallery_photos WHERE id = ?").bind(photo.id),
+      ];
+      if (albumRemoved) {
+        removals.push(db.prepare("DELETE FROM empire_gallery_albums WHERE id = ?").bind(photo.album_id));
+      }
+      await db.batch(removals);
+      try {
+        const { BUCKET } = await getRuntimeEnv();
+        if (BUCKET) await BUCKET.delete(photo.object_key);
+      } catch (error) {
+        console.error("Empire gallery photo deletion cleanup failed", error);
+      }
+      return Response.json({ removed: true, albumRemoved });
+    }
+
+    const id = Number(input.albumId ?? input.id);
+    if (!Number.isInteger(id)) return Response.json({ error: "Choose a valid gallery album." }, { status: 400 });
     const album = await db.prepare("SELECT id FROM empire_gallery_albums WHERE id = ?").bind(id).first<{ id: number }>();
     if (!album) return Response.json({ error: "That gallery album no longer exists." }, { status: 404 });
     const photos = await db.prepare("SELECT object_key FROM empire_gallery_photos WHERE album_id = ?").bind(id).all<{ object_key: string }>();

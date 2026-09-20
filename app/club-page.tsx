@@ -1,6 +1,7 @@
 "use client";
 
 import "./gallery.css";
+import "./gallery-admin.css";
 import { pagePaths } from "./site-pages";
 
 import {
@@ -4036,6 +4037,7 @@ function AdminGalleryPanel({
   onMessage: (message: string) => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const upload = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -4102,11 +4104,12 @@ function AdminGalleryPanel({
   const remove = async (album: GalleryAlbum) => {
     if (!window.confirm(`Remove the album “${album.title}” and all ${album.photos.length} photos?`)) return;
     setError("");
+    setRemovingId(`album-${album.id}`);
     try {
       const response = await fetch("/api/empire/gallery", {
         method: "DELETE",
         headers: { ...apiHeaders("admin", password), "content-type": "application/json" },
-        body: JSON.stringify({ id: album.id }),
+        body: JSON.stringify({ albumId: album.id }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The album could not be removed.");
@@ -4115,6 +4118,34 @@ function AdminGalleryPanel({
       onMessage(`${album.title} has been removed from the public gallery.`);
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : "The album could not be removed. Please try again.");
+    } finally {
+      setRemovingId(null);
+    }
+  };
+  const removePhoto = async (album: GalleryAlbum, photo: GalleryPhoto) => {
+    if (!window.confirm(`Remove “${photo.fileName}” from the “${album.title}” album?`)) return;
+    setError("");
+    setRemovingId(`photo-${photo.id}`);
+    try {
+      const response = await fetch("/api/empire/gallery", {
+        method: "DELETE",
+        headers: { ...apiHeaders("admin", password), "content-type": "application/json" },
+        body: JSON.stringify({ photoId: photo.id }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "The photo could not be removed.");
+      const remainingPhotos = album.photos.filter((item) => item.id !== photo.id);
+      onChange(remainingPhotos.length
+        ? albums.map((item) => item.id === album.id ? { ...item, photos: remainingPhotos } : item)
+        : albums.filter((item) => item.id !== album.id));
+      notifyEmpireDataUpdated();
+      onMessage(remainingPhotos.length
+        ? `${photo.fileName} has been removed from ${album.title}.`
+        : `${photo.fileName} has been removed and the empty ${album.title} album has been deleted.`);
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : "The photo could not be removed. Please try again.");
+    } finally {
+      setRemovingId(null);
     }
   };
   return (
@@ -4133,9 +4164,22 @@ function AdminGalleryPanel({
         <p className="eyebrow">Published albums</p>
         <h2>Gallery management</h2>
         {albums.length ? <div className="admin-files-list">{albums.map((album) => (
-          <article key={album.id}>
-            <div><b>{album.title}</b><span>{album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span>{album.description && <small>{album.description}</small>}</div>
-            <button className="remove-member" type="button" onClick={() => void remove(album)}>Remove album</button>
+          <article className="gallery-admin-album" key={album.id}>
+            <div className="gallery-admin-album-heading">
+              <div><b>{album.title}</b><span>{album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span>{album.description && <small>{album.description}</small>}</div>
+              <button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void remove(album)}>{removingId === `album-${album.id}` ? "Deleting…" : "Delete album"}</button>
+            </div>
+            <div className="gallery-admin-photo-grid" aria-label={`${album.title} photos`}>
+              {album.photos.map((photo) => (
+                <figure className="gallery-admin-photo" key={photo.id}>
+                  <img src={photo.imageUrl} alt={photo.fileName} />
+                  <figcaption>
+                    <span title={photo.fileName}>{photo.fileName}</span>
+                    <button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void removePhoto(album, photo)}>{removingId === `photo-${photo.id}` ? "Deleting…" : "Delete photo"}</button>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
           </article>
         ))}</div> : <p className="empty">No photo albums have been published yet.</p>}
       </section>
