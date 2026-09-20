@@ -1,5 +1,6 @@
 "use client";
 
+import "./gallery.css";
 import { pagePaths } from "./site-pages";
 
 import {
@@ -20,6 +21,7 @@ type AdminTab =
   | "fixtures"
   | "player-signups"
   | "news"
+  | "gallery"
   | "sponsors"
   | "documents"
   | "security";
@@ -27,6 +29,7 @@ export type Page =
   | "Home"
   | "About the Club"
   | "News"
+  | "Gallery"
   | "Sponsors"
   | "Fixtures"
   | "Honours"
@@ -133,11 +136,25 @@ type NewsItem = {
   imageUrl: string;
   publishedAt: string;
 };
+type GalleryPhoto = {
+  id: number;
+  fileName: string;
+  imageUrl: string;
+  createdAt: string;
+};
+type GalleryAlbum = {
+  id: number;
+  title: string;
+  description: string;
+  createdAt: string;
+  photos: GalleryPhoto[];
+};
 
 const nav: Page[] = [
   "Home",
   "About the Club",
   "News",
+  "Gallery",
   "Sponsors",
   "Fixtures",
   "Play bowls",
@@ -201,7 +218,11 @@ function openMemberLoginEmail(member: {
   email: string;
   loginCode: string;
 }) {
-  const firstName = member.name.trim().split(/\s+/)[0] || member.name.trim();
+  const fullName = member.name.trim();
+  const firstName = fullName.split(/\s+/)[0] || fullName;
+  const email = member.email.trim();
+  const loginCode = member.loginCode.trim();
+  if (!firstName || !email || !/^\d{4}$/.test(loginCode)) return;
   const subject = "Your Empire Bowls Club Members Zone login details";
   const body = [
     `Hello ${firstName},`,
@@ -221,7 +242,7 @@ function openMemberLoginEmail(member: {
     "Empire Bowls Club",
     `Club contact: ${EMPIRE_CONTACT_EMAIL}`,
   ].join("\n");
-  window.location.href = `mailto:${encodeURIComponent(member.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 const fallbackCommittee: CommitteeMember[] = [
@@ -745,6 +766,81 @@ function displayNewsDate(value: string) {
         year: "numeric",
       }).format(parsed);
 }
+
+function GalleryPage() {
+  const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+  const [loadError, setLoadError] = useState("");
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    album: GalleryAlbum;
+    photo: GalleryPhoto;
+  } | null>(null);
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/api/empire/gallery", { cache: "no-store" });
+      if (!response.ok) throw new Error("Gallery request failed");
+      const result = await response.json();
+      setAlbums(result.albums ?? []);
+      setLoadError("");
+    } catch {
+      setLoadError("The gallery could not be loaded right now.");
+    }
+  }, []);
+  useEffect(() => {
+    void refresh();
+    window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
+  }, [refresh]);
+  return (
+    <section className="gallery-page">
+      <div className="wrap gallery-intro">
+        <p className="eyebrow">Empire in pictures</p>
+        <h1>Life on and around the green.</h1>
+        <p className="lead">Match days, club occasions and the moments that make Empire our club.</p>
+        {loadError && <p className="news-load-error">{loadError}</p>}
+      </div>
+      <div className="wrap gallery-album-list">
+        {albums.length ? albums.map((album) => (
+          <article className="gallery-album" key={album.id}>
+            <div className="gallery-album-heading">
+              <div>
+                <p className="eyebrow">Photo album</p>
+                <h2>{album.title}</h2>
+                {album.description && <p>{album.description}</p>}
+              </div>
+              <span>{album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span>
+            </div>
+            <div className="gallery-photo-grid">
+              {album.photos.map((photo) => (
+                <button
+                  className="gallery-photo"
+                  type="button"
+                  key={photo.id}
+                  onClick={() => setSelectedPhoto({ album, photo })}
+                  aria-label={`Open photo from ${album.title}`}
+                >
+                  <img src={photo.imageUrl} alt={`${album.title} – Empire Bowls Club`} loading="lazy" decoding="async" />
+                </button>
+              ))}
+            </div>
+          </article>
+        )) : (
+          <div className="gallery-empty">
+            <span>Empire moments</span>
+            <h2>The gallery is ready.</h2>
+            <p>Photos from the club will be shared here soon.</p>
+          </div>
+        )}
+      </div>
+      {selectedPhoto && (
+        <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${selectedPhoto.album.title} photo`} onClick={() => setSelectedPhoto(null)}>
+          <button className="gallery-lightbox-close" type="button" onClick={() => setSelectedPhoto(null)} aria-label="Close photo">×</button>
+          <img src={selectedPhoto.photo.imageUrl} alt={`${selectedPhoto.album.title} – Empire Bowls Club`} onClick={(event) => event.stopPropagation()} />
+        </div>
+      )}
+    </section>
+  );
+}
+
 function renderPage(
   page: Page,
   openPage: (page: Page) => void,
@@ -754,6 +850,7 @@ function renderPage(
     return <HomePage openPage={openPage} />;
   if (page === "About the Club") return <AboutPage />;
   if (page === "News") return <NewsPage />;
+  if (page === "Gallery") return <GalleryPage />;
   if (page === "Sponsors") return <SponsorsPage />;
   if (page === "Fixtures") return <FixturesPage />;
   if (page === "Honours") return <HonoursPage />;
@@ -3071,7 +3168,9 @@ function AdminMemberOverview({
       }
       onChange(
         members.map((member) =>
-          member.id === editing.id ? result.member : member,
+          member.id === editing.id
+            ? { ...result.member, loginCode: result.loginCode ?? member.loginCode }
+            : member,
         ),
       );
       setEditing(null);
@@ -3377,6 +3476,9 @@ function MemberLoginEmailCard({
         A ready-to-send email is prepared for <b>{member.email}</b>. It includes
         the username <b>{firstName}</b>, their four-digit code and what they can
         do in the Members Zone.
+      </p>
+      <p className="member-login-preview">
+        <b>Username:</b> {firstName} &nbsp;·&nbsp; <b>Four-digit code:</b> {member.loginCode}
       </p>
       <p className="form-help">
         The draft opens in the admin’s default email app. Select the secretary
@@ -3842,6 +3944,126 @@ function AdminDocumentOverview({
         )}
       </div>
     </details>
+  );
+}
+
+async function convertToGalleryWebp(file: File) {
+  if (file.type === "image/webp" && file.name.toLowerCase().endsWith(".webp")) return file;
+  if (!(file.type === "image/jpeg" || file.type === "image/png")) {
+    throw new Error(`${file.name} is not a JPG, PNG or WebP image.`);
+  }
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  try {
+    const longestEdge = Math.max(bitmap.width, bitmap.height);
+    const scale = Math.min(1, 2560 / longestEdge);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Your browser could not prepare this image.");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.9));
+    if (!blob) throw new Error(`Could not convert ${file.name} to WebP.`);
+    if (blob.size > 5 * 1024 * 1024) throw new Error(`${file.name} is still too large after conversion. Please choose a smaller image.`);
+    const name = `${file.name.replace(/\.[^.]+$/, "") || "gallery-photo"}.webp`;
+    return new File([blob], name, { type: "image/webp", lastModified: file.lastModified });
+  } finally {
+    bitmap.close();
+  }
+}
+
+function AdminGalleryPanel({
+  albums,
+  password,
+  onChange,
+  onMessage,
+}: {
+  albums: GalleryAlbum[];
+  password: string;
+  onChange: (albums: GalleryAlbum[]) => void;
+  onMessage: (message: string) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const upload = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const originals = Array.from(new FormData(form).getAll("photos")).filter(
+      (value): value is File => value instanceof File && value.size > 0,
+    );
+    if (!originals.length) {
+      setError("Choose at least one photo for the album.");
+      return;
+    }
+    if (originals.length > 24) {
+      setError("Please upload no more than 24 photos in one album.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const converted = await Promise.all(originals.map(convertToGalleryWebp));
+      const data = new FormData(form);
+      data.delete("photos");
+      converted.forEach((photo) => data.append("photos", photo));
+      const response = await fetch("/api/empire/gallery", {
+        method: "POST",
+        headers: apiHeaders("admin", password),
+        body: data,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "The album could not be published.");
+      form.reset();
+      onChange([result.album, ...albums]);
+      notifyEmpireDataUpdated();
+      refreshAdminWorkspace("gallery", `${result.album.title} has been added to the public gallery.`);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "The album could not be published. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const remove = async (album: GalleryAlbum) => {
+    if (!window.confirm(`Remove the album “${album.title}” and all ${album.photos.length} photos?`)) return;
+    setError("");
+    try {
+      const response = await fetch("/api/empire/gallery", {
+        method: "DELETE",
+        headers: { ...apiHeaders("admin", password), "content-type": "application/json" },
+        body: JSON.stringify({ id: album.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "The album could not be removed.");
+      onChange(albums.filter((item) => item.id !== album.id));
+      notifyEmpireDataUpdated();
+      onMessage(`${album.title} has been removed from the public gallery.`);
+    } catch (removeError) {
+      setError(removeError instanceof Error ? removeError.message : "The album could not be removed. Please try again.");
+    }
+  };
+  return (
+    <div className="gallery-admin-stack">
+      <form className="admin-card gallery-upload-form" onSubmit={upload}>
+        <p className="eyebrow">Public gallery</p>
+        <h2>Create a photo album</h2>
+        <p className="admin-panel-help">JPG and PNG photos are converted to high-quality WebP before upload. Large photos are sized for fast viewing while keeping a crisp image.</p>
+        <label>Album title<input name="title" required maxLength={160} placeholder="e.g. 2026 Open Day" /></label>
+        <label>Short description <span className="optional-label">(optional)</span><textarea name="description" maxLength={500} placeholder="A little about the day or occasion" /></label>
+        <label>Choose photos<input name="photos" type="file" required multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" /><small>Up to 24 photos at a time. Each photo is converted before it leaves this device.</small></label>
+        {error && <Status type="error" message={error} />}
+        <button className="primary" type="submit" disabled={saving}>{saving ? "Preparing and publishing photos…" : "Publish photo album"}</button>
+      </form>
+      <section className="admin-card gallery-admin-albums">
+        <p className="eyebrow">Published albums</p>
+        <h2>Gallery management</h2>
+        {albums.length ? <div className="admin-files-list">{albums.map((album) => (
+          <article key={album.id}>
+            <div><b>{album.title}</b><span>{album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span>{album.description && <small>{album.description}</small>}</div>
+            <button className="remove-member" type="button" onClick={() => void remove(album)}>Remove album</button>
+          </article>
+        ))}</div> : <p className="empty">No photo albums have been published yet.</p>}
+      </section>
+    </div>
   );
 }
 
@@ -4861,6 +5083,7 @@ function AdminZone({
   const [members, setMembers] = useState<Member[]>([]);
   const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
   const [files, setFiles] = useState<ClubFile[]>([]);
+  const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbum[]>([]);
   const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [message, setMessage] = useState("");
@@ -4885,6 +5108,7 @@ function AdminZone({
         storedTab === "fixtures" ||
         storedTab === "player-signups" ||
         storedTab === "news" ||
+        storedTab === "gallery" ||
         storedTab === "sponsors" ||
         storedTab === "documents" ||
         storedTab === "security"
@@ -4901,13 +5125,14 @@ function AdminZone({
   }, []);
   const refresh = useCallback(async () => {
     try {
-      const [memberResponse, committeeResponse, fileResponse, teamSheetResponse] = await Promise.all([
+      const [memberResponse, committeeResponse, fileResponse, teamSheetResponse, galleryResponse] = await Promise.all([
         fetch("/api/empire/members", { headers }),
         fetch("/api/empire/committee", { headers }),
         fetch("/api/empire/uploads", { headers }),
         fetch("/api/empire/team-sheets", { headers }),
+        fetch("/api/empire/gallery", { headers }),
       ]);
-      if (!memberResponse.ok || !committeeResponse.ok || !fileResponse.ok || !teamSheetResponse.ok) {
+      if (!memberResponse.ok || !committeeResponse.ok || !fileResponse.ok || !teamSheetResponse.ok || !galleryResponse.ok) {
         throw new Error("Admin data request failed");
       }
       const memberData = await memberResponse.json();
@@ -4915,6 +5140,7 @@ function AdminZone({
       setCommitteeMembers((await committeeResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
       setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
+      setGalleryAlbums((await galleryResponse.json()).albums ?? []);
     } catch {
       setError("We could not load the admin records. Please try again.");
     }
@@ -4927,6 +5153,7 @@ function AdminZone({
     { id: "fixtures", label: "Fixtures" },
     { id: "player-signups", label: "Player sign-ups" },
     { id: "news", label: "News" },
+    { id: "gallery", label: "Gallery", count: galleryAlbums.length },
     { id: "sponsors", label: "Sponsors" },
     {
       id: "documents",
@@ -5265,6 +5492,24 @@ function AdminZone({
         >
           <NewsAdminPanel
             password={password}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-gallery"
+          role="tabpanel"
+          aria-labelledby="admin-tab-gallery"
+          hidden={activeTab !== "gallery"}
+        >
+          <AdminGalleryPanel
+            albums={galleryAlbums}
+            password={password}
+            onChange={setGalleryAlbums}
             onMessage={(nextMessage) => {
               setError("");
               setMessage(nextMessage);

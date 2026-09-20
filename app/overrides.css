@@ -1132,6 +1132,15 @@
   max-width: 780px;
 }
 
+.member-login-email-card .member-login-preview {
+  display: inline-block;
+  padding: 12px 15px;
+  color: #062761;
+  background: #f6e7a9;
+  border: 1px solid #ddbd42;
+  border-radius: 6px;
+}
+
 .member-login-email-card .form-help {
   margin-top: 8px;
   color: #405568;
