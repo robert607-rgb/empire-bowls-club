@@ -3972,6 +3972,43 @@ async function convertToGalleryWebp(file: File) {
   }
 }
 
+const GALLERY_UPLOAD_BATCH_BYTES = 24 * 1024 * 1024;
+
+function splitGalleryPhotos(photos: File[]) {
+  const batches: File[][] = [];
+  let batch: File[] = [];
+  let batchBytes = 0;
+  for (const photo of photos) {
+    if (batch.length && batchBytes + photo.size > GALLERY_UPLOAD_BATCH_BYTES) {
+      batches.push(batch);
+      batch = [];
+      batchBytes = 0;
+    }
+    batch.push(photo);
+    batchBytes += photo.size;
+  }
+  if (batch.length) batches.push(batch);
+  return batches;
+}
+
+async function readGalleryResponse(response: Response) {
+  const raw = await response.text();
+  let result: { album?: GalleryAlbum; error?: string } = {};
+  try {
+    result = raw ? JSON.parse(raw) as typeof result : {};
+  } catch {
+    // Cloudflare can return a plain response when a request is rejected before
+    // it reaches the gallery Worker route.
+  }
+  if (!response.ok) {
+    if (response.status === 413) {
+      throw new Error("This upload was too large for the server. The album uploader will split photos into smaller batches automatically; please try again.");
+    }
+    throw new Error(result.error || "The album could not be published.");
+  }
+  return result;
+}
+
 function AdminGalleryPanel({
   albums,
   password,
@@ -4001,23 +4038,47 @@ function AdminGalleryPanel({
     }
     setSaving(true);
     setError("");
+    let albumId: number | null = null;
     try {
-      const converted = await Promise.all(originals.map(convertToGalleryWebp));
-      const data = new FormData(form);
-      data.delete("photos");
-      converted.forEach((photo) => data.append("photos", photo));
-      const response = await fetch("/api/empire/gallery", {
-        method: "POST",
-        headers: apiHeaders("admin", password),
-        body: data,
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "The album could not be published.");
+      const converted: File[] = [];
+      for (const original of originals) converted.push(await convertToGalleryWebp(original));
+      const batches = splitGalleryPhotos(converted);
+      const sourceData = new FormData(form);
+      const title = String(sourceData.get("title") ?? "");
+      const description = String(sourceData.get("description") ?? "");
+      let publishedAlbum: GalleryAlbum | undefined;
+      for (const [batchIndex, batch] of batches.entries()) {
+        const data = new FormData();
+        if (batchIndex === 0) {
+          data.set("title", title);
+          data.set("description", description);
+        } else if (albumId !== null) {
+          data.set("albumId", String(albumId));
+        }
+        batch.forEach((photo) => data.append("photos", photo));
+        const response = await fetch("/api/empire/gallery", {
+          method: "POST",
+          headers: apiHeaders("admin", password),
+          body: data,
+        });
+        const result = await readGalleryResponse(response);
+        if (!result.album) throw new Error("The gallery did not return the published album.");
+        publishedAlbum = result.album;
+        albumId = result.album.id;
+      }
       form.reset();
-      onChange([result.album, ...albums]);
+      if (!publishedAlbum) throw new Error("No photos were prepared for upload.");
+      onChange([publishedAlbum, ...albums]);
       notifyEmpireDataUpdated();
-      refreshAdminWorkspace("gallery", `${result.album.title} has been added to the public gallery.`);
+      refreshAdminWorkspace("gallery", `${publishedAlbum.title} has been added to the public gallery.`);
     } catch (uploadError) {
+      if (albumId !== null) {
+        await fetch("/api/empire/gallery", {
+          method: "DELETE",
+          headers: { ...apiHeaders("admin", password), "content-type": "application/json" },
+          body: JSON.stringify({ id: albumId }),
+        }).catch(() => undefined);
+      }
       setError(uploadError instanceof Error ? uploadError.message : "The album could not be published. Please try again.");
     } finally {
       setSaving(false);
@@ -4046,7 +4107,7 @@ function AdminGalleryPanel({
       <form className="admin-card gallery-upload-form" onSubmit={upload}>
         <p className="eyebrow">Public gallery</p>
         <h2>Create a photo album</h2>
-        <p className="admin-panel-help">JPG and PNG photos are converted to high-quality WebP before upload. Large photos are sized for fast viewing while keeping a crisp image.</p>
+        <p className="admin-panel-help">JPG and PNG photos are converted to high-quality WebP before upload. Large photos are sized for fast viewing while keeping a crisp image. Bigger albums are uploaded in safe batches automatically.</p>
         <label>Album title<input name="title" required maxLength={160} placeholder="e.g. 2026 Open Day" /></label>
         <label>Short description <span className="optional-label">(optional)</span><textarea name="description" maxLength={500} placeholder="A little about the day or occasion" /></label>
         <label>Choose photos<input name="photos" type="file" required multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" /><small>Up to 24 photos at a time. Each photo is converted before it leaves this device.</small></label>

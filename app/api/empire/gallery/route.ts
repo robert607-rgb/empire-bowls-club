@@ -107,10 +107,20 @@ export async function POST(request: Request) {
   try {
     assertRequestSize(request, MULTIPART_BODY_LIMIT_BYTES);
     const form = await request.formData();
+    const rawAlbumId = form.get("albumId");
+    const albumIdFromForm = rawAlbumId === null
+      ? null
+      : typeof rawAlbumId === "string" && rawAlbumId.trim()
+        ? Number(rawAlbumId)
+        : Number.NaN;
+    if (albumIdFromForm !== null && !Number.isInteger(albumIdFromForm)) {
+      return Response.json({ error: "Choose a valid gallery album." }, { status: 400 });
+    }
     const title = cleanText(form.get("title"), 160);
     const description = cleanText(form.get("description"), 500);
     const photos = readPhotos(form);
-    if (!title || !photos.length || photos.length > MAX_PHOTOS_PER_ALBUM) {
+    const appending = albumIdFromForm !== null;
+    if ((!appending && !title) || !photos.length || photos.length > MAX_PHOTOS_PER_ALBUM) {
       return Response.json({ error: `Add an album title and between 1 and ${MAX_PHOTOS_PER_ALBUM} photos.` }, { status: 400 });
     }
     const photoDetails = photos.map(safePhoto);
@@ -121,12 +131,36 @@ export async function POST(request: Request) {
     if (!BUCKET) return Response.json({ error: "Image storage is not available yet." }, { status: 503 });
     const db = await getEmpireDatabase();
     const createdAt = new Date().toISOString();
-    const created = await db.prepare(
-      "INSERT INTO empire_gallery_albums (title, description, created_at) VALUES (?, ?, ?)",
-    ).bind(title, description, createdAt).run();
-    const albumId = Number(created.meta.last_row_id);
+    let albumId: number;
+    let createdNewAlbum = false;
+    if (appending) {
+      const existingAlbum = await db
+        .prepare("SELECT id FROM empire_gallery_albums WHERE id = ?")
+        .bind(albumIdFromForm)
+        .first<{ id: number }>();
+      if (!existingAlbum) return Response.json({ error: "That gallery album no longer exists." }, { status: 404 });
+      const existingPhotos = await db
+        .prepare("SELECT COUNT(*) AS count FROM empire_gallery_photos WHERE album_id = ?")
+        .bind(albumIdFromForm)
+        .first<{ count: number }>();
+      if (Number(existingPhotos?.count ?? 0) + photos.length > MAX_PHOTOS_PER_ALBUM) {
+        return Response.json({ error: `An album can contain no more than ${MAX_PHOTOS_PER_ALBUM} photos.` }, { status: 400 });
+      }
+      albumId = albumIdFromForm;
+    } else {
+      const created = await db.prepare(
+        "INSERT INTO empire_gallery_albums (title, description, created_at) VALUES (?, ?, ?)",
+      ).bind(title, description, createdAt).run();
+      albumId = Number(created.meta.last_row_id);
+      createdNewAlbum = true;
+    }
     const objectKeys: string[] = [];
     try {
+      const lastPhoto = await db
+        .prepare("SELECT COALESCE(MAX(sort_order), 0) AS sort_order FROM empire_gallery_photos WHERE album_id = ?")
+        .bind(albumId)
+        .first<{ sort_order: number }>();
+      const sortOffset = Number(lastPhoto?.sort_order ?? 0);
       const inserts: D1PreparedStatement[] = [];
       for (const [index, file] of photos.entries()) {
         const detail = photoDetails[index];
@@ -138,16 +172,24 @@ export async function POST(request: Request) {
         objectKeys.push(objectKey);
         inserts.push(db.prepare(
           "INSERT INTO empire_gallery_photos (album_id, object_key, file_name, content_type, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        ).bind(albumId, objectKey, detail.fileName, detail.contentType, index + 1, createdAt));
+        ).bind(albumId, objectKey, detail.fileName, detail.contentType, sortOffset + index + 1, createdAt));
       }
       await db.batch(inserts);
       const albums = await listAlbums();
       return Response.json({ album: albums.find((album) => album.id === albumId) }, { status: 201 });
     } catch (error) {
-      await db.batch([
-        db.prepare("DELETE FROM empire_gallery_photos WHERE album_id = ?").bind(albumId),
-        db.prepare("DELETE FROM empire_gallery_albums WHERE id = ?").bind(albumId),
-      ]);
+      const cleanup: D1PreparedStatement[] = [];
+      if (createdNewAlbum) {
+        cleanup.push(
+          db.prepare("DELETE FROM empire_gallery_photos WHERE album_id = ?").bind(albumId),
+          db.prepare("DELETE FROM empire_gallery_albums WHERE id = ?").bind(albumId),
+        );
+      } else if (objectKeys.length) {
+        cleanup.push(
+          db.prepare(`DELETE FROM empire_gallery_photos WHERE album_id = ? AND object_key IN (${objectKeys.map(() => "?").join(", ")})`).bind(albumId, ...objectKeys),
+        );
+      }
+      if (cleanup.length) await db.batch(cleanup);
       await Promise.all(objectKeys.map((key) => BUCKET.delete(key).catch((cleanupError) => console.error("Empire gallery cleanup failed", cleanupError))));
       throw error;
     }
