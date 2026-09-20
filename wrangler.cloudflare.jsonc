@@ -22,6 +22,7 @@
     "binding": "IMAGES"
   },
   "assets": {
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "directory": "./dist/client"
   }
 }
