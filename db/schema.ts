@@ -137,3 +137,24 @@ export const empireSponsors = sqliteTable("empire_sponsors", {
   logoContentType: text("logo_content_type").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const empireGalleryAlbums = sqliteTable("empire_gallery_albums", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+});
+
+export const empireGalleryPhotos = sqliteTable(
+  "empire_gallery_photos",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    albumId: integer("album_id").notNull(),
+    objectKey: text("object_key").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    sortOrder: integer("sort_order").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("idx_empire_gallery_photos_album_sort").on(table.albumId, table.sortOrder)],
+);
