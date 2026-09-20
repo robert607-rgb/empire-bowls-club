@@ -7,7 +7,7 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_ATTEMPT_LIMIT = 8;
 const PASSWORD_HASH_ITERATIONS = 100_000;
 const JSON_BODY_LIMIT_BYTES = 128 * 1024;
-export const MULTIPART_BODY_LIMIT_BYTES = 10 * 1024 * 1024;
+export const MULTIPART_BODY_LIMIT_BYTES = 48 * 1024 * 1024;
 
 export class RequestBodyTooLargeError extends Error {
   constructor() {
@@ -481,6 +481,24 @@ export async function getEmpireDatabase() {
         content_type TEXT NOT NULL,
         created_at TEXT NOT NULL
       )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_gallery_albums (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL
+      )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_gallery_photos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        album_id INTEGER NOT NULL,
+        object_key TEXT NOT NULL,
+        file_name TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        sort_order INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )`),
+      runtime.DB.prepare(
+        "CREATE INDEX IF NOT EXISTS idx_empire_gallery_photos_album_sort ON empire_gallery_photos (album_id, sort_order)",
+      ),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_team_sheets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         opponent TEXT NOT NULL,
