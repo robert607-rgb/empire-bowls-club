@@ -3984,7 +3984,10 @@ async function convertToGalleryWebp(file: File) {
   }
 }
 
-const GALLERY_UPLOAD_BATCH_BYTES = 24 * 1024 * 1024;
+// The custom-domain upload gateway can reject a combined request well below
+// the 15 MB limit allowed for an individual photo. Keep normal phone photos
+// in very small batches; a larger individual photo is still sent on its own.
+const GALLERY_UPLOAD_BATCH_BYTES = 4 * 1024 * 1024;
 
 function splitGalleryPhotos(photos: File[]) {
   const batches: File[][] = [];
