@@ -55,6 +55,7 @@ type MemberCredentialRow = {
   encrypted_code: string;
   code_fingerprint: string;
 };
+type MemberCodeKeyRow = { secret: string };
 type SessionRow = { access: EmpireAccess; expires_at: string };
 
 function hex(bytes: Uint8Array) {
@@ -96,25 +97,49 @@ function bytesFromHex(value: string) {
   return bytes;
 }
 
-async function memberCodeKey(usage: KeyUsage[]) {
+function isMemberCodeSecret(value: unknown): value is string {
+  return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+}
+
+async function configuredMemberCodeSecret() {
   const runtime = await getRuntimeEnv();
-  const secret = runtime.EMPIRE_MEMBER_CODE_KEY ?? "";
-  if (!/^[a-f0-9]{64}$/i.test(secret)) {
+  return isMemberCodeSecret(runtime.EMPIRE_MEMBER_CODE_KEY)
+    ? runtime.EMPIRE_MEMBER_CODE_KEY
+    : null;
+}
+
+async function memberCodeSecret(db: D1Database) {
+  // Keep the key stable across Sites/Cloudflare deployments. The runtime
+  // secret is still the source of truth for the first deployment; once it has
+  // been recorded, the same D1 database can be used by another Worker without
+  // rotating or invalidating the existing member codes.
+  const persisted = await db
+    .prepare("SELECT secret FROM empire_member_code_keys WHERE id = 1")
+    .first<MemberCodeKeyRow>();
+  if (persisted && isMemberCodeSecret(persisted.secret)) return persisted.secret;
+  const configured = await configuredMemberCodeSecret();
+  if (configured) return configured;
+  throw new Error("Member login code encryption is not configured.");
+}
+
+async function memberCodeKey(db: D1Database, usage: KeyUsage[]) {
+  const secret = await memberCodeSecret(db);
+  if (!isMemberCodeSecret(secret)) {
     throw new Error("Member login code encryption is not configured.");
   }
   return crypto.subtle.importKey("raw", bytesFromHex(secret), usage[0] === "sign" ? "HMAC" : "AES-GCM", false, usage);
 }
 
-async function encryptMemberLoginCode(code: string) {
+async function encryptMemberLoginCode(db: D1Database, code: string) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await memberCodeKey(["encrypt"]);
+  const key = await memberCodeKey(db, ["encrypt"]);
   const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(code));
   return `${hex(iv)}:${hex(new Uint8Array(encrypted))}`;
 }
 
-async function decryptMemberLoginCode(value: string) {
+async function decryptMemberLoginCode(db: D1Database, value: string) {
   const [ivHex, encryptedHex] = value.split(":");
-  const key = await memberCodeKey(["decrypt"]);
+  const key = await memberCodeKey(db, ["decrypt"]);
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: bytesFromHex(ivHex ?? "") },
     key,
@@ -123,9 +148,8 @@ async function decryptMemberLoginCode(value: string) {
   return new TextDecoder().decode(decrypted);
 }
 
-async function memberCodeFingerprint(code: string) {
-  const runtime = await getRuntimeEnv();
-  const secret = runtime.EMPIRE_MEMBER_CODE_KEY ?? "";
+async function memberCodeFingerprint(db: D1Database, code: string) {
+  const secret = await memberCodeSecret(db);
   const digest = await crypto.subtle.digest("SHA-256", encoder.encode(`${secret}:${code}`));
   return hex(new Uint8Array(digest));
 }
@@ -138,8 +162,8 @@ async function saveMemberLoginCode(
 ) {
   const salt = hex(crypto.getRandomValues(new Uint8Array(18)));
   const hash = await passwordHash(code, salt);
-  const encryptedCode = await encryptMemberLoginCode(code);
-  const codeFingerprint = await memberCodeFingerprint(code);
+  const encryptedCode = await encryptMemberLoginCode(db, code);
+  const codeFingerprint = await memberCodeFingerprint(db, code);
   const conflict = await db
     .prepare("SELECT member_id FROM empire_member_credentials WHERE code_fingerprint = ?")
     .bind(codeFingerprint)
@@ -214,7 +238,7 @@ export async function readMemberLoginCodes(memberIds: number[]) {
     .all<{ member_id: number; encrypted_code: string }>();
   const codes: Array<{ memberId: number; code: string }> = [];
   for (const row of result.results ?? []) {
-    codes.push({ memberId: row.member_id, code: await decryptMemberLoginCode(row.encrypted_code) });
+    codes.push({ memberId: row.member_id, code: await decryptMemberLoginCode(db, row.encrypted_code) });
   }
   return codes;
 }
@@ -421,6 +445,12 @@ export async function getEmpireDatabase() {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )`),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_member_code_keys (
+        id INTEGER PRIMARY KEY,
+        secret TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_committee (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         role TEXT NOT NULL,
@@ -539,6 +569,14 @@ export async function getEmpireDatabase() {
       runtime.DB.prepare("DELETE FROM empire_access_accounts WHERE access = 'member'"),
     ])
       .then(async () => {
+        await ensureEmpireSchemaCompatibility(runtime.DB);
+        const configuredSecret = await configuredMemberCodeSecret();
+        if (configuredSecret) {
+          await runtime.DB
+            .prepare("INSERT OR IGNORE INTO empire_member_code_keys (id, secret, created_at, updated_at) VALUES (1, ?, ?, ?)")
+            .bind(configuredSecret, new Date().toISOString(), new Date().toISOString())
+            .run();
+        }
         const seededAt = new Date().toISOString();
         const seedMarker = await runtime.DB
           .prepare("INSERT OR IGNORE INTO empire_committee_meta (id, seeded_at) VALUES (1, ?)")
@@ -566,6 +604,28 @@ export async function getEmpireDatabase() {
   }
   await ready;
   return runtime.DB;
+}
+
+async function ensureEmpireSchemaCompatibility(db: D1Database) {
+  const columns = await db
+    .prepare("PRAGMA table_info(empire_members)")
+    .all<{ name: string }>();
+  const hasDateOfBirth = (columns.results ?? []).some((column) => column.name === "date_of_birth");
+  if (hasDateOfBirth) return;
+
+  // The first production schema did not include date_of_birth. D1 keeps that
+  // existing table when CREATE TABLE IF NOT EXISTS runs, so add the nullable
+  // column explicitly without touching any member rows or IDs.
+  try {
+    await db.prepare("ALTER TABLE empire_members ADD COLUMN date_of_birth TEXT").run();
+  } catch (error) {
+    const refreshed = await db
+      .prepare("PRAGMA table_info(empire_members)")
+      .all<{ name: string }>();
+    if (!(refreshed.results ?? []).some((column) => column.name === "date_of_birth")) {
+      throw error;
+    }
+  }
 }
 
 export function cleanText(value: unknown, maximum: number) {

@@ -1,5 +1,8 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
+  // Keep this secret configured in the Cloudflare Worker settings. It must be
+  // the same 64-hex key used when the existing member login codes were made.
+  // `keep_vars` preserves it when this file is deployed from GitHub.
   "name": "empire-bowls-club",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-08-20",
