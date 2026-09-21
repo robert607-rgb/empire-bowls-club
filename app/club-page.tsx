@@ -787,9 +787,12 @@ function GalleryPage() {
     }
   }, []);
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => void refresh(), 0);
     window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
-    return () => window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
+    };
   }, [refresh]);
   return (
     <section className="gallery-page">
@@ -3948,7 +3951,6 @@ function AdminDocumentOverview({
   );
 }
 
-const MAX_GALLERY_PHOTO_BYTES = 15 * 1024 * 1024;
 // The hosted upload gateway has a much smaller effective request limit than
 // the storage limit.  Keep the browser-prepared file comfortably below it so
 // even a detailed phone photo is accepted when it is sent on its own.
