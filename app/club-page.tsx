@@ -3950,7 +3950,7 @@ function AdminDocumentOverview({
 
 const MAX_GALLERY_PHOTO_BYTES = 15 * 1024 * 1024;
 // The hosted upload gateway has a much smaller effective request limit than
-// the storage limit. Keep the browser-prepared file comfortably below it so
+// the storage limit.  Keep the browser-prepared file comfortably below it so
 // even a detailed phone photo is accepted when it is sent on its own.
 const MAX_GALLERY_UPLOAD_PHOTO_BYTES = 900 * 1024;
 
@@ -5247,45 +5247,26 @@ function AdminZone({
     return () => window.clearTimeout(timer);
   }, []);
   const refresh = useCallback(async () => {
-    const results = await Promise.allSettled([
-      fetch("/api/empire/members", { headers }),
-      fetch("/api/empire/committee", { headers }),
-      fetch("/api/empire/uploads", { headers }),
-      fetch("/api/empire/team-sheets", { headers }),
-      fetch("/api/empire/gallery", { headers }),
-    ]);
-    const failed: string[] = [];
-    const read = async <T,>(
-      result: PromiseSettledResult<Response>,
-      label: string,
-    ): Promise<T | null> => {
-      if (result.status !== "fulfilled" || !result.value.ok) {
-        failed.push(label);
-        return null;
+    try {
+      const [memberResponse, committeeResponse, fileResponse, teamSheetResponse, galleryResponse] = await Promise.all([
+        fetch("/api/empire/members", { headers }),
+        fetch("/api/empire/committee", { headers }),
+        fetch("/api/empire/uploads", { headers }),
+        fetch("/api/empire/team-sheets", { headers }),
+        fetch("/api/empire/gallery", { headers }),
+      ]);
+      if (!memberResponse.ok || !committeeResponse.ok || !fileResponse.ok || !teamSheetResponse.ok || !galleryResponse.ok) {
+        throw new Error("Admin data request failed");
       }
-      try {
-        return (await result.value.json()) as T;
-      } catch {
-        failed.push(label);
-        return null;
-      }
-    };
-    const [memberResult, committeeResult, fileResult, teamSheetResult, galleryResult] = results;
-    const memberData = await read<{ members?: Member[] }>(memberResult, "members");
-    const committeeData = await read<{ members?: CommitteeMember[] }>(committeeResult, "committee");
-    const fileData = await read<{ files?: ClubFile[] }>(fileResult, "documents");
-    const teamSheetData = await read<{ sheets?: TeamSheet[] }>(teamSheetResult, "team sheets");
-    const galleryData = await read<{ albums?: GalleryAlbum[] }>(galleryResult, "gallery");
-    if (memberData) setMembers(memberData.members ?? []);
-    if (committeeData) setCommitteeMembers(committeeData.members ?? []);
-    if (fileData) setFiles(fileData.files ?? []);
-    if (teamSheetData) setTeamSheets(teamSheetData.sheets ?? []);
-    if (galleryData) setGalleryAlbums(galleryData.albums ?? []);
-    setError(
-      failed.length
-        ? `Some admin records could not be loaded (${failed.join(", ")}). Please try again.`
-        : "",
-    );
+      const memberData = await memberResponse.json();
+      setMembers(memberData.members ?? []);
+      setCommitteeMembers((await committeeResponse.json()).members ?? []);
+      setFiles((await fileResponse.json()).files ?? []);
+      setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
+      setGalleryAlbums((await galleryResponse.json()).albums ?? []);
+    } catch {
+      setError("We could not load the admin records. Please try again.");
+    }
   }, [headers]);
   const adminTabs: Array<{ id: AdminTab; label: string; count?: number }> = [
     { id: "overview", label: "Overview" },
