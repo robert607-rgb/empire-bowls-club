@@ -3949,9 +3949,13 @@ function AdminDocumentOverview({
 }
 
 const MAX_GALLERY_PHOTO_BYTES = 15 * 1024 * 1024;
+// The hosted upload gateway has a much smaller effective request limit than
+// the storage limit. Keep the browser-prepared file comfortably below it so
+// even a detailed phone photo is accepted when it is sent on its own.
+const MAX_GALLERY_UPLOAD_PHOTO_BYTES = 900 * 1024;
 
 async function convertToGalleryWebp(file: File) {
-  if (file.type === "image/webp" && file.name.toLowerCase().endsWith(".webp") && file.size <= MAX_GALLERY_PHOTO_BYTES) return file;
+  if (file.type === "image/webp" && file.name.toLowerCase().endsWith(".webp") && file.size <= MAX_GALLERY_UPLOAD_PHOTO_BYTES) return file;
   if (!(file.type === "image/jpeg" || file.type === "image/png" || file.type === "image/webp")) {
     throw new Error(`${file.name} is not a JPG, PNG or WebP image.`);
   }
@@ -3972,23 +3976,22 @@ async function convertToGalleryWebp(file: File) {
       for (const quality of qualitySteps) {
         const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
         if (!blob) continue;
-        if (blob.size <= MAX_GALLERY_PHOTO_BYTES) {
+        if (blob.size <= MAX_GALLERY_UPLOAD_PHOTO_BYTES) {
           return new File([blob], name, { type: "image/webp", lastModified: file.lastModified });
         }
       }
       if (targetLongestEdge <= 1400) break;
       targetLongestEdge = Math.max(1400, Math.round(targetLongestEdge * 0.8));
     }
-    throw new Error(`${file.name} could not be compressed below 15MB. Please choose a smaller image.`);
+    throw new Error(`${file.name} could not be prepared for upload. Please choose a smaller image.`);
   } finally {
     bitmap.close();
   }
 }
 
-// The custom-domain upload gateway can reject a combined request well below
-// the 15 MB limit allowed for an individual photo. Keep normal phone photos
-// in very small batches; a larger individual photo is still sent on its own.
-const GALLERY_UPLOAD_BATCH_BYTES = 4 * 1024 * 1024;
+// Send one compact photo at a time. This avoids the custom-domain gateway's
+// multipart request limit entirely; the uploaded images remain sharp WebP.
+const GALLERY_UPLOAD_BATCH_BYTES = 1024 * 1024;
 
 function splitGalleryPhotos(photos: File[]) {
   const batches: File[][] = [];
