@@ -5,6 +5,7 @@ import "./gallery-admin.css";
 import "./competition.css";
 import CompetitionTool from "./competition-tool";
 import { pagePaths } from "./site-pages";
+import type { GalleryAlbum, GalleryPhoto } from "./api/empire/gallery/gallery-data";
 
 import {
   FormEvent,
@@ -143,20 +144,6 @@ type NewsItem = {
   imageUrl: string;
   publishedAt: string;
 };
-type GalleryPhoto = {
-  id: number;
-  fileName: string;
-  imageUrl: string;
-  createdAt: string;
-};
-type GalleryAlbum = {
-  id: number;
-  title: string;
-  description: string;
-  createdAt: string;
-  photos: GalleryPhoto[];
-};
-
 const nav: Page[] = [
   "Home",
   "About the Club",
@@ -164,6 +151,7 @@ const nav: Page[] = [
   "Gallery",
   "Sponsors",
   "Fixtures",
+  "Honours",
   "Play bowls",
   "Contact",
 ];
@@ -512,7 +500,7 @@ async function parseFixtureSpreadsheet(file: File): Promise<FixtureImportRow[]> 
   return fixtures;
 }
 
-export default function ClubPage({ initialPage = "Home" }: { initialPage?: Page }) {
+export default function ClubPage({ initialPage = "Home", initialGallery = null }: { initialPage?: Page; initialGallery?: GalleryAlbum[] | null }) {
   const [page, setPage] = useState<Page>(initialPage);
   const [portalOpen, setPortalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -588,7 +576,7 @@ export default function ClubPage({ initialPage = "Home" }: { initialPage?: Page 
           setPassword={setPassword}
         />
       ) : (
-        <main>{renderPage(page, openPage, openPortal)}</main>
+        <main>{renderPage(page, openPage, openPortal, initialGallery)}</main>
       )}
       <footer>
         <img
@@ -774,8 +762,8 @@ function displayNewsDate(value: string) {
       }).format(parsed);
 }
 
-function GalleryPage() {
-  const [albums, setAlbums] = useState<GalleryAlbum[]>([]);
+function GalleryPage({ initialGallery }: { initialGallery: GalleryAlbum[] | null }) {
+  const [albums, setAlbums] = useState<GalleryAlbum[] | null>(initialGallery);
   const [loadError, setLoadError] = useState("");
   const [selectedPhoto, setSelectedPhoto] = useState<{
     album: GalleryAlbum;
@@ -809,7 +797,7 @@ function GalleryPage() {
         {loadError && <p className="news-load-error">{loadError}</p>}
       </div>
       <div className="wrap gallery-album-list">
-        {albums.length ? albums.map((album) => (
+        {albums?.length ? albums.map((album) => (
           <article className="gallery-album" key={album.id}>
             <div className="gallery-album-heading">
               <div>
@@ -833,13 +821,13 @@ function GalleryPage() {
               ))}
             </div>
           </article>
-        )) : (
+        )) : albums !== null ? (
           <div className="gallery-empty">
             <span>Empire moments</span>
             <h2>The gallery is ready.</h2>
             <p>Photos from the club will be shared here soon.</p>
           </div>
-        )}
+        ) : !loadError ? <p className="gallery-loading">Loading the gallery…</p> : null}
       </div>
       {selectedPhoto && (
         <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${selectedPhoto.album.title} photo`} onClick={() => setSelectedPhoto(null)}>
@@ -855,12 +843,13 @@ function renderPage(
   page: Page,
   openPage: (page: Page) => void,
   openPortal: () => void,
+  initialGallery: GalleryAlbum[] | null,
 ) {
   if (page === "Home")
     return <HomePage openPage={openPage} />;
   if (page === "About the Club") return <AboutPage />;
   if (page === "News") return <NewsPage />;
-  if (page === "Gallery") return <GalleryPage />;
+  if (page === "Gallery") return <GalleryPage initialGallery={initialGallery} />;
   if (page === "Sponsors") return <SponsorsPage />;
   if (page === "Fixtures") return <FixturesPage />;
   if (page === "Honours") return <HonoursPage />;

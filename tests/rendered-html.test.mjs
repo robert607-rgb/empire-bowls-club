@@ -76,6 +76,10 @@ test("crawler files are served without relying on static asset fallback", async 
     const body = await response.text();
     assert.ok(body.includes("https://empirebowlsclub.co.uk/"));
     assert.ok(!body.includes("<html"));
+    if (path.endsWith("txt")) {
+      assert.match(body, /^Allow: \/api\/empire\/gallery\/image\s*$/m);
+      assert.match(body, /^Disallow: \/api\/\s*$/m);
+    }
     if (path.endsWith("xml")) {
       assert.equal((body.match(/<loc>/g) || []).length, 9);
       assert.ok(body.includes("<loc>https://empirebowlsclub.co.uk/gallery</loc>"));

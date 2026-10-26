@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
+Allow: /api/empire/gallery/image
 Disallow: /api/
 
 Sitemap: https://empirebowlsclub.co.uk/sitemap.xml

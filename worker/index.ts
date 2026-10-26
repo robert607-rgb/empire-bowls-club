@@ -53,7 +53,11 @@ function secureResponse(response: Response, pathname: string) {
   headers.set("cross-origin-resource-policy", "same-origin");
   if (pathname.startsWith("/api/")) {
     headers.set("cache-control", "no-store, max-age=0");
-    headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+    // Public gallery photos may be indexed; errors and all other APIs remain
+    // excluded. Keep no-store so deleted images are not retained by caches.
+    if (pathname !== "/api/empire/gallery/image" || !response.ok) {
+      headers.set("x-robots-tag", "noindex, nofollow, noarchive");
+    }
   } else if (pathname === "/robots.txt" || pathname === "/sitemap.xml") {
     headers.set("cache-control", "public, max-age=300, must-revalidate");
   } else if (
