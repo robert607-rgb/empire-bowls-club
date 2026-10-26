@@ -173,11 +173,14 @@ async function saveMemberLoginCode(
   if (conflict && conflict.member_id !== memberId) return { code, inserted: false };
   const now = new Date().toISOString();
   if (replace) {
-    await db
-      .prepare("UPDATE empire_member_credentials SET salt = ?, code_hash = ?, encrypted_code = ?, code_fingerprint = ?, updated_at = ? WHERE member_id = ?")
-      .bind(salt, hash, encryptedCode, codeFingerprint, now, memberId)
+    const result = await db
+      .prepare(`INSERT INTO empire_member_credentials (member_id, salt, code_hash, encrypted_code, code_fingerprint, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(member_id) DO UPDATE SET salt = excluded.salt, code_hash = excluded.code_hash,
+          encrypted_code = excluded.encrypted_code, code_fingerprint = excluded.code_fingerprint, updated_at = excluded.updated_at`)
+      .bind(memberId, salt, hash, encryptedCode, codeFingerprint, now, now)
       .run();
-    return { code, inserted: true };
+    return { code, inserted: Number(result.meta.changes ?? 0) > 0 };
   }
   const result = await db
     .prepare("INSERT OR IGNORE INTO empire_member_credentials (member_id, salt, code_hash, encrypted_code, code_fingerprint, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")

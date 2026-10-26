@@ -29,3 +29,16 @@ test('individual login binds the correct member, old sessions are anonymous, and
  await server.endEmpireSession(request);
  assert.equal(await server.getEmpireSession(request),null);
 });
+
+test('issuing a code for a new member persists it and permits sign-in',async()=>{
+ const db=await server.getEmpireDatabase();
+ await db.prepare("INSERT INTO empire_members(id,name,address,phone,email,membership_type,created_at) VALUES (3,'Jordan Example', '', '', '', 'Full member', ?)").bind(new Date().toISOString()).run();
+ const code=await server.issueMemberLoginCode(3);
+ const stored=await db.prepare('SELECT member_id FROM empire_member_credentials WHERE member_id = ?').bind(3).first();
+ assert.equal(stored.member_id,3);
+ const login=await server.authenticateEmpireMember(new Request('https://club.test/api/empire/auth'), 'Jordan',code);
+ assert.equal(login.ok,true);
+ const reset=await server.issueMemberLoginCode(3);
+ const resetLogin=await server.authenticateEmpireMember(new Request('https://club.test/api/empire/auth'), 'Jordan',reset);
+ assert.equal(resetLogin.ok,true);
+});
