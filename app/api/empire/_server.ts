@@ -1,3 +1,5 @@
+import { decodeMemberLoginCodes } from "./member-code-display";
+
 export type EmpireAccess = "member" | "admin";
 
 let ready: Promise<void> | null = null;
@@ -56,7 +58,7 @@ type MemberCredentialRow = {
   code_fingerprint: string;
 };
 type MemberCodeKeyRow = { secret: string };
-type SessionRow = { access: EmpireAccess; expires_at: string };
+type SessionRow = { access: EmpireAccess; expires_at: string; member_id: number | null };
 
 function hex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -230,17 +232,13 @@ export async function ensureMissingMemberLoginCodes(memberIds: number[]) {
 }
 
 export async function readMemberLoginCodes(memberIds: number[]) {
-  if (!memberIds.length) return [] as Array<{ memberId: number; code: string }>;
+  if (!memberIds.length) return [] as Array<{ memberId: number; code: string; status: "available" | "unavailable" }>;
   const db = await getEmpireDatabase();
   const result = await db
     .prepare(`SELECT member_id, encrypted_code FROM empire_member_credentials WHERE member_id IN (${memberIds.map(() => "?").join(", ")})`)
     .bind(...memberIds)
     .all<{ member_id: number; encrypted_code: string }>();
-  const codes: Array<{ memberId: number; code: string }> = [];
-  for (const row of result.results ?? []) {
-    codes.push({ memberId: row.member_id, code: await decryptMemberLoginCode(db, row.encrypted_code) });
-  }
-  return codes;
+  return decodeMemberLoginCodes(result.results ?? [], (value) => decryptMemberLoginCode(db, value));
 }
 
 function timingSafeStringEqual(left: string, right: string) {
@@ -291,19 +289,23 @@ export async function getRuntimeEnv() {
   };
 }
 
-export async function getEmpireAccess(request: Request): Promise<EmpireAccess | null> {
+export async function getEmpireSession(request: Request): Promise<SessionRow | null> {
   const token = readCookie(request, "empire_session");
   if (!/^[a-f0-9-]{36}$/i.test(token)) return null;
   const db = await getEmpireDatabase();
   const row = await db
-    .prepare("SELECT access, expires_at FROM empire_sessions WHERE token = ?")
+    .prepare("SELECT s.access, s.expires_at, m.id AS member_id FROM empire_sessions s LEFT JOIN empire_session_members sm ON sm.token = s.token LEFT JOIN empire_members m ON m.id = sm.member_id WHERE s.token = ?")
     .bind(token)
     .first<SessionRow>();
   if (!row || new Date(row.expires_at).getTime() <= Date.now()) {
-    await db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token).run();
+    await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token)]);
     return null;
   }
-  return row.access;
+  return row;
+}
+
+export async function getEmpireAccess(request: Request): Promise<EmpireAccess | null> {
+  return (await getEmpireSession(request))?.access ?? null;
 }
 
 export async function hasEmpireAccess(request: Request, adminOnly = false): Promise<boolean> {
@@ -336,13 +338,13 @@ async function recordFailedLogin(db: D1Database, visitor: string) {
     .run();
 }
 
-async function createEmpireSession(db: D1Database, access: EmpireAccess) {
+async function createEmpireSession(db: D1Database, access: EmpireAccess, memberId: number | null = null) {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
   const token = crypto.randomUUID();
-  await db
-    .prepare("INSERT INTO empire_sessions (token, access, expires_at, created_at) VALUES (?, ?, ?, ?)")
-    .bind(token, access, expiresAt.toISOString(), new Date().toISOString())
-    .run();
+  const statements = [db.prepare("INSERT INTO empire_sessions (token, access, expires_at, created_at) VALUES (?, ?, ?, ?)")
+    .bind(token, access, expiresAt.toISOString(), new Date().toISOString())];
+  if (memberId !== null) statements.push(db.prepare("INSERT INTO empire_session_members (token, member_id) VALUES (?, ?)").bind(token, memberId));
+  await db.batch(statements);
   return { token, expiresAt };
 }
 
@@ -379,12 +381,12 @@ export async function authenticateEmpireMember(request: Request, firstName: stri
     )
     .bind(firstNameKey)
     .all<MemberCredentialRow & { id: number }>();
-  let matches = false;
+  let matchedMemberId: number | null = null;
   for (const candidate of candidates.results ?? []) {
     const candidateHash = await passwordHash(code, candidate.salt);
-    matches = timingSafeStringEqual(candidateHash, candidate.code_hash) || matches;
+    if (timingSafeStringEqual(candidateHash, candidate.code_hash)) matchedMemberId = candidate.id;
   }
-  if (!matches) {
+  if (matchedMemberId === null) {
     if (!(candidates.results ?? []).length) {
       await passwordHash(code, "invalid-member-salt");
     }
@@ -392,7 +394,7 @@ export async function authenticateEmpireMember(request: Request, firstName: stri
     return { ok: false as const, rateLimited: false };
   }
   await db.prepare("DELETE FROM empire_login_attempts WHERE visitor_hash = ?").bind(visitor).run();
-  const session = await createEmpireSession(db, "member");
+  const session = await createEmpireSession(db, "member", matchedMemberId);
   return { ok: true as const, ...session };
 }
 
@@ -400,7 +402,7 @@ export async function endEmpireSession(request: Request) {
   const token = readCookie(request, "empire_session");
   if (/^[a-f0-9-]{36}$/i.test(token)) {
     const db = await getEmpireDatabase();
-    await db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token).run();
+    await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token)]);
   }
 }
 
@@ -554,6 +556,8 @@ export async function getEmpireDatabase() {
         created_at TEXT NOT NULL
       )`),
       runtime.DB.prepare("CREATE INDEX IF NOT EXISTS empire_sessions_expiry ON empire_sessions (expires_at)"),
+      runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_session_members (token TEXT PRIMARY KEY, member_id INTEGER NOT NULL)"),
+      runtime.DB.prepare("DELETE FROM empire_session_members WHERE token NOT IN (SELECT token FROM empire_sessions)"),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_login_attempts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         visitor_hash TEXT NOT NULL,

@@ -2,6 +2,8 @@
 
 import "./gallery.css";
 import "./gallery-admin.css";
+import "./competition.css";
+import CompetitionTool from "./competition-tool";
 import { pagePaths } from "./site-pages";
 
 import {
@@ -17,6 +19,7 @@ type Access = "member" | "admin";
 type AdminTab =
   | "overview"
   | "members"
+  | "competitions"
   | "committee"
   | "team-sheets"
   | "fixtures"
@@ -80,6 +83,7 @@ type Member = {
   membershipType: "Full member" | "Social member";
   createdAt: string;
   loginCode?: string;
+  loginCodeStatus?: "available" | "unavailable" | "not-issued";
 };
 type CommitteeMember = {
   id: number;
@@ -1401,7 +1405,7 @@ function AboutPage() {
                       rel="noreferrer"
                     >
                       <img
-                        src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017657.jpg"
+                        src="https://www.britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017657.jpg"
                         alt="Aerial view of Empire Paper Mills and Ingress Abbey Wharf, Greenhithe, in 1927"
                         width={580}
                         height={480}
@@ -1432,7 +1436,7 @@ function AboutPage() {
                       rel="noreferrer"
                     >
                       <img
-                        src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/006/EPW006257.jpg"
+                        src="https://www.britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/006/EPW006257.jpg"
                         alt="Aerial view of Ingress Abbey Wharf and Swanscombe Marshes, Greenhithe, in 1921"
                         width={580}
                         height={493}
@@ -1463,7 +1467,7 @@ function AboutPage() {
                       rel="noreferrer"
                     >
                       <img
-                        src="https://britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017656.jpg"
+                        src="https://www.britainfromabove.org.uk/sites/all/libraries/aerofilms-images/public/580w/EPW/017/EPW017656.jpg"
                         alt="Aerial view of Empire Paper Mills and Ingress Abbey Wharf, Greenhithe, in 1927"
                         width={580}
                         height={482}
@@ -2436,7 +2440,7 @@ function MemberZone({
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [memberTab, setMemberTab] = useState<
-    "team" | "players" | "documents" | "directory"
+    "team" | "players" | "documents" | "directory" | "competitions"
   >("team");
   const [directorySearch, setDirectorySearch] = useState("");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
@@ -2673,6 +2677,15 @@ function MemberZone({
         aria-label="Members area sections"
       >
         <button
+          className={memberTab === "competitions" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "competitions"}
+          aria-controls="member-competitions"
+          onClick={() => setMemberTab("competitions")}
+        >
+          Competitions
+        </button>
+        <button
           className={memberTab === "team" ? "active" : ""}
           role="tab"
           aria-selected={memberTab === "team"}
@@ -2709,7 +2722,11 @@ function MemberZone({
           Club directory
         </button>
       </div>
-      {memberTab === "team" ? (
+      {memberTab === "competitions" ? (
+        <section className="member-content" id="member-competitions">
+          <CompetitionTool members={members} />
+        </section>
+      ) : memberTab === "team" ? (
         <section className="member-content" id="member-team-sheets">
           <TeamSheetsPanel
             sheets={teamSheets}
@@ -3173,7 +3190,7 @@ function AdminMemberOverview({
       onChange(
         members.map((member) =>
           member.id === editing.id
-            ? { ...result.member, loginCode: result.loginCode ?? member.loginCode }
+            ? { ...result.member, loginCode: result.loginCode ?? member.loginCode, loginCodeStatus: result.loginCode ? "available" : member.loginCodeStatus }
             : member,
         ),
       );
@@ -3203,7 +3220,7 @@ function AdminMemberOverview({
       onMessage(`${member.name}'s new member login code is ${result.loginCode}. Give it to them privately.`);
       onChange(
         members.map((item) =>
-          item.id === member.id ? { ...item, loginCode: result.loginCode } : item,
+          item.id === member.id ? { ...item, loginCode: result.loginCode, loginCodeStatus: "available" } : item,
         ),
       );
     } catch {
@@ -3302,7 +3319,8 @@ function AdminMemberOverview({
                         </a>
                       </td>
                       <td>
-                        <code className="member-login-code">{member.loginCode || "—"}</code>
+                        <code className="member-login-code">{member.loginCode || (member.loginCodeStatus === "unavailable" ? "Unavailable" : "Not issued")}</code>
+                        {member.loginCodeStatus === "unavailable" && <small>The saved code cannot be displayed; the existing login may still work. New code replaces it.</small>}
                       </td>
                       <td className="member-actions">
                         <button
@@ -5228,6 +5246,7 @@ function AdminZone({
       if (
         storedTab === "overview" ||
         storedTab === "members" ||
+        storedTab === "competitions" ||
         storedTab === "committee" ||
         storedTab === "team-sheets" ||
         storedTab === "fixtures" ||
@@ -5292,6 +5311,7 @@ function AdminZone({
   const adminTabs: Array<{ id: AdminTab; label: string; count?: number }> = [
     { id: "overview", label: "Overview" },
     { id: "members", label: "Members", count: members.length },
+    { id: "competitions", label: "Competitions" },
     { id: "committee", label: "Committee", count: committeeMembers.length },
     { id: "team-sheets", label: "Team sheets", count: teamSheets.length },
     { id: "fixtures", label: "Fixtures" },
@@ -5532,6 +5552,16 @@ function AdminZone({
               Add member
             </button>
           </form>
+        </section>
+
+        <section
+          className="admin-tab-panel"
+          id="admin-panel-competitions"
+          role="tabpanel"
+          aria-labelledby="admin-tab-competitions"
+          hidden={activeTab !== "competitions"}
+        >
+          {activeTab === "competitions" && <CompetitionTool members={members} admin />}
         </section>
 
         <section

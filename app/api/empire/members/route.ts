@@ -2,7 +2,6 @@ import {
   apiError,
   cleanText,
   ensureMemberLoginCode,
-  ensureMissingMemberLoginCodes,
   getEmpireAccess,
   getEmpireDatabase,
   hasEmpireAccess,
@@ -99,18 +98,19 @@ export async function GET(request: Request) {
       )
       .all<MemberRow>();
     const rows = result.results ?? [];
-    if (access === "admin") {
-      await ensureMissingMemberLoginCodes(rows.map((member) => member.id));
-    }
     const loginCodes = access === "admin"
       ? await readMemberLoginCodes(rows.map((member) => member.id))
       : [];
-    const codesByMemberId = new Map(loginCodes.map((item) => [item.memberId, item.code]));
+    const codesByMemberId = new Map(loginCodes.map((item) => [item.memberId, item]));
     return Response.json(
       {
         members: rows.map((member) =>
           access === "admin"
-            ? { ...mapMember(member, true), loginCode: codesByMemberId.get(member.id) ?? "" }
+            ? {
+                ...mapMember(member, true),
+                loginCode: codesByMemberId.get(member.id)?.code ?? "",
+                loginCodeStatus: codesByMemberId.get(member.id)?.status ?? "not-issued",
+              }
             : mapMember(member, false),
         ),
       },

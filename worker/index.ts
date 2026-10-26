@@ -28,7 +28,7 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "img-src 'self' data: blob: https://britainfromabove.org.uk",
+  "img-src 'self' data: blob: https://www.britainfromabove.org.uk",
   // Vinext's server-rendered shell includes its own small inline bootstrap
   // scripts. External script origins remain blocked; the remaining controls
   // still protect against object embedding, framing and rogue connections.
