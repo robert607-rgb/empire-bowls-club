@@ -297,10 +297,15 @@ export async function getEmpireSession(request: Request): Promise<SessionRow | n
   if (!/^[a-f0-9-]{36}$/i.test(token)) return null;
   const db = await getEmpireDatabase();
   const row = await db
-    .prepare("SELECT s.access, s.expires_at, m.id AS member_id FROM empire_sessions s LEFT JOIN empire_session_members sm ON sm.token = s.token LEFT JOIN empire_members m ON m.id = sm.member_id WHERE s.token = ?")
+    .prepare(`SELECT s.access, s.expires_at, CASE WHEN c.member_id IS NOT NULL THEN m.id ELSE NULL END AS member_id
+      FROM empire_sessions s
+      LEFT JOIN empire_session_members sm ON sm.token = s.token
+      LEFT JOIN empire_members m ON m.id = sm.member_id
+      LEFT JOIN empire_member_credentials c ON c.member_id = m.id AND c.code_hash = sm.credential_hash
+      WHERE s.token = ?`)
     .bind(token)
     .first<SessionRow>();
-  if (!row || new Date(row.expires_at).getTime() <= Date.now()) {
+  if (!row || new Date(row.expires_at).getTime() <= Date.now() || (row.access === "member" && row.member_id === null)) {
     await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token)]);
     return null;
   }
@@ -341,12 +346,12 @@ async function recordFailedLogin(db: D1Database, visitor: string) {
     .run();
 }
 
-async function createEmpireSession(db: D1Database, access: EmpireAccess, memberId: number | null = null) {
+async function createEmpireSession(db: D1Database, access: EmpireAccess, memberId: number | null = null, credentialHash: string | null = null) {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
   const token = crypto.randomUUID();
   const statements = [db.prepare("INSERT INTO empire_sessions (token, access, expires_at, created_at) VALUES (?, ?, ?, ?)")
     .bind(token, access, expiresAt.toISOString(), new Date().toISOString())];
-  if (memberId !== null) statements.push(db.prepare("INSERT INTO empire_session_members (token, member_id) VALUES (?, ?)").bind(token, memberId));
+  if (memberId !== null && credentialHash !== null) statements.push(db.prepare("INSERT INTO empire_session_members (token, member_id, credential_hash) VALUES (?, ?, ?)").bind(token, memberId, credentialHash));
   await db.batch(statements);
   return { token, expiresAt };
 }
@@ -385,9 +390,13 @@ export async function authenticateEmpireMember(request: Request, firstName: stri
     .bind(firstNameKey)
     .all<MemberCredentialRow & { id: number }>();
   let matchedMemberId: number | null = null;
+  let matchedCredentialHash: string | null = null;
   for (const candidate of candidates.results ?? []) {
     const candidateHash = await passwordHash(code, candidate.salt);
-    if (timingSafeStringEqual(candidateHash, candidate.code_hash)) matchedMemberId = candidate.id;
+    if (timingSafeStringEqual(candidateHash, candidate.code_hash)) {
+      matchedMemberId = candidate.id;
+      matchedCredentialHash = candidate.code_hash;
+    }
   }
   if (matchedMemberId === null) {
     if (!(candidates.results ?? []).length) {
@@ -397,7 +406,7 @@ export async function authenticateEmpireMember(request: Request, firstName: stri
     return { ok: false as const, rateLimited: false };
   }
   await db.prepare("DELETE FROM empire_login_attempts WHERE visitor_hash = ?").bind(visitor).run();
-  const session = await createEmpireSession(db, "member", matchedMemberId);
+  const session = await createEmpireSession(db, "member", matchedMemberId, matchedCredentialHash);
   return { ok: true as const, ...session };
 }
 
@@ -559,7 +568,7 @@ export async function getEmpireDatabase() {
         created_at TEXT NOT NULL
       )`),
       runtime.DB.prepare("CREATE INDEX IF NOT EXISTS empire_sessions_expiry ON empire_sessions (expires_at)"),
-      runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_session_members (token TEXT PRIMARY KEY, member_id INTEGER NOT NULL)"),
+      runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_session_members (token TEXT PRIMARY KEY, member_id INTEGER NOT NULL, credential_hash TEXT)"),
       runtime.DB.prepare("DELETE FROM empire_session_members WHERE token NOT IN (SELECT token FROM empire_sessions)"),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_login_attempts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -577,6 +586,7 @@ export async function getEmpireDatabase() {
     ])
       .then(async () => {
         await ensureEmpireSchemaCompatibility(runtime.DB);
+        await ensureSessionCredentialHashColumn(runtime.DB);
         const configuredSecret = await configuredMemberCodeSecret();
         if (configuredSecret) {
           await runtime.DB
@@ -611,6 +621,19 @@ export async function getEmpireDatabase() {
   }
   await ready;
   return runtime.DB;
+}
+
+async function ensureSessionCredentialHashColumn(db: D1Database) {
+  const hasColumn = async () => {
+    const columns = await db.prepare("PRAGMA table_info(empire_session_members)").all<{ name: string }>();
+    return (columns.results ?? []).some(column => column.name === "credential_hash");
+  };
+  if (await hasColumn()) return;
+  try {
+    await db.prepare("ALTER TABLE empire_session_members ADD COLUMN credential_hash TEXT").run();
+  } catch (error) {
+    if (!(await hasColumn())) throw error;
+  }
 }
 
 async function ensureEmpireSchemaCompatibility(db: D1Database) {

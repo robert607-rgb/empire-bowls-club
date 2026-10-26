@@ -20,6 +20,7 @@ type AdminTab =
   | "overview"
   | "members"
   | "competitions"
+  | "bookings"
   | "committee"
   | "team-sheets"
   | "fixtures"
@@ -45,6 +46,7 @@ type Booking = {
   timeSlot: string;
   bookingName: string;
   fixtureKey?: string | null;
+  canCancel?: boolean;
 };
 type Fixture = {
   id: number;
@@ -2485,7 +2487,6 @@ function MemberZone({
     if (!selected) return;
     setNotice("");
     setError("");
-    const bookingLabel = `${bookingName} · ${bookingType}`;
     try {
       const response = await fetch("/api/empire/bookings", {
         method: "POST",
@@ -2494,7 +2495,8 @@ function MemberZone({
           bookingDate: date,
           rinkNumber: selected.rink,
           timeSlot: selected.slot,
-          bookingName: bookingLabel,
+          bookingType,
+          bookingName,
         }),
       });
       const result = await response.json();
@@ -2575,7 +2577,7 @@ function MemberZone({
           </label>
         </div>
         <p className="booking-date">
-          Availability for <b>{displayDate(date)}</b>. Personal bookings can be removed here; league fixture rinks are managed in the Admin Zone. Friday green maintenance is protected.
+          Availability for <b>{displayDate(date)}</b>. You can remove your own bookings; older bookings and fixture rinks are managed by an administrator. Friday green maintenance is protected.
         </p>
         <div className="booking-scroll">
           <table>
@@ -2597,9 +2599,9 @@ function MemberZone({
                       <td key={rink}>
                         <button
                           className={booking ? "taken" : "available"}
-                          disabled={booking?.id === null || Boolean(booking?.fixtureKey)}
+                          disabled={Boolean(booking) && !booking?.canCancel}
                           onClick={() => {
-                            if (booking && booking.id !== null && !booking.fixtureKey) {
+                            if (booking && booking.id !== null && booking.canCancel) {
                               void removeBooking(booking);
                             } else {
                               setSelected({ rink, slot });
@@ -2614,7 +2616,7 @@ function MemberZone({
                               <span>
                                 {booking.bookingName.split(" · ")[1] ||
                                   "Booked"}{" "}
-                                {booking.id === null ? "· Unavailable" : booking.fixtureKey ? "· Fixture booking" : "· Remove"}
+                                {booking.id === null ? "· Unavailable" : booking.fixtureKey ? "· Fixture booking" : booking.canCancel ? "· Remove" : "· Booked"}
                               </span>
                             </>
                           ) : (
@@ -2638,13 +2640,8 @@ function MemberZone({
               </span>
             </div>
             <label>
-              Your name
-              <input
-                value={bookingName}
-                onChange={(event) => setBookingName(event.target.value)}
-                required
-                maxLength={100}
-              />
+              Booking name
+              <input value={bookingName} onChange={(event) => setBookingName(event.target.value)} required maxLength={100} />
             </label>
             <label>
               Booking type
@@ -2799,10 +2796,12 @@ type PlayerRequest = {
   date: string;
   playersRequired: number;
   names: string[];
+  joined?: boolean;
+  legacyNames?: string[];
+  registered?: { memberId: number; name: string }[];
 };
 function PlayerRequestBoard({ password }: { password: string }) {
   const [requests, setRequests] = useState<PlayerRequest[]>([]);
-  const [drafts, setDrafts] = useState<Record<number, string[]>>({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [printRequest, setPrintRequest] = useState<PlayerRequest | null>(null);
@@ -2835,7 +2834,7 @@ function PlayerRequestBoard({ password }: { password: string }) {
     window.addEventListener("afterprint", clearPrintRequest);
     return () => window.removeEventListener("afterprint", clearPrintRequest);
   }, []);
-  const save = async (id: number) => {
+  const save = async (id: number, joined: boolean) => {
     setMessage("");
     setError("");
     try {
@@ -2847,7 +2846,7 @@ function PlayerRequestBoard({ password }: { password: string }) {
         },
         body: JSON.stringify({
           id,
-          names: drafts[id] ?? requests.find((r) => r.id === id)?.names ?? [],
+          action: joined ? "leave" : "join",
         }),
       });
       const result = await response.json();
@@ -2870,10 +2869,10 @@ function PlayerRequestBoard({ password }: { password: string }) {
   return (
     <article className="info-list player-board">
       <h2>Players required</h2>
-      <p>Choose an empty space, add your name and click Save names.</p>
+      <p>Join or leave a sign-up sheet using your own member account. If your name is already on an earlier sheet, ask an administrator to update that entry rather than adding it again.</p>
       {requests.length ? (
         requests.map((r) => {
-          const names = drafts[r.id] ?? r.names;
+          const names = r.names;
           return (
             <div className="request-card" key={r.id}>
               <div className="request-card-head">
@@ -2887,31 +2886,23 @@ function PlayerRequestBoard({ password }: { password: string }) {
                 </span>
               </div>
               <p className="request-card-help">
-                Add your name to an available place, then save your choices.
+                {names.length}/{r.playersRequired} places filled.
               </p>
               <div className="player-slots">
                 {Array.from({ length: r.playersRequired }, (_, i) => (
-                  <label className="player-slot" key={i}>
+                  <div className="player-slot" key={i}>
                     <span>{String(i + 1).padStart(2, "0")}</span>
-                    <input
-                      aria-label={`Player ${i + 1} name for ${r.match}`}
-                      placeholder={`Player ${i + 1}`}
-                      value={names[i] ?? ""}
-                      onChange={(e) => {
-                        const next = [...names];
-                        next[i] = e.target.value;
-                        setDrafts({ ...drafts, [r.id]: next });
-                      }}
-                    />
-                  </label>
+                    <span>{names[i] || "Available"}</span>
+                  </div>
                 ))}
               </div>
               <button
                 className="primary"
                 type="button"
-                onClick={() => void save(r.id)}
+                disabled={!r.joined && names.length >= r.playersRequired}
+                onClick={() => void save(r.id, Boolean(r.joined))}
               >
-                Save names
+                {r.joined ? "Remove my name" : "Add my name"}
               </button>
               <button
                 className="outline print-signup"
@@ -4210,6 +4201,31 @@ function AdminGalleryPanel({
   );
 }
 
+function AdminBookings({ password }: { password: string }) {
+  const [date, setDate] = useState(today());
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [error, setError] = useState("");
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/empire/bookings?date=${date}`, { headers: apiHeaders("admin", password) });
+      if (!response.ok) throw new Error();
+      setBookings((await response.json()).bookings ?? []);
+      setError("");
+    } catch { setError("Bookings could not be loaded."); }
+  }, [date, password]);
+  useEffect(() => { const timer = window.setTimeout(() => void refresh(), 0); return () => window.clearTimeout(timer); }, [refresh]);
+  const remove = async (booking: Booking) => {
+    if (!window.confirm(`Remove ${booking.bookingName} from rink ${booking.rinkNumber}?`)) return;
+    try {
+      const response = await fetch("/api/empire/bookings", { method: "DELETE", headers: { ...apiHeaders("admin", password), "content-type": "application/json" }, body: JSON.stringify({ id: booking.id }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Booking could not be removed.");
+      await refresh();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Booking could not be removed."); }
+  };
+  return <section className="admin-card"><p className="eyebrow">Rink bookings</p><h2>Manage bookings</h2><p>Older bookings can be removed here. Fixture reservations are managed with their fixtures.</p><label>Date <input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>{error && <Status type="error" message={error} />}<div className="admin-files-list">{bookings.filter((booking) => booking.id !== null).map((booking) => <article key={booking.id}><div><b>Rink {booking.rinkNumber} · {booking.timeSlot}</b><span>{booking.bookingName}</span></div>{booking.canCancel ? <button className="remove-member" type="button" onClick={() => void remove(booking)}>Remove booking</button> : <span>Fixture reservation</span>}</article>)}</div>{!bookings.some((booking) => booking.id !== null) && <p className="empty">No bookings for this date.</p>}</section>;
+}
+
 function AdminPlayerRequestOverview({
   password,
   onMessage,
@@ -4300,6 +4316,16 @@ function AdminPlayerRequestOverview({
       setError("The player sign-up sheet could not be removed. Please try again.");
     }
   };
+  const removeName = async (request: PlayerRequest, name: string, memberId?: number, index?: number) => {
+    if (!window.confirm(`Remove ${name} from ${request.match}?`)) return;
+    try {
+      const response = await fetch("/api/empire/player-requests", { method: "PUT", headers: { ...apiHeaders("admin", password), "content-type": "application/json" }, body: JSON.stringify(memberId === undefined ? { id: request.id, action: "removeLegacy", index, name } : { id: request.id, action: "removeSignup", memberId }) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "The name could not be removed.");
+      setRequests((current) => current.map((item) => item.id === request.id ? result.request : item));
+      notifyEmpireDataUpdated();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "The name could not be removed."); }
+  };
   return (
     <details className="admin-files-tab admin-requests-tab" open>
       <summary>
@@ -4312,6 +4338,7 @@ function AdminPlayerRequestOverview({
           Changes here are reflected in the Players required section of the
           members area.
         </p>
+        {error && !editing && <Status type="error" message={error} />}
         {editing && (
           <form className="file-edit-form" onSubmit={save}>
             <div className="member-edit-heading">
@@ -4382,6 +4409,8 @@ function AdminPlayerRequestOverview({
                   <span>
                     {request.date} · {request.names.length}/{request.playersRequired} names
                   </span>
+                  {request.legacyNames?.map((name, index) => <div key={`legacy-${index}`}><span>{name} (earlier entry) </span><button className="text-button" type="button" onClick={() => void removeName(request, name, undefined, index)}>Remove name</button></div>)}
+                  {request.registered?.map((entry) => <div key={entry.memberId}><span>{entry.name} </span><button className="text-button" type="button" onClick={() => void removeName(request, entry.name, entry.memberId)}>Remove name</button></div>)}
                 </div>
                 <button
                   className="edit-member"
@@ -5247,6 +5276,7 @@ function AdminZone({
         storedTab === "overview" ||
         storedTab === "members" ||
         storedTab === "competitions" ||
+        storedTab === "bookings" ||
         storedTab === "committee" ||
         storedTab === "team-sheets" ||
         storedTab === "fixtures" ||
@@ -5312,6 +5342,7 @@ function AdminZone({
     { id: "overview", label: "Overview" },
     { id: "members", label: "Members", count: members.length },
     { id: "competitions", label: "Competitions" },
+    { id: "bookings", label: "Bookings" },
     { id: "committee", label: "Committee", count: committeeMembers.length },
     { id: "team-sheets", label: "Team sheets", count: teamSheets.length },
     { id: "fixtures", label: "Fixtures" },
@@ -5562,6 +5593,10 @@ function AdminZone({
           hidden={activeTab !== "competitions"}
         >
           {activeTab === "competitions" && <CompetitionTool members={members} admin />}
+        </section>
+
+        <section className="admin-tab-panel" id="admin-panel-bookings" role="tabpanel" aria-labelledby="admin-tab-bookings" hidden={activeTab !== "bookings"}>
+          {activeTab === "bookings" && <AdminBookings password={password} />}
         </section>
 
         <section

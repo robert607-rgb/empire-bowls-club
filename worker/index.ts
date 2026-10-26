@@ -97,7 +97,7 @@ const worker = {
       "": "/", "home": "/", "about-us": "/about", "about": "/about", "about-our-club": "/about",
       "the-committee": "/about", "empires-sponsors": "/sponsors",
       "contact": "/contact", "contact-us": "/contact", "news": "/news",
-      "fixtures": "/fixtures", "play-bowls": "/play-bowls",
+      "fixtures": "/fixtures", "play-bowls": "/play-bowls", "new-members-paperwork": "/play-bowls",
     };
     const legacyTarget = legacy ? (legacyPages[slug] ??
       (/^\d{4}-club-(?:achievements|champions)\d*$/.test(slug) ? "/about" : undefined)) : undefined;

@@ -44,14 +44,14 @@ test("old Google links redirect once and public pages have their own canonical U
   const { default: worker } = await import("../dist/server/index.js");
   const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
   const ctx = { waitUntil() {}, passThroughOnException() {} };
-  for (const [old, target] of [["home", "/"], ["about-our-club", "/about"], ["the-committee", "/about"], ["2025-club-champions1", "/about"], ["2022-club-achievements", "/about"], ["empires-sponsors", "/sponsors"], ["contact", "/contact"], ["fixtures", "/fixtures"]]) {
-    for (const origin of ["http://www.empirebowlsclub.co.uk", "https://empirebowlsclub.co.uk"]) {
+  for (const [old, target] of [["home", "/"], ["about-our-club", "/about"], ["the-committee", "/about"], ["2025-club-champions1", "/about"], ["2022-club-achievements", "/about"], ["empires-sponsors", "/sponsors"], ["contact", "/contact"], ["fixtures", "/fixtures"], ["new-members-paperwork", "/play-bowls"]]) {
+    for (const origin of ["http://www.empirebowlsclub.co.uk", "https://www.empirebowlsclub.co.uk", "https://empirebowlsclub.co.uk"]) {
       const response = await worker.fetch(new Request(`${origin}/community/empire-bowls-club-14829/${old}/`), env, ctx);
       assert.equal(response.status, 301);
       assert.equal(response.headers.get("location"), `https://empirebowlsclub.co.uk${target}`);
     }
   }
-  for (const path of ["/about", "/news", "/sponsors", "/fixtures", "/honours", "/play-bowls", "/contact"]) {
+  for (const path of ["/about", "/news", "/gallery", "/sponsors", "/fixtures", "/honours", "/play-bowls", "/contact"]) {
     const response = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`, { headers: { accept: "text/html" } }), env, ctx);
     assert.equal(response.status, 200, path);
     const html = await response.text();
@@ -76,7 +76,10 @@ test("crawler files are served without relying on static asset fallback", async 
     const body = await response.text();
     assert.ok(body.includes("https://empirebowlsclub.co.uk/"));
     assert.ok(!body.includes("<html"));
-    if (path.endsWith("xml")) assert.equal((body.match(/<loc>/g) || []).length, 8);
+    if (path.endsWith("xml")) {
+      assert.equal((body.match(/<loc>/g) || []).length, 9);
+      assert.ok(body.includes("<loc>https://empirebowlsclub.co.uk/gallery</loc>"));
+    }
     const head = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`, { method: "HEAD" }), env, ctx);
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
