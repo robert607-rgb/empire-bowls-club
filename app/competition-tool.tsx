@@ -1,5 +1,6 @@
 "use client";
 import {Competitions} from './competitions';
+import Registration from './competition-registration';
 import { useCallback, useEffect, useState } from "react";
 // The API returns only competition records and the authenticated member ID.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -8,7 +9,7 @@ import type {Competition,PlayingFormat} from '../lib/competition-model';
 const playing:Record<string,PlayingFormat>={Singles:'singles',Pairs:'pairs',Triples:'triples',Fours:'rinks',Rinks:'rinks'};
 export function competitionViews(data:Row):Competition[] {
  const current=new Map<number,string>((data.directory||[]).map((member:Row)=>[member.id,member.name]));
- return (data.competitions||[]).filter((raw:Row)=>!raw.archived).flatMap((raw:Row)=>Array.from({length:raw.structure==='League'?Number(raw.league_count||1):1},(_,index)=>{
+ return (data.competitions||[]).filter((raw:Row)=>!raw.archived&&raw.status!=='Entries open').flatMap((raw:Row)=>Array.from({length:raw.structure==='League'?Number(raw.league_count||1):1},(_,index)=>{
   const league=index+1,entries=(data.competitionEntries||[]).filter((entry:Row)=>entry.competition_id===raw.id&&Number(entry.league_no||1)===league).map((entry:Row)=>{
    const players=JSON.parse(entry.players_json||'[]').map((player:Row)=>({...player,name:current.get(player.memberId)||player.name}));
    return {memberId:entry.id,name:entry.entry_name||players.map((player:Row)=>player.name).join(' / ')||entry.name,seed:entry.entry_order||entry.id,players};
@@ -23,13 +24,14 @@ export default function CompetitionTool({members, admin=false}:{members:{id:numb
  const refresh=useCallback(async()=>{
   try {
    const response=await fetch("/api/empire/competitions", {credentials:"same-origin"});
-   const body=await response.json();
+   const body=await response.json() as Row;
    if(!response.ok) throw new Error(body.error || "Competitions could not be loaded.");
-   setData(body);setError("");
-  } catch(failure) {setError(failure instanceof Error ? failure.message : "Competitions could not be loaded.");}
+   setData(body);setError("");return true;
+  } catch(failure) {setError(failure instanceof Error ? failure.message : "Competitions could not be loaded.");return false;}
  },[]);
  useEffect(()=>{const timer=window.setTimeout(()=>void refresh(),0);return ()=>window.clearTimeout(timer)},[refresh]);
  const directory=members.map(member=>({id:member.id,name:member.name,membership_type:member.membershipType}));
  if(!data) return <section className="competition-panel" aria-live="polite">{error ? <><p role="alert">{error}</p><button className="primary" type="button" onClick={()=>void refresh()}>Try again</button></> : "Loading competitions…"}</section>;
- return <section className="competition-panel">{error && <p role="alert">{error}</p>}<Competitions competitions={competitionViews({...data,directory})} members={directory} self={{memberId:data.sessionMemberId,isTest:!data.sessionMemberId}} admin={admin} refresh={refresh}/></section>;
+ return <section className="competition-panel">{error && <p role="alert">{error}</p>}<Registration data={{...data,directory,session:{memberId:data.sessionMemberId}}} admin={admin} refresh={refresh}/><Competitions allowCreate={false} competitions={competitionViews({...data,directory})} members={directory} self={{memberId:data.sessionMemberId,isTest:!data.sessionMemberId}} admin={admin} refresh={async()=>{await refresh()}}/></section>;
 }
+

@@ -6,7 +6,7 @@ import { build } from 'esbuild';
 const bundled = await build({ entryPoints: ['lib/competition-service.ts'], bundle: true, platform: 'node', format: 'esm', write: false });
 const { competitionMutation, CompetitionError } = await import('data:text/javascript;base64,' + Buffer.from(bundled.outputFiles[0].text).toString('base64'));
 const schemaBundle = await build({ entryPoints: ['lib/competition-schema.ts'], bundle: true, platform: 'node', format: 'esm', write: false });
-const { COMPETITION_SCHEMA } = await import('data:text/javascript;base64,' + Buffer.from(schemaBundle.outputFiles[0].text).toString('base64'));
+const { COMPETITION_SCHEMA, ensureCompetitionSchema } = await import('data:text/javascript;base64,' + Buffer.from(schemaBundle.outputFiles[0].text).toString('base64'));
 
 class DB {
   constructor() { this.sql = new DatabaseSync(':memory:'); this.sql.exec('CREATE TABLE empire_members (id INTEGER PRIMARY KEY, name TEXT NOT NULL)'); for (let id=1; id<=260; id++) this.sql.prepare('INSERT INTO empire_members VALUES (?,?)').run(id,`Member ${id}`); for (const ddl of COMPETITION_SCHEMA) this.sql.exec(ddl); }
@@ -58,4 +58,21 @@ test('knockout advances winners and blocks corrections to completed downstream m
  await assert.rejects(()=>mutate(db,admin,{action:'competitionResult',id:semis[0].id,revision:semis[0].revision,scoreA:5,scoreB:21}),error=>error instanceof CompetitionError&&error.status===409);
  final=db.sql.prepare('SELECT * FROM empire_competition_matches WHERE id=?').get(final.id);
  assert.equal(final.state,'played'); assert.equal(final.score_a,21);
+});
+
+
+test('drawn pairs sign up individually and admin assigns teams before the draw',async()=>{
+ const db=new DB(),created=await mutate(db,admin,{action:'createCompetition',name:'Drawn pairs',format:'knockout',playingFormat:'drawn_pairs',openEntries:true});
+ assert.ok(created.id);for(let id=1;id<=4;id++)await mutate(db,member(id),{action:'competitionEntry',competitionId:created.id});
+ await assert.rejects(()=>mutate(db,admin,{action:'competitionDraw',competitionId:created.id,teams:[{memberIds:[1,2]},{memberIds:[3,3]}]}));
+ await mutate(db,admin,{action:'competitionDraw',competitionId:created.id,teams:[{memberIds:[1,2]},{memberIds:[3,4]}]});
+ assert.equal(db.sql.prepare('SELECT COUNT(*) AS n FROM empire_competition_entries WHERE competition_id=?').get(created.id).n,2);
+ await assert.rejects(()=>mutate(db,member(5),{action:'competitionEntry',competitionId:created.id}));
+});
+
+
+test('schema upgrade preserves existing competition records and results',async()=>{
+ const db=new DB();db.sql.exec('DROP TABLE empire_competitions');db.sql.exec(COMPETITION_SCHEMA[0].replace("entry_mode TEXT NOT NULL DEFAULT 'fixed', ",''));
+ db.sql.prepare("INSERT INTO empire_competitions(id,title,season,format,structure,status) VALUES(1,'Existing','2026','Singles','Knockout','In progress')").run();
+ await ensureCompetitionSchema(db);const row=db.sql.prepare('SELECT title,entry_mode FROM empire_competitions WHERE id=1').get();assert.equal(row.title,'Existing');assert.equal(row.entry_mode,'fixed');
 });

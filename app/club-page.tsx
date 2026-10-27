@@ -4,6 +4,7 @@ import "./gallery.css";
 import "./gallery-admin.css";
 import "./competition.css";
 import CompetitionTool from "./competition-tool";
+import RinkUsage from "./rink-usage";
 import { pagePaths } from "./site-pages";
 import type { GalleryAlbum, GalleryPhoto } from "./api/empire/gallery/gallery-data";
 
@@ -5585,7 +5586,7 @@ function AdminZone({
         </section>
 
         <section className="admin-tab-panel" id="admin-panel-bookings" role="tabpanel" aria-labelledby="admin-tab-bookings" hidden={activeTab !== "bookings"}>
-          {activeTab === "bookings" && <AdminBookings password={password} />}
+          {activeTab === "bookings" && <><AdminBookings password={password} /><RinkUsage /></>}
         </section>
 
         <section
@@ -5800,3 +5801,4 @@ function AdminZone({
     </main>
   );
 }
+

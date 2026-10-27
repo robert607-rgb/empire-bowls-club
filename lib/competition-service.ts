@@ -11,16 +11,17 @@ const key=()=>Array.from(crypto.getRandomValues(new Uint8Array(6))).reduce((n,b)
 const admin=(s:Session)=>s.role==='admin'&&s.permissions.includes('competitions');
 const requireAdmin=(s:Session)=>{if(!admin(s))fail(403,'Competition administrator access is required.')};
 const numberId=(value:unknown)=>Number.isSafeInteger(Number(value))&&Number(value)>0?Number(value):0;
+const formats:Record<string,PlayingFormat>={Singles:'singles',Pairs:'pairs',Triples:'triples',Fours:'rinks',Rinks:'rinks'};
 const storedFormat:Record<PlayingFormat,string>={singles:'Singles',pairs:'Pairs',triples:'Triples',rinks:'Fours'};
 function configuration(input:Row){
  const format=String(input.format||'knockout').toLowerCase();if(!['knockout','league'].includes(format))fail(400,'Choose Knockout or League.');
- const playingFormat=(input.playingFormat||'singles') as PlayingFormat;if(!Object.hasOwn(playingFormats,playingFormat))fail(400,'Choose Singles, Pairs, Triples or Rinks.');
+ const choice=String(input.playingFormat||'singles'),drawn=choice.startsWith('drawn_');const playingFormat=(drawn?choice.slice(6):choice) as PlayingFormat;if(drawn&&playingFormat==='singles'||!Object.hasOwn(playingFormats,playingFormat))fail(400,'Choose Singles, Pairs, Triples or Rinks.');
  const legs=format==='league'?Number(input.legs??1):1,leagues=format==='league'?Number(input.leagueCount??1):1;
  if(!Number.isInteger(legs)||legs<1||legs>4)fail(400,'Choose 1 to 4 matches against each opponent.');
  if(!Number.isInteger(leagues)||leagues<1||leagues>8)fail(400,'Choose 1 to 8 leagues.');
  const win=Number(input.winPoints??2),draw=Number(input.drawPoints??1),loss=Number(input.lossPoints??0);
  if([win,draw,loss].some(n=>!Number.isInteger(n)||n<0||n>100)||win<=draw||draw<loss)fail(400,'Win points must exceed draw points, with draw points at least loss points.');
- return {format:format as 'knockout'|'league',playingFormat,legs,leagues,win,draw,loss};
+ return {format:format as 'knockout'|'league',playingFormat,drawn,legs,leagues,win,draw,loss};
 }
 function gamesFor(comp:Row,entryIds:number[]) {
  const max=competitionLimits[comp.structure==='League'?'league':'knockout'];
@@ -41,13 +42,16 @@ function insertMatches(db:D1Database,competitionId:number,matches:Row[],guard?:{
 export async function competitionMutation(db:D1Database,s:Session,p:Row,today:string):Promise<{ok:boolean;id?:number}> {
  if(p.action==='createCompetition') {
   requireAdmin(s);const config=configuration(p),title=String(p.name||'').trim();if(title.length<3||title.length>100)fail(400,'Give the competition a name of 3 to 100 characters.');
+  if(p.openEntries===true){
+   const id=key();await db.prepare("INSERT INTO empire_competitions(id,title,season,format,structure,legs,league_count,win_points,draw_points,loss_points,status,published,entry_mode) VALUES(?,?,?,?,?,?,?,?,?,?,'Entries open',1,?)").bind(id,title,today.slice(0,4),storedFormat[config.playingFormat],config.format==='league'?'League':'Knockout',config.legs,config.leagues,config.win,config.draw,config.loss,config.drawn?'drawn':'fixed').run();return {ok:true,id};
+  }
   const positions=playingFormats[config.playingFormat].positions;
   const teams:Row[]=config.playingFormat==='singles'?(Array.isArray(p.memberIds)?p.memberIds.map((id:unknown)=>({name:'',memberIds:[numberId(id)]})):[]):Array.isArray(p.teams)?p.teams.map((team:Row)=>({name:String(team?.name||'').trim(),memberIds:Array.isArray(team?.memberIds)?team.memberIds.map(numberId):[]})):[];
   if(teams.length<2||teams.length>competitionLimits[config.format])fail(400,`Choose 2 to ${competitionLimits[config.format]} entries.`);
   if(teams.some(team=>team.name.length>100||team.memberIds.length!==positions.length||team.memberIds.some((id:number)=>!id)))fail(400,`Fill all ${positions.length} positions in every entry; team names can contain up to 100 characters.`);
   const selected:number[]=teams.flatMap(team=>team.memberIds);if(new Set(selected).size!==selected.length)fail(400,'Each member can appear only once in this competition.');
-  const members=await rows(db,"SELECT id,name FROM empire_members WHERE id IN (SELECT value FROM json_each(?))",JSON.stringify(selected));if(members.length!==selected.length)fail(400,'Choose active directory members for every position.');
-  const names=new Map(members.map(m=>[m.id,m.name])),id=key(),comp={id,structure:config.format==='league'?'League':'Knockout',league_count:config.leagues,legs:config.legs};
+  const empire_members=await rows(db,"SELECT id,name FROM empire_members WHERE id IN (SELECT value FROM json_each(?))",JSON.stringify(selected));if(empire_members.length!==selected.length)fail(400,'Choose active directory members for every position.');
+  const names=new Map(empire_members.map(m=>[m.id,m.name])),id=key(),comp={id,structure:config.format==='league'?'League':'Knockout',league_count:config.leagues,legs:config.legs};
   const entries=teams.map((team,index)=>({id:key(),member_id:team.memberIds[0],partner_ids:JSON.stringify(team.memberIds.slice(1)),entry_name:team.name,entry_order:index+1,players_json:JSON.stringify(team.memberIds.map((memberId:number,position:number)=>({memberId,name:names.get(memberId),position:positions[position]})))}));
   const {matches,assignment}=gamesFor(comp,entries.map(e=>e.id));
   const payload=entries.map(entry=>({...entry,league_no:assignment.get(entry.id)||1}));
@@ -59,9 +63,44 @@ export async function competitionMutation(db:D1Database,s:Session,p:Row,today:st
   ]);return {ok:true,id};
  }
  if(p.action==='competitionResult')return recordResult(db,s,p);
+ if(p.action==='withdrawEntry') {
+  const entry=await db.prepare('SELECT e.*,c.status,c.published,c.archived FROM empire_competition_entries e JOIN empire_competitions c ON c.id=e.competition_id WHERE e.id=?').bind(numberId(p.id)).first<Row>();if(!entry)fail(404,'Entry not found.');
+  if(s.role==='admin')requireAdmin(s);else if(!s.member_id||entry.member_id!==s.member_id||!entry.published||entry.archived)fail(403,'Only the entrant or competition administrator can withdraw.');
+  if(entry.status!=='Entries open')fail(409,'The draw is already locked.');
+  const removed=await db.batch([db.prepare("DELETE FROM empire_competition_participants WHERE entry_id=? AND EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND status='Entries open')").bind(entry.id,entry.competition_id),db.prepare("DELETE FROM empire_competition_entries WHERE id=? AND EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND status='Entries open')").bind(entry.id,entry.competition_id),db.prepare("UPDATE empire_competitions SET revision=revision+1 WHERE id=? AND status='Entries open'").bind(entry.competition_id)]);if(!removed[1].meta.changes)fail(409,'The competition changed. Reload before withdrawing.');return {ok:true};
+ }
+ const competitionId=numberId(p.competitionId),comp=await db.prepare('SELECT * FROM empire_competitions WHERE id=? AND archived=0').bind(competitionId).first<Row>();
+ if(!comp)fail(404,'Competition not found.');
+ if(p.action==='competitionEntry') {
+  if(s.role==='admin')requireAdmin(s);else if(!comp.published||!s.member_id)fail(403,'Use your individual member account.');
+  if(comp.status!=='Entries open'||comp.deadline&&comp.deadline<today)fail(409,'Entries are closed.');
+  const memberIds=[s.role==='member'?s.member_id:numberId(p.memberId),...(Array.isArray(p.partnerIds)?p.partnerIds.map(numberId):[])],format=formats[comp.format];
+  if(!format||memberIds.length!==(comp.entry_mode==='drawn'?1:playingFormats[format].positions.length)||memberIds.some(id=>!id)||new Set(memberIds).size!==memberIds.length)fail(400,'Fill the correct playing positions with different members.');
+  const empire_members=await rows(db,"SELECT id,name FROM empire_members WHERE id IN(SELECT value FROM json_each(?))",JSON.stringify(memberIds));if(empire_members.length!==memberIds.length)fail(400,'Choose active directory members.');
+  const names=new Map(empire_members.map(m=>[m.id,m.name])),entryId=key(),players=memberIds.map((memberId,index)=>({memberId,name:names.get(memberId),position:playingFormats[format].positions[index]}));
+  let inserted;try{inserted=await db.batch([db.prepare("INSERT INTO empire_competition_entries(id,competition_id,member_id,partner_ids,players_json) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND status='Entries open' AND archived=0)").bind(entryId,comp.id,memberIds[0],JSON.stringify(memberIds.slice(1)),JSON.stringify(players),comp.id),...memberIds.map(memberId=>db.prepare('INSERT INTO empire_competition_participants(competition_id,member_id,entry_id) SELECT ?,?,? WHERE EXISTS(SELECT 1 FROM empire_competition_entries WHERE id=?)').bind(comp.id,memberId,entryId,entryId)),db.prepare('UPDATE empire_competitions SET revision=revision+1 WHERE id=? AND EXISTS(SELECT 1 FROM empire_competition_entries WHERE id=?)').bind(comp.id,entryId)]);}catch(error){if(String(error).includes('UNIQUE constraint failed'))fail(409,'A selected member is already entered.');throw error;}if(!inserted[0].meta.changes)fail(409,'Entries closed while saving.');return {ok:true};
+ }
+ requireAdmin(s);
+ if(p.action==='competitionDraw') {
+  if(comp.status!=='Entries open')fail(409,'A draw already exists or entries are closed.');
+  const entries=await rows(db,'SELECT * FROM empire_competition_entries WHERE competition_id=? ORDER BY id',comp.id);
+  let finalEntries=entries,drawnChanges: D1PreparedStatement[]=[];
+  if(comp.entry_mode==='drawn'){
+   const positions=playingFormats[formats[comp.format]].positions,teams=Array.isArray(p.teams)?p.teams.map((t:Row)=>({name:String(t.name||'').trim(),ids:Array.isArray(t.memberIds)?t.memberIds.map(numberId):[]})):[];
+   const ids=teams.flatMap((t:Row)=>t.ids),registered=entries.map(e=>e.member_id);
+   if(teams.some((t:Row)=>t.ids.length!==positions.length||t.name.length>100)||ids.length!==registered.length||new Set(ids).size!==ids.length||ids.some((id:number)=>!registered.includes(id)))fail(400,'Assign every registered member once to a complete team.');
+   const empire_members=await rows(db,"SELECT id,name FROM empire_members WHERE id IN(SELECT value FROM json_each(?))",JSON.stringify(ids));if(empire_members.length!==ids.length)fail(400,'All registered members must be active.');
+   const names=new Map(empire_members.map(m=>[m.id,m.name]));finalEntries=teams.map((t:Row,i:number)=>({id:entries.find(e=>e.member_id===t.ids[0])!.id,member_id:t.ids[0],entry_name:t.name,entry_order:i+1,partner_ids:JSON.stringify(t.ids.slice(1)),players_json:JSON.stringify(t.ids.map((memberId:number,j:number)=>({memberId,name:names.get(memberId),position:positions[j]})))}));
+  }
+  const {matches,assignment}=gamesFor(comp,finalEntries.map(e=>e.id)),token=crypto.randomUUID(),guard={revision:comp.revision+1,token};
+  if(comp.entry_mode==='drawn'){
+   drawnChanges=[db.prepare('DELETE FROM empire_competition_participants WHERE competition_id=? AND EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND revision=? AND mutation_token=?)').bind(comp.id,comp.id,guard.revision,token),db.prepare('DELETE FROM empire_competition_entries WHERE competition_id=? AND EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND revision=? AND mutation_token=?)').bind(comp.id,comp.id,guard.revision,token),db.prepare("INSERT INTO empire_competition_entries(id,competition_id,member_id,partner_ids,entry_name,entry_order,players_json) SELECT json_extract(value,'$.id'),?,json_extract(value,'$.member_id'),json_extract(value,'$.partner_ids'),json_extract(value,'$.entry_name'),json_extract(value,'$.entry_order'),json_extract(value,'$.players_json') FROM json_each(?) WHERE EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND revision=? AND mutation_token=?)").bind(comp.id,JSON.stringify(finalEntries),comp.id,guard.revision,token),db.prepare("INSERT INTO empire_competition_participants(competition_id,member_id,entry_id) SELECT ?,CAST(json_extract(player.value,'$.memberId') AS INTEGER),CAST(json_extract(entry.value,'$.id') AS INTEGER) FROM json_each(?) entry,json_each(json_extract(entry.value,'$.players_json')) player WHERE EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND revision=? AND mutation_token=?)").bind(comp.id,JSON.stringify(finalEntries),comp.id,guard.revision,token)];
+  }
+  const result=await db.batch([db.prepare("UPDATE empire_competitions SET status='In progress',revision=revision+1,mutation_token=? WHERE id=? AND status='Entries open' AND revision=?").bind(token,comp.id,comp.revision),...drawnChanges,insertMatches(db,comp.id,matches,guard),db.prepare("UPDATE empire_competition_entries SET league_no=(SELECT json_extract(value,'$.league') FROM json_each(?) WHERE json_extract(value,'$.id')=empire_competition_entries.id) WHERE competition_id=? AND EXISTS(SELECT 1 FROM empire_competitions WHERE id=? AND revision=? AND mutation_token=?)").bind(JSON.stringify([...assignment].map(([id,league])=>({id,league}))),comp.id,comp.id,guard.revision,token)]);
+  if(!result[0].meta.changes)fail(409,'Competition entries changed. Reload before creating the draw.');return {ok:true,id:comp.id};
+ }
  fail(400,'Unknown competition action.');
 }
-
 async function recordResult(db:D1Database,s:Session,p:Row) {
  const match=await db.prepare('SELECT * FROM empire_competition_matches WHERE id=?').bind(numberId(p.id)).first<Row>();if(!match)fail(404,'Match not found.');
  const comp=await db.prepare('SELECT * FROM empire_competitions WHERE id=? AND archived=0').bind(match.competition_id).first<Row>();if(!comp)fail(404,'Competition not found.');
@@ -106,3 +145,4 @@ async function recordResult(db:D1Database,s:Session,p:Row) {
  if(added.length)statements.push(insertMatches(db,comp.id,added,guard));
  const saved=await db.batch(statements);if(!saved[0].meta.changes)fail(409,'Another competition update was saved. Refresh before trying again.');return {ok:true};
 }
+

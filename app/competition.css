@@ -77,3 +77,18 @@
 .competitions-tool .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .competitions-tool :focus-visible { outline:3px solid #e3b62c; outline-offset:3px; }
 .competitions-tool .competition-banner h3 { color:#fffdf6; }
+
+.competitions-registration { margin-bottom:2rem; }
+.competitions-registration .tool-heading { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:center; }
+.competitions-registration .field { display:grid; gap:.4rem; margin:.7rem 0; }
+.competitions-registration input,.competitions-registration select { width:100%; padding:.65rem; border:1px solid #9daeb8; border-radius:.4rem; background:#fff; color:#182b36; }
+.competitions-registration .form-panel,.competitions-registration .hub-panel { padding:1rem; margin:1rem 0; border:1px solid #c8d9df; border-radius:.75rem; background:#f8faf8; }
+.competitions-registration .button { padding:.65rem 1rem; border:0; border-radius:.4rem; color:white; background:#174f37; cursor:pointer; }
+.competitions-registration .competition-points { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.5rem; }
+.rink-usage { margin-top:1.5rem; }
+.rink-usage .hub-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:1rem 0; }
+.rink-usage .hub-tabs button { padding:.6rem .8rem; border:1px solid #46715a; border-radius:.45rem; background:white; color:#173d29; cursor:pointer; }
+.rink-usage .hub-tabs button[aria-pressed=true] { background:#174f37; color:white; }
+.rink-usage .league-table-wrap { overflow-x:auto; }
+.rink-usage table { border-collapse:collapse; min-width:620px; width:100%; }
+.rink-usage th,.rink-usage td { text-align:left; padding:.7rem; border-bottom:1px solid #d4dfd8; white-space:nowrap; }

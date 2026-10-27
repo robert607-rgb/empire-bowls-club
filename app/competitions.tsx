@@ -13,7 +13,7 @@ const isActiveMember=(member:DirectoryMember)=>member.account_status!=="inactive
 
 type DirectoryMember = { id: number; name: string; membership_type?: string; account_status?: string };
 type Self = { memberId?: number | null; isTest?: boolean };
-type Props = { competitions: Competition[]; members: DirectoryMember[]; self?: Self; admin: boolean; refresh: () => Promise<void>; onDirty?:(dirty:boolean)=>void };
+type Props = { competitions: Competition[]; members: DirectoryMember[]; self?: Self; admin: boolean; refresh: () => Promise<void>; onDirty?:(dirty:boolean)=>void; allowCreate?:boolean };
 async function updateCompetition(payload: Record<string, unknown>) {
   const response = await fetch("/api/empire/competitions", { method: "POST", credentials:"same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload.action==="create"?{...payload,action:"createCompetition"}:{...payload,action:"competitionResult",id:payload.matchId,revision:payload.matchVersion,scoreA:payload.scoreOne,scoreB:payload.scoreTwo}) });
   const data = await response.json() as { id: string; error?: string };
@@ -25,9 +25,9 @@ const roundTitle = (round: number, finalRound: number) => {
   return remaining === 0 ? "Final" : remaining === 1 ? "Semi-finals" : remaining === 2 ? "Quarter-finals" : `Round ${round}`;
 };
 
-export function Competitions({ competitions, members, self, admin, refresh,onDirty }: Props) {
+export function Competitions({ competitions, members, self, admin, refresh,onDirty,allowCreate=true }: Props) {
   const [selectedId, setSelectedId] = useState("");
-  const [showCreate, setShowCreate] = useState(admin && competitions.length === 0);
+  const [showCreate, setShowCreate] = useState(admin && allowCreate && competitions.length === 0);
   const [message, setMessage] = useState("");
   const competition = competitions.find(item => item.id === selectedId||item.id.startsWith(selectedId+":")) || competitions[0];
   const report = async (match: CompetitionMatch, scoreOne: number, scoreTwo: number) => {
@@ -36,8 +36,8 @@ export function Competitions({ competitions, members, self, admin, refresh,onDir
     setMessage("Result saved. The competition has been updated.");
   };
   return <div className="competitions-tool">
-    <div className="tool-heading"><div><h2>Club competitions</h2><p className="muted">Follow the draw, find your opponent and keep the scores up to date.</p></div>{admin && <button className="button" aria-expanded={showCreate} aria-controls="competition-builder" onClick={() => setShowCreate(open => !open)}><Plus size={17} aria-hidden="true"/> {showCreate ? "Close form" : "Create a competition"}</button>}</div>
-    {admin && showCreate && <CompetitionBuilder members={members} onDirty={onDirty} onCreated={async id => { await refresh(); setSelectedId(id); setShowCreate(false); setMessage("Competition created. The draw is now visible in the Members Zone."); }}/>}
+    <div className="tool-heading"><div><h2>Club competitions</h2><p className="muted">Follow the draw, find your opponent and keep the scores up to date.</p></div>{admin && allowCreate && <button className="button" aria-expanded={showCreate} aria-controls="competition-builder" onClick={() => setShowCreate(open => !open)}><Plus size={17} aria-hidden="true"/> {showCreate ? "Close form" : "Create a competition"}</button>}</div>
+    {admin && allowCreate && showCreate && <CompetitionBuilder members={members} onDirty={onDirty} onCreated={async id => { await refresh(); setSelectedId(id); setShowCreate(false); setMessage("Competition created. The draw is now visible in the Members Zone."); }}/>}
     {message && <div className="notice" role="status">{message}</div>}
     {competitions.length === 0 ? <div className="competition-empty"><Trophy size={32} strokeWidth={1.5} aria-hidden="true"/><h3>The next competition starts here</h3><p>{admin ? "Choose members from the directory and create a knockout draw or a league. The rounds and opponents will be arranged for you." : "Club competitions will appear here as soon as an administrator creates them."}</p></div> : <>
       <label className="field competition-picker">Choose a competition<select aria-label="Choose a competition" value={competition.id} onChange={event => { setSelectedId(event.target.value); setMessage(""); }}>{competitions.map(item => <option key={item.id} value={item.id}>{item.name} · {playingFormats[item.playing_format].label} · {item.format === "knockout" ? "Knockout" : "League"}{item.complete ? " · Complete" : ""}</option>)}</select></label>
@@ -159,3 +159,4 @@ function LeagueTable({ competition }: { competition: Competition }) {
   const standings = leagueStandings(competition);
   return <div className="league-table-section"><h3>League table</h3><p className="small muted">Win {competition.win_points} points · Draw {competition.draw_points} · Loss {competition.loss_points}. Ties are ordered by shot difference, then shots scored.</p><div className="league-table-wrap" tabIndex={0} aria-label="Scrollable league table"><table className="league-table"><caption className="sr-only">{competition.name} standings</caption><thead><tr><th scope="col">Pos</th><th scope="col">{competition.playing_format === "singles" ? "Member" : "Team"}</th><th scope="col"><abbr title="Played">P</abbr></th><th scope="col"><abbr title="Won">W</abbr></th><th scope="col"><abbr title="Drawn">D</abbr></th><th scope="col"><abbr title="Lost">L</abbr></th><th scope="col">For</th><th scope="col">Against</th><th scope="col">Diff</th><th scope="col">Points</th></tr></thead><tbody>{standings.map((entry, index) => <tr key={entry.memberId}><td>{index + 1}</td><th scope="row">{entry.name}<Roster entry={entry}/></th><td>{entry.played}</td><td>{entry.won}</td><td>{entry.drawn}</td><td>{entry.lost}</td><td>{entry.for}</td><td>{entry.against}</td><td>{entry.difference > 0 ? "+" : ""}{entry.difference}</td><td className="league-points">{entry.points}</td></tr>)}</tbody></table></div></div>;
 }
+
