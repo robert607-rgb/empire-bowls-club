@@ -5886,3 +5886,6 @@ main .status.success{background:#e4f4e9;color:#174b31!important;border-color:#21
 .empire-about-page .accordion-list>details>summary i{color:#17394c!important}
 .empire-about-page .committee article :is(b,span,a){font-size:16px;line-height:1.6}
 .contact-cards a>span{color:#ffe59a}
+.empire-about-page .accordion-list>details .heritage-hero-collage strong{color:#fff9e9!important}
+.empire-about-page .accordion-list>details .heritage-hero-collage span{color:#ffe59a!important}
+.contact-map .eyebrow{color:#ffe59a}
