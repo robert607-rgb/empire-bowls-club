@@ -1,3 +1,5 @@
+import {ensureSignupDetails,getSignupDetails,readSignupDetails,validSignupDetails,saveSignupDetails} from "../../../../lib/signup-details";
+import {clubToday} from "../../../../lib/club-date";
 import {
   apiError,
   cleanText,
@@ -106,6 +108,7 @@ export async function GET(request: Request) {
   try {
     const db = await getEmpireDatabase();
     await ensureMemberOwnership(db);
+    await ensureSignupDetails(db);
     const result = await db
       .prepare(
         "SELECT id, match_name, match_date, players_required, names_json FROM empire_player_requests ORDER BY match_date ASC, id ASC",
@@ -115,7 +118,7 @@ export async function GET(request: Request) {
     const requests = await removeDuplicateBlankRequests(db, result.results ?? [], signups);
     return Response.json(
       {
-        requests: requests.map((row) => mapRequest(row, signups, session.member_id, session.access === "admin")),
+        requests: await Promise.all(requests.map(async row => ({...mapRequest(row, signups, session.member_id, session.access === "admin"),...await getSignupDetails(db,row.id),expired:row.match_date<clubToday()}))),
       },
       { headers: { "cache-control": "no-store" } },
     );
@@ -130,12 +133,16 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid request origin." }, { status: 403 });
   }
   try {
-    const details = readDetails(await readJson(request));
+    const input=await readJson(request);
+    const details = readDetails(input);
+    const extra=readSignupDetails(input);
+    if(!validSignupDetails(extra))return Response.json({error:"Choose a valid time and Home or Away."},{status:400});
     const validationError = validateDetails(details);
     if (validationError) {
       return Response.json({ error: validationError }, { status: 400 });
     }
     const db = await getEmpireDatabase();
+    await ensureSignupDetails(db);
     const existing = await db
       .prepare(
         "SELECT id FROM empire_player_requests WHERE lower(trim(match_name)) = lower(trim(?)) AND match_date = ?",
@@ -155,9 +162,11 @@ export async function POST(request: Request) {
       )
       .bind(details.match, details.date, details.playersRequired, "[]", createdAt)
       .run();
+    await saveSignupDetails(db,Number(result.meta.last_row_id),extra);
     return Response.json(
       {
         request: {
+          ...extra,
           id: Number(result.meta.last_row_id),
           match: details.match,
           date: details.date,
@@ -186,6 +195,7 @@ export async function PUT(request: Request) {
     }
     const db = await getEmpireDatabase();
     await ensureMemberOwnership(db);
+    await ensureSignupDetails(db);
     const current = await db
       .prepare(
         "SELECT id, match_name, match_date, players_required, names_json FROM empire_player_requests WHERE id = ?",
@@ -196,20 +206,23 @@ export async function PUT(request: Request) {
       return Response.json({ error: "Player request not found." }, { status: 404 });
     }
 
+    const extra=readSignupDetails(input,await getSignupDetails(db,id));
+    if(!validSignupDetails(extra))return Response.json({error:"Choose a valid time and Home or Away."},{status:400});
     if (session.access === "member") {
-      if (session.member_id === null || (input.action !== "join" && input.action !== "leave") || "names" in input || "match" in input || "date" in input || "playersRequired" in input) return Response.json({ error: "Choose only your own availability." }, { status: 403 });
+      if (session.member_id === null || (input.action !== "join" && input.action !== "leave") || "names" in input || "match" in input || "date" in input || "playersRequired" in input || "time" in input || "venue" in input) return Response.json({ error: "Choose only your own availability." }, { status: 403 });
+      if(current.match_date<clubToday())return Response.json({error:"This match has passed and availability is closed."},{status:409});
       if (input.action === "join") {
         const member = await db.prepare("SELECT name FROM empire_members WHERE id = ?").bind(session.member_id).first<{ name: string }>();
         if (!member) return unauthorized();
         const added = await db.prepare(`INSERT OR IGNORE INTO empire_player_signups (request_id, member_id, member_name)
-          SELECT id, ?, ? FROM empire_player_requests WHERE id = ? AND
-          (CASE WHEN json_valid(names_json) THEN json_array_length(names_json) ELSE 0 END) + (SELECT COUNT(*) FROM empire_player_signups WHERE request_id = ?) < players_required`).bind(session.member_id, member.name, id, id).run();
+          SELECT id, ?, ? FROM empire_player_requests WHERE id = ? AND match_date >= ? AND
+          (CASE WHEN json_valid(names_json) THEN json_array_length(names_json) ELSE 0 END) + (SELECT COUNT(*) FROM empire_player_signups WHERE request_id = ?) < players_required`).bind(session.member_id, member.name, id, clubToday(), id).run();
         if (!added.meta.changes) return Response.json({ error: "You have already joined or this sign-up sheet is full." }, { status: 409 });
       } else {
         await db.prepare("DELETE FROM empire_player_signups WHERE request_id = ? AND member_id = ?").bind(id, session.member_id).run();
       }
       const signups = (await db.prepare("SELECT request_id, member_id, member_name FROM empire_player_signups WHERE request_id = ? ORDER BY rowid").bind(id).all<Signup>()).results ?? [];
-      return Response.json({ request: mapRequest(current, signups, session.member_id) });
+      return Response.json({ request: {...mapRequest(current, signups, session.member_id),...extra} });
     }
 
     if (input.action === "removeSignup") {
@@ -217,7 +230,7 @@ export async function PUT(request: Request) {
       if (!Number.isSafeInteger(memberId) || memberId <= 0) return Response.json({ error: "Choose a valid member." }, { status: 400 });
       await db.prepare("DELETE FROM empire_player_signups WHERE request_id = ? AND member_id = ?").bind(id, memberId).run();
       const signups = (await db.prepare("SELECT request_id, member_id, member_name FROM empire_player_signups WHERE request_id = ? ORDER BY rowid").bind(id).all<Signup>()).results ?? [];
-      return Response.json({ request: mapRequest(current, signups, null, true) });
+      return Response.json({ request: {...mapRequest(current, signups, null, true),...extra} });
     }
     if (input.action === "removeLegacy") {
       const index = Number(input.index), legacy = readNames(current.names_json);
@@ -279,15 +292,16 @@ export async function PUT(request: Request) {
       )
       .run();
     if (!updated.meta.changes) return Response.json({ error: "The sign-up sheet changed. Refresh and try again." }, { status: 409 });
+    await saveSignupDetails(db,id,extra);
     const signups = (await db.prepare("SELECT request_id, member_id, member_name FROM empire_player_signups WHERE request_id = ? ORDER BY rowid").bind(id).all<Signup>()).results ?? [];
     return Response.json({
-      request: mapRequest({
+      request: { ...extra,...mapRequest({
         ...current,
         match_name: details.match,
         match_date: details.date,
         players_required: details.playersRequired,
         names_json: JSON.stringify(names),
-      }, signups, null, true),
+      }, signups, null, true)},
     });
   } catch (error) {
     return apiError(error);
@@ -307,7 +321,8 @@ export async function DELETE(request: Request) {
     }
     const db = await getEmpireDatabase();
     await ensureMemberOwnership(db);
-    await db.batch([db.prepare("DELETE FROM empire_player_signups WHERE request_id = ?").bind(id), db.prepare("DELETE FROM empire_player_requests WHERE id = ?").bind(id)]);
+    await ensureSignupDetails(db);
+    await db.batch([db.prepare("DELETE FROM empire_signup_details WHERE request_id = ?").bind(id),db.prepare("DELETE FROM empire_player_signups WHERE request_id = ?").bind(id), db.prepare("DELETE FROM empire_player_requests WHERE id = ?").bind(id)]);
     return Response.json({ removed: true });
   } catch (error) {
     return apiError(error);

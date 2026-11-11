@@ -118,7 +118,7 @@ export async function GET() {
       .all<FixtureRow>();
     return Response.json(
       { fixtures: (result.results ?? []).map(mapFixture) },
-      { headers: { "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400" } },
+      { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
     return apiError(error);

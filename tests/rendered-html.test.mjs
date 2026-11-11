@@ -51,7 +51,7 @@ test("old Google links redirect once and public pages have their own canonical U
       assert.equal(response.headers.get("location"), `https://empirebowlsclub.co.uk${target}`);
     }
   }
-  for (const path of ["/about", "/news", "/gallery", "/sponsors", "/fixtures", "/honours", "/play-bowls", "/contact"]) {
+  for (const path of ["/about", "/news", "/gallery", "/sponsors", "/fixtures", "/play-bowls", "/contact"]) {
     const response = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`, { headers: { accept: "text/html" } }), env, ctx);
     assert.equal(response.status, 200, path);
     const html = await response.text();
@@ -81,11 +81,18 @@ test("crawler files are served without relying on static asset fallback", async 
       assert.match(body, /^Disallow: \/api\/\s*$/m);
     }
     if (path.endsWith("xml")) {
-      assert.equal((body.match(/<loc>/g) || []).length, 9);
+      assert.equal((body.match(/<loc>/g) || []).length, 8);
       assert.ok(body.includes("<loc>https://empirebowlsclub.co.uk/gallery</loc>"));
     }
     const head = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`, { method: "HEAD" }), env, ctx);
     assert.equal(head.status, 200);
     assert.equal(await head.text(), "");
   }
+});
+
+test('retired public honours address redirects to About and leaves the sitemap', async()=>{
+ const {default:worker}=await import(new URL('../dist/server/index.js',import.meta.url).href+'?honours='+Date.now());
+ const response=await worker.fetch(new Request('http://localhost/honours',{headers:{accept:'text/html'}}),{ASSETS:{fetch:async()=>new Response('Not found',{status:404})}},{waitUntil(){},passThroughOnException(){}});
+ assert.equal(response.status,308);assert.match(response.headers.get('location')||'',/\/about$/);
+ const {readFile}=await import('node:fs/promises');assert.doesNotMatch(await readFile('public/sitemap.xml','utf8'),/\/honours/);
 });

@@ -23,7 +23,7 @@ test("public section pages have matching page-specific sharing metadata", async 
   const ctx = { waitUntil() {}, passThroughOnException() {} };
   const titles = new Set();
 
-  for (const path of ["/about", "/news", "/gallery", "/sponsors", "/fixtures", "/honours", "/play-bowls", "/contact"]) {
+  for (const path of ["/about", "/news", "/gallery", "/sponsors", "/fixtures", "/play-bowls", "/contact"]) {
     const response = await worker.fetch(new Request(`https://empirebowlsclub.co.uk${path}`, { headers: { accept: "text/html" } }), env, ctx);
     assert.equal(response.status, 200, path);
     const html = await response.text();
@@ -42,7 +42,7 @@ test("public section pages have matching page-specific sharing metadata", async 
     titles.add(title);
   }
 
-  assert.equal(titles.size, 8, "each public section has its own title");
+  assert.equal(titles.size, 7, "each public section has its own title");
   const bytes = await readFile(new URL("../public/optimized/og-empire-clubhouse.jpg", import.meta.url));
   assert.equal(bytes.subarray(0, 3).toString("hex"), "ffd8ff", "social image exists and is a JPEG");
 });

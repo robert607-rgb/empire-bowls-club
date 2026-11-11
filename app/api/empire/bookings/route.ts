@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const rinkNumber = typeof input.rinkNumber === "number" ? input.rinkNumber : Number(input.rinkNumber);
     const bookingType = cleanText(input.bookingType, 20);
     const bookingNameInput = cleanText(input.bookingName, 100);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || (!timeSlots.length || timeSlots.length > slots.size || new Set(timeSlots).size !== timeSlots.length || timeSlots.some((slot) => !slots.has(slot))) || !Number.isInteger(rinkNumber) || rinkNumber < 1 || rinkNumber > 6 || !bookingNameInput || (bookingType && !["Roll Up", "League", "Competition", "Neutral"].includes(bookingType))) return Response.json({ error: "Please choose a valid date, rink, session and booking details." }, { status: 400 });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || (!timeSlots.length || timeSlots.length > slots.size || new Set(timeSlots).size !== timeSlots.length || timeSlots.some((slot) => !slots.has(slot))) || !Number.isInteger(rinkNumber) || rinkNumber < 1 || rinkNumber > 6 || (session.access === "admin" && !bookingNameInput && input.memberId === undefined) || (bookingType && !["Roll Up", "League", "Competition", "Neutral"].includes(bookingType))) return Response.json({ error: "Please choose a valid date, rink, session and booking details." }, { status: 400 });
     if (timeSlots.some((slot) => isMaintenanceSlot(bookingDate, slot))) return Response.json({ error: "Friday 10am–12pm is reserved for green maintenance." }, { status: 409 });
     const db = await getEmpireDatabase();
     await ensureMemberOwnership(db);
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const adminMember = adminMemberId ? await db.prepare("SELECT name FROM empire_members WHERE id = ?").bind(adminMemberId).first<{name:string}>() : null;
     if (adminMemberId && !adminMember) return Response.json({ error: "That member is no longer in the directory." }, { status: 400 });
     const ownerId = session.access === "member" ? session.member_id : adminMemberId;
-    const name = adminMember?.name || bookingNameInput;
+    const name = member?.name || adminMember?.name || bookingNameInput;
     const bookingName = bookingType ? `${name} · ${bookingType}` : name;
     try {
       const statements = [];

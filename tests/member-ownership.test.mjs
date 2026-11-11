@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { build } from 'esbuild';
 class TestDatabase {
-  constructor() { this.sql = new DatabaseSync(':memory:'); this.sql.exec(`CREATE TABLE empire_members (id INTEGER PRIMARY KEY, name TEXT NOT NULL); INSERT INTO empire_members VALUES (1,'Alice Example'),(2,'Bob Example'); CREATE TABLE empire_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT,booking_date TEXT NOT NULL,rink_number INTEGER NOT NULL,time_slot TEXT NOT NULL,booking_name TEXT NOT NULL,created_at TEXT NOT NULL,fixture_key TEXT,UNIQUE(booking_date,rink_number,time_slot)); CREATE TABLE empire_player_requests (id INTEGER PRIMARY KEY,match_name TEXT,match_date TEXT,players_required INTEGER,names_json TEXT,created_at TEXT); INSERT INTO empire_player_requests VALUES (1,'Match','2026-10-29',3,'["Earlier Name"]','2026-01-01');`); }
+  constructor() { this.sql = new DatabaseSync(':memory:'); this.sql.exec(`CREATE TABLE empire_members (id INTEGER PRIMARY KEY, name TEXT NOT NULL); INSERT INTO empire_members VALUES (1,'Alice Example'),(2,'Bob Example'); CREATE TABLE empire_bookings (id INTEGER PRIMARY KEY AUTOINCREMENT,booking_date TEXT NOT NULL,rink_number INTEGER NOT NULL,time_slot TEXT NOT NULL,booking_name TEXT NOT NULL,created_at TEXT NOT NULL,fixture_key TEXT,UNIQUE(booking_date,rink_number,time_slot)); CREATE TABLE empire_player_requests (id INTEGER PRIMARY KEY,match_name TEXT,match_date TEXT,players_required INTEGER,names_json TEXT,created_at TEXT); INSERT INTO empire_player_requests VALUES (1,'Match','2099-10-29',3,'["Earlier Name"]','2026-01-01');`); }
   prepare(sql) {const db=this.sql;let args=[];return {bind(...v){args=v;return this},async all(){return {results:db.prepare(sql).all(...args)}},async first(){return db.prepare(sql).get(...args)??null},async run(){const result=db.prepare(sql).run(...args);return {meta:{changes:Number(result.changes),last_row_id:Number(result.lastInsertRowid)}}}}}
   async batch(statements){this.sql.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());this.sql.exec('COMMIT');return results}catch(error){this.sql.exec('ROLLBACK');throw error}}
 }
@@ -21,7 +21,7 @@ function req(role,method='GET',body,params=''){return new Request('https://club.
 
 test('booking ownership is server-derived; only owner or admin can remove it',async()=>{
  let response=await bookings.POST(req('alice','POST',{bookingDate:'2026-10-29',rinkNumber:1,timeSlot:'10:00–12:00',bookingType:'Roll Up',bookingName:'Bob'}));assert.equal(response.status,201);
- let view=await (await bookings.GET(req('alice','GET',undefined,'?date=2026-10-29'))).json();const own=view.bookings[0];assert.equal(own.bookingName,'Bob · Roll Up');assert.equal(own.canCancel,true);
+ let view=await (await bookings.GET(req('alice','GET',undefined,'?date=2026-10-29'))).json();const own=view.bookings[0];assert.equal(own.bookingName,'Alice Example · Roll Up');assert.equal(own.canCancel,true);
  view=await (await bookings.GET(req('bob','GET',undefined,'?date=2026-10-29'))).json();assert.equal(view.bookings[0].canCancel,false);
  assert.equal((await bookings.DELETE(req('bob','DELETE',{id:own.id}))).status,403);assert.equal((await bookings.DELETE(req('alice','DELETE',{id:own.id}))).status,200);
  await db.prepare("INSERT INTO empire_bookings (booking_date,rink_number,time_slot,booking_name,created_at) VALUES ('2026-10-29',2,'10:00–12:00','Legacy','2026-01-01')").run();
@@ -52,7 +52,7 @@ test('members can change only their own signup; legacy names and capacity are pr
 });
 
 test('duplicate cleanup does not discard a sheet with linked signups',async()=>{
- await db.prepare("INSERT INTO empire_player_requests VALUES (10,'Duplicate','2026-10-31',4,'[]','2026-01-01'),(11,'Duplicate','2026-10-31',4,'[]','2026-01-01')").run();
+ await db.prepare("INSERT INTO empire_player_requests VALUES (10,'Duplicate','2099-10-31',4,'[]','2026-01-01'),(11,'Duplicate','2099-10-31',4,'[]','2026-01-01')").run();
  assert.equal((await signups.PUT(req('alice','PUT',{id:11,action:'join'}))).status,200);
  const result=await (await signups.GET(req('admin'))).json();
  assert.ok(result.requests.some(request=>request.id===11 && request.names.includes('Alice Example')));
@@ -74,4 +74,18 @@ test('admin can book several sessions on a member’s behalf with member ownersh
  const date='2026-11-03';const response=await bookings.POST(req('admin','POST',{bookingDate:date,rinkNumber:2,timeSlots:['10:00–12:00','12:00–14:00'],memberId:1,bookingType:'Roll Up',bookingName:'Ignored'}));assert.equal(response.status,201);
  const list=(await (await bookings.GET(req('alice','GET',undefined,'?date='+date))).json()).bookings;assert.equal(list.length,2);assert.ok(list.every(b=>b.canCancel&&b.bookingName.startsWith('Alice Example')));
  assert.equal((await bookings.POST(req('admin','POST',{bookingDate:date,rinkNumber:3,timeSlots:['10:00–12:00'],memberId:999,bookingName:'Unknown'}))).status,400);
+});
+
+test('sign-up match time and venue persist, members cannot alter them, and expired sheets close',async()=>{
+ const made=await signups.POST(req('admin','POST',{match:'New match',date:'2099-12-01',playersRequired:40,time:'14:30',venue:'Away'}));assert.equal(made.status,201);const id=(await made.json()).request.id;
+ let listed=(await(await signups.GET(req('alice'))).json()).requests.find(r=>r.id===id);assert.equal(listed.time,'14:30');assert.equal(listed.venue,'Away');
+ assert.equal((await signups.PUT(req('alice','PUT',{id,action:'join',venue:'Home'}))).status,403);
+ assert.equal((await signups.PUT(req('alice','PUT',{id,action:'join'}))).status,200);
+ assert.equal((await signups.PUT(req('admin','PUT',{id,match:'Updated match',date:'2099-12-01',playersRequired:40,time:'15:00',venue:'Home'}))).status,200);
+ listed=(await(await signups.GET(req('alice'))).json()).requests.find(r=>r.id===id);assert.equal(listed.time,'15:00');assert.equal(listed.venue,'Home');assert.equal(listed.joined,true);assert.ok(listed.names.includes('Alice Example'));
+ await db.prepare("UPDATE empire_player_requests SET match_date='2020-01-01' WHERE id=?").bind(id).run();
+ assert.equal((await signups.PUT(req('bob','PUT',{id,action:'join'}))).status,409);
+ assert.equal((await signups.PUT(req('alice','PUT',{id,action:'leave'}))).status,409);
+ assert.equal((await(await signups.GET(req('alice'))).json()).requests.find(r=>r.id===id).expired,true);
+ assert.equal((await signups.POST(req('admin','POST',{match:'Invalid time',date:'2099-12-01',playersRequired:40,time:'29:30',venue:'Away'}))).status,400);
 });

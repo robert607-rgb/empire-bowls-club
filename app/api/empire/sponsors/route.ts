@@ -1,3 +1,4 @@
+import {originalSponsors} from "../../../../lib/original-sponsors";
 import {
   apiError,
   assertRequestSize,
@@ -74,9 +75,12 @@ export async function GET() {
         "SELECT id, title, description, website, logo_object_key, logo_file_name, logo_content_type, created_at FROM empire_sponsors ORDER BY created_at DESC, id DESC",
       )
       .all<SponsorRow>();
+    const ready=await db.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name='empire_hidden_sponsors'").first();
+    const hidden=ready?(await db.prepare('SELECT id FROM empire_hidden_sponsors').all<{id:number}>()).results:[];
+    const originals=originalSponsors.map((item,index)=>({id:-(index+1),title:item.name,description:item.strapline,website:item.website,logoUrl:item.image,createdAt:''})).filter(item=>!hidden.some((row:{id:number})=>row.id===item.id));
     return Response.json(
-      { sponsors: (result.results ?? []).map(mapSponsor) },
-      { headers: { "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400" } },
+      { sponsors: [...originals,...(result.results ?? []).map(mapSponsor)] },
+      { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
     return apiError(error);
@@ -141,6 +145,12 @@ export async function DELETE(request: Request) {
     const id = Number(input.id);
     if (!Number.isInteger(id)) return Response.json({ error: "Choose a valid sponsor." }, { status: 400 });
     const db = await getEmpireDatabase();
+    if(id<0){
+      if(!originalSponsors[-id-1])return Response.json({error:'Sponsor not found.'},{status:404});
+      await db.prepare('CREATE TABLE IF NOT EXISTS empire_hidden_sponsors(id INTEGER PRIMARY KEY)').run();
+      await db.prepare('INSERT OR IGNORE INTO empire_hidden_sponsors(id) VALUES(?)').bind(id).run();
+      return Response.json({removed:true});
+    }
     const current = await db
       .prepare("SELECT logo_object_key FROM empire_sponsors WHERE id = ?")
       .bind(id)

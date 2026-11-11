@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import ClubPage, { type Page } from "../club-page";
 import { pagePaths, descriptions } from "../site-pages";
 import { listGalleryAlbums } from "../api/empire/gallery/gallery-data";
@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ section: string }> };
 async function resolvePage(params: Props["params"]) {
   const { section } = await params;
+  if(section === "honours") permanentRedirect("/about");
   return (Object.keys(pagePaths) as Page[]).find(page => pagePaths[page] === `/${section}`);
 }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

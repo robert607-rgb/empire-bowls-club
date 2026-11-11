@@ -5837,3 +5837,41 @@ footer {
 .contact-cards a small { display: block; max-width: 100%; overflow-wrap: anywhere; }
 @media (max-width: 680px) { .contact-cards a { flex-basis: 100%; width: 100%; } }
 @media (max-width: 900px) { .empire-hero { background-position: 64% 72%; } }
+
+/* A brighter Empire palette, retaining navy, green and gold. */
+:root{--paper:#f6f9f3;--muted-light:#e4efeb;--paper-surface:#f7f1e2}
+body{background:radial-gradient(circle at 12% 5%,rgba(244,206,80,.12),transparent 30rem),linear-gradient(145deg,#1b4868 0%,#245575 48%,#1f6052 100%)}
+.site-header{background:rgba(22,65,98,.98)}
+.upcoming-section{background:linear-gradient(135deg,#246b5a,#245575)}
+:is(.fixture-grid article,.fixture-list article,.benefit-grid article,.contact-cards a){background:#306a84}
+:is(.page>.eyebrow,.sponsors-intro .eyebrow,.contact-details .eyebrow,.play-intro .eyebrow){color:#ffe59a}
+main :is(p,li,small,a,b,strong,summary,label,button){overflow-wrap:break-word}
+main :is(input,textarea,select){max-width:100%}
+/* Light reading surfaces always use dark text; dark cards keep pale text. */
+.gallery-page :is(.lead,.gallery-intro p:not(.eyebrow),.gallery-loading){color:#3b5362}
+.opened-gallery-album :is(h2,p){color:#17394c}
+.gallery-cover-copy :is(b,span,small){color:#17394c}
+.zone-shell .member-content .info-list{background:#f7f1e2!important;color:#17394c}
+.zone-shell .member-content .info-list>:is(h2,p),.zone-shell .member-content .info-list .request-card :is(b,p,span){color:#17394c}
+.zone-shell .directory-head :is(h2,p,label){color:#f6f9f3}
+.zone-shell .member-contact-rows>article :is(b,span){color:#17394c}
+.admin-zone :is(.admin-card,.admin-files-panel,.admin-members-panel,.fixture-import-panel,.team-sheet-admin) :is(h2,h3,h4,p,label,legend,small){color:#17394c}
+.admin-zone .sponsor-admin-list :is(b,span,a),.admin-zone .admin-files-list :is(b,span),.admin-zone .committee-admin-grid :is(b,strong,a){color:#17394c}
+.admin-zone :is(.admin-card,.admin-files-panel,.admin-members-panel,.fixture-import-panel,.team-sheet-admin) .status{color:#fff8e9}
+.admin-zone :is(.admin-files-tab,.admin-members-tab)>summary :is(b,span){color:#17394c}
+:is(.booking-panel,.login-card,.contact-form) :is(p,label,small){color:#3b5362}
+:is(.booking-panel,.login-card,.contact-form) .eyebrow{color:#9b243e}
+:is(.booking-panel,.login-card,.contact-form) .status{color:#fff8e9}
+:is(.booking-panel,.admin-zone,.zone-shell .member-content) .outline{color:#17394c;border-color:#567185;background:#fffaf0}
+/* The full-width About sections share a consistent reading surface. */
+.empire-about-page .accordion-list>details{background:#f7f1e2;color:#17394c}
+.empire-about-page .accordion-list>details :is(summary,p,li,h2,h3,h4,blockquote,figcaption,span,strong,b,a){color:#17394c!important}
+.empire-about-page :is(.heritage-panel,.heritage-panel-navy,.heritage-pullquote,.heritage-year-mark){background:#deeadf}
+.empire-about-page :is(.committee article,.winner-list p,.heritage-photo-card,.heritage-photo-link){background:#f7f1e2}
+.empire-about-page .heritage-event time{background:#e4d8ac}
+.empire-about-page .heritage-hero-collage strong{color:#fff9e9!important}
+.empire-about-page .heritage-hero-collage span{color:#ffe59a!important}
+.empire-about-page .heritage-hero-collage{margin:0 0 30px;min-height:320px}
+@media(max-width:600px){.empire-about-page .heritage-hero-collage{min-height:280px}.empire-about-page .heritage-hero-collage>div{left:20px;right:20px;bottom:20px}}
+
+:is(.portal-intro>.eyebrow,.zone-head .eyebrow,.play-hero .eyebrow){color:#ffe59a}

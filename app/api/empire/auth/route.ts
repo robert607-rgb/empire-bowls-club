@@ -1,9 +1,12 @@
+import {memberSections} from "../../../../lib/empire-admin-access";
 import {
   apiError,
   authenticateEmpireAccess,
   authenticateEmpireMember,
   endEmpireSession,
   getEmpireAccess,
+  getEmpireSession,
+  getEmpireDatabase,
   hasEmpireAccess,
   rotateEmpireAccess,
   readJson,
@@ -58,8 +61,15 @@ export async function POST(request: Request) {
         { status: result.rateLimited ? 429 : 401 },
       );
     }
+    let sections: string[]=[];
+    if(access==='member' && input.adminMember===true){
+      const check=new Request(request.url,{headers:{cookie:`empire_session=${result.token}`}});
+      const session=await getEmpireSession(check);
+      sections=session?.member_id ? await memberSections(await getEmpireDatabase(),session.member_id):[];
+      if(!sections.length){await endEmpireSession(check);return Response.json({error:'The main administrator has not granted this account admin access.'},{status:403,headers:{'cache-control':'no-store'}});}
+    }
     return Response.json(
-      { access },
+      { access, sections },
       { headers: { "set-cookie": sessionCookie(result.token, result.expiresAt), "cache-control": "no-store" } },
     );
   } catch (error) {

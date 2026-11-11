@@ -4,6 +4,10 @@ import "./gallery.css";
 import "./gallery-admin.css";
 import "./member-overview.css";
 import "./competition.css";
+import "./member-workflows.css";
+import ClubChampions from "./club-champions";
+import ManualFixture from "./manual-fixture";
+import {clubToday} from "../lib/club-date";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
 import EmpireIntro from "./empire-intro";
@@ -38,7 +42,8 @@ type AdminTab =
   | "sponsors"
   | "documents"
   | "security"
-  | "admin-access";
+  | "admin-access"
+  | "champions";
 export type Page =
   | "Home"
   | "About the Club"
@@ -46,7 +51,6 @@ export type Page =
   | "Gallery"
   | "Sponsors"
   | "Fixtures"
-  | "Honours"
   | "Play bowls"
   | "Contact";
 type Booking = {
@@ -161,7 +165,6 @@ const nav: Page[] = [
   "Gallery",
   "Sponsors",
   "Fixtures",
-  "Honours",
   "Play bowls",
   "Contact",
 ];
@@ -297,43 +300,7 @@ const starterNews: NewsItem[] = [
     publishedAt: "2024-11-01T09:00:00.000Z",
   },
 ];
-const sponsors: Sponsor[] = [
-  {
-    name: "Frost Funeral Service",
-    tier: "Empire club sponsor",
-    strapline: "Professional, caring funeral services for the local community.",
-    image: "/optimized/sponsors/frost-funeral-service.webp",
-    website:
-      "https://funeral-notices.co.uk/services-directory/view/4589?source=notice",
-    linkLabel: "View sponsor information",
-    note: "No standalone official website was identified; this opens the local business listing.",
-  },
-  {
-    name: "In Action Bowlswear",
-    tier: "Empire club sponsor",
-    strapline: "Bowls clothing, equipment and friendly specialist advice.",
-    image: "/optimized/sponsors/inaction-bowlswear.webp",
-    website: "https://inactionbowlswear.co.uk/",
-    linkLabel: "Visit inactionbowlswear.co.uk",
-  },
-  {
-    name: "Mike’s Maindrain Services",
-    tier: "Empire club sponsor",
-    strapline: "Drain, sewer and waste services for homes and businesses.",
-    image: "/optimized/sponsors/mikes-maindrain.webp",
-    website: "https://www.checkatrade.com/trades/mikesmaindrain",
-    linkLabel: "View sponsor profile",
-    note: "This opens the company’s verified trade profile.",
-  },
-  {
-    name: "NH Heating Services",
-    tier: "Empire club sponsor",
-    strapline: "Domestic and commercial heating support across Kent.",
-    image: "/optimized/sponsors/nh-heating.webp",
-    website: "https://www.nhheating.co.uk/",
-    linkLabel: "Visit nhheating.co.uk",
-  },
-];
+
 function apiHeaders(_access: Access, _password: string): Record<string,string> {
   // Browser credentials are now held in a short-lived HttpOnly cookie, so no
   // password or bearer token is exposed to the page or sent in request headers.
@@ -775,6 +742,8 @@ function displayNewsDate(value: string) {
 function GalleryPage({ initialGallery }: { initialGallery: GalleryAlbum[] | null }) {
   const [albums, setAlbums] = useState<GalleryAlbum[] | null>(initialGallery);
   const [loadError, setLoadError] = useState("");
+  const [selectedAlbumId,setSelectedAlbumId]=useState<number|null>(null);
+  const selectedAlbum=albums?.find(album=>album.id===selectedAlbumId);
   const [selectedPhoto, setSelectedPhoto] = useState<{
     album: GalleryAlbum;
     photo: GalleryPhoto;
@@ -793,11 +762,20 @@ function GalleryPage({ initialGallery }: { initialGallery: GalleryAlbum[] | null
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);
     window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
-    return () => {
+
+  return () => {
       window.clearTimeout(timer);
       window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, refresh);
     };
   }, [refresh]);
+  useEffect(()=>{
+    if(!selectedPhoto)return;
+    const previous=document.activeElement as HTMLElement|null;
+    const close=document.querySelector<HTMLButtonElement>('.gallery-lightbox-close');close?.focus();
+    const key=(event:KeyboardEvent)=>{if(event.key==='Escape'){event.preventDefault();setSelectedPhoto(null)}if(event.key==='Tab'){event.preventDefault();close?.focus()}};
+    document.addEventListener('keydown',key);const overflow=document.body.style.overflow;document.body.style.overflow='hidden';
+    return()=>{document.removeEventListener('keydown',key);document.body.style.overflow=overflow;previous?.focus()};
+  },[selectedPhoto]);
   return (
     <section className="gallery-page">
       <div className="wrap gallery-intro">
@@ -807,37 +785,7 @@ function GalleryPage({ initialGallery }: { initialGallery: GalleryAlbum[] | null
         {loadError && <p className="news-load-error">{loadError}</p>}
       </div>
       <div className="wrap gallery-album-list">
-        {albums?.length ? albums.map((album) => (
-          <article className="gallery-album" key={album.id}>
-            <div className="gallery-album-heading">
-              <div>
-                <p className="eyebrow">Photo album</p>
-                <h2>{album.title}</h2>
-                {album.description && <p>{album.description}</p>}
-              </div>
-              <span>{album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span>
-            </div>
-            <div className="gallery-photo-grid">
-              {album.photos.map((photo) => (
-                <button
-                  className="gallery-photo"
-                  type="button"
-                  key={photo.id}
-                  onClick={() => setSelectedPhoto({ album, photo })}
-                  aria-label={`Open photo from ${album.title}`}
-                >
-                  <img src={photo.imageUrl} alt={`${album.title} – Empire Bowls Club`} loading="lazy" decoding="async" />
-                </button>
-              ))}
-            </div>
-          </article>
-        )) : albums !== null ? (
-          <div className="gallery-empty">
-            <span>Empire moments</span>
-            <h2>The gallery is ready.</h2>
-            <p>Photos from the club will be shared here soon.</p>
-          </div>
-        ) : !loadError ? <p className="gallery-loading">Loading the gallery…</p> : null}
+        {selectedAlbum ? <section className="opened-gallery-album"><button className="outline" type="button" onClick={()=>setSelectedAlbumId(null)}>← All albums</button><h2>{selectedAlbum.title}</h2>{selectedAlbum.description&&<p>{selectedAlbum.description}</p>}<div className="gallery-photo-grid">{selectedAlbum.photos.map(photo=><button className="gallery-photo" key={photo.id} type="button" onClick={()=>setSelectedPhoto({album:selectedAlbum,photo})} aria-label={`Open ${photo.fileName} from ${selectedAlbum.title}`}><img src={photo.imageUrl} alt={`${selectedAlbum.title} – Empire Bowls Club`} loading="lazy" decoding="async"/></button>)}</div>{!selectedAlbum.photos.length&&<p>No photos in this album yet.</p>}</section> : albums?.length ? <div className="gallery-cover-grid">{albums.map(album=><button type="button" className="gallery-cover-card" key={album.id} onClick={()=>setSelectedAlbumId(album.id)} aria-label={`View ${album.title}, ${album.photos.length} photos`}>{album.photos[0]?<img src={album.photos[0].imageUrl} alt={`${album.title} – Empire Bowls Club`} loading="lazy" decoding="async"/>:<span className="gallery-cover-placeholder">Photos coming soon</span>}<span className="gallery-cover-copy"><b>{album.title}</b>{album.description&&<span>{album.description}</span>}<small>{album.photos.length} {album.photos.length===1?'photo':'photos'} · View album →</small></span></button>)}</div> : albums!==null ? <div className="gallery-empty"><h2>The gallery is ready.</h2><p>Photos from the club will be shared here soon.</p></div> : !loadError?<p>Loading the gallery…</p>:null}
       </div>
       {selectedPhoto && (
         <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${selectedPhoto.album.title} photo`} onClick={() => setSelectedPhoto(null)}>
@@ -862,7 +810,6 @@ function renderPage(
   if (page === "Gallery") return <GalleryPage initialGallery={initialGallery} />;
   if (page === "Sponsors") return <SponsorsPage />;
   if (page === "Fixtures") return <FixturesPage />;
-  if (page === "Honours") return <HonoursPage />;
   if (page === "Play bowls") return <PlayBowlsPage openPortal={openPortal} />;
   return <ContactPage />;
 }
@@ -1022,7 +969,7 @@ function SponsorsPage() {
         ),
       );
   }, []);
-  const allSponsors = [...sponsors, ...managedSponsors];
+  const allSponsors = managedSponsors;
   return (
     <section className="sponsors-page">
       <span className="peacock-tail-pattern peacock-tail-pattern-sponsors" aria-hidden="true" />
@@ -1123,8 +1070,7 @@ function AboutPage() {
   }, []);
 
   return (
-    <section className="page wrap">
-      <span className="peacock-tail-pattern peacock-tail-pattern-about" aria-hidden="true" />
+    <section className="page wrap empire-about-page">
       <p className="eyebrow">About the club</p>
       <h1>A century of community on the green.</h1>
       <p className="lead">
@@ -1133,9 +1079,9 @@ function AboutPage() {
       </p>
       <div className="about-layout">
         <div className="accordion-list">
-          <details open>
+          <details name="empire-about" open>
             <summary>
-              <span>04</span>
+              <span>01</span>
               <b>The Empire story</b>
               <i>+</i>
             </summary>
@@ -1499,9 +1445,9 @@ function AboutPage() {
               </div>
             </div>
           </details>
-          <details open>
+          <details name="empire-about">
             <summary>
-              <span>01</span>
+              <span>02</span>
               <b>The people of Empire</b>
               <i>+</i>
             </summary>
@@ -1530,7 +1476,7 @@ function AboutPage() {
               </figure>
             </div>
           </details>
-          <details>
+          <details name="empire-about">
             <summary>
               <span>03</span>
               <b>Achievements</b>
@@ -1754,77 +1700,9 @@ function AboutPage() {
               </p>
             </div>
           </details>
-          <details>
-            <summary>
-              <span>02</span>
-              <b>Club Champions 2025</b>
-              <i>+</i>
-            </summary>
-            <div className="winner-list">
-              <p>
-                <b>Men’s Championship</b>
-                <span>Winner Max Fisher · runner-up Bruce Woodington</span>
-              </p>
-              <p>
-                <b>Ladies Championship</b>
-                <span>Winner Jan Munday · runner-up Jenny Hands</span>
-              </p>
-              <p>
-                <b>Men’s Pairs</b>
-                <span>
-                  Winners Ken Boswell & Gary Carpenter · runners-up Martin
-                  Thomas & Bruce Woodington
-                </span>
-              </p>
-              <p>
-                <b>Ladies Pairs</b>
-                <span>
-                  Winners Ann Norris & Elaine Horrigan · runners-up Linda
-                  Lawrence & Janet Turner
-                </span>
-              </p>
-              <p>
-                <b>Mixed Triples</b>
-                <span>
-                  Winners Ann Norris, Terry Bland / Geoff Puncheon & Gary
-                  Carpenter · runners-up Martin Thomas, Alan Hands & Roger
-                  Gladman
-                </span>
-              </p>
-              <p>
-                <b>Frost Cup</b>
-                <span>
-                  Winners Linda Lawrence & Bruce Woodington · runners-up Ken
-                  Boswell & Ray Norris
-                </span>
-              </p>
-              <p>
-                <b>101</b>
-                <span>Winner Max Fisher · runner-up Bruce Woodington</span>
-              </p>
-              <p>
-                <b>Cliff Hunter Handicap</b>
-                <span>Winner Richard Gausby · runner-up Max Fisher</span>
-              </p>
-            </div>
-          </details>
+          <details name="empire-about"><summary><span>04</span><b>Club champions</b><i>+</i></summary><ClubChampions /></details>
         </div>
-        <aside className="location-card">
-          <p className="eyebrow">Find us</p>
-          <h2>Empire Bowls Club</h2>
-          <p>
-            Norton Lane (off Knockhall Road)
-            <br />
-            Greenhithe, Kent
-            <br />
-            DA9 9XY
-          </p>
-          <hr />
-          <p className="small">
-            Car park access is via Parkhill Road, entered at the side of 25
-            Knockhall Road. Turn right into Norton Lane.
-          </p>
-        </aside>
+
       </div>
     </section>
   );
@@ -1875,65 +1753,6 @@ function FixturesPage() {
           When the new season is announced, the full schedule will appear here
           first, with team sheets and availability in the members area.
         </p>
-      </div>
-    </section>
-  );
-}
-function HonoursPage() {
-  return (
-    <section className="page wrap">
-      <p className="eyebrow">Club honours</p>
-      <h1>Celebrating Empire achievement.</h1>
-      <p className="lead">
-        A record of club and county success, built by generations of Empire
-        bowlers.
-      </p>
-      <div className="honours-grid">
-        <article>
-          <span>Kent County</span>
-          <h2>Cox Cup finalists</h2>
-          <p>
-            Empire were represented by a strong ten-player side in the Kent
-            County Cox Cup final.
-          </p>
-        </article>
-        <article>
-          <span>Kent County</span>
-          <h2>Singles & Maude Woods</h2>
-          <p>
-            Jan Munday reached the Ladies Singles semi-final and Ann Norris was
-            a Maude Woods semi-finalist.
-          </p>
-        </article>
-        <article>
-          <span>Bexley Borough</span>
-          <h2>Mixed Fours finalists</h2>
-          <p>
-            Aggie and Bruce Woodington, Gill Searing and Gary Carpenter reached
-            the final.
-          </p>
-        </article>
-      </div>
-      <div className="results-board">
-        <p className="eyebrow">Club competition winners</p>
-        <div>
-          <p>
-            <b>Men’s Championship</b>
-            <span>Max Fisher</span>
-          </p>
-          <p>
-            <b>Ladies Championship</b>
-            <span>Jan Munday</span>
-          </p>
-          <p>
-            <b>Men’s Pairs</b>
-            <span>Ken Boswell & Gary Carpenter</span>
-          </p>
-          <p>
-            <b>Ladies Pairs</b>
-            <span>Ann Norris & Elaine Horrigan</span>
-          </p>
-        </div>
       </div>
     </section>
   );
@@ -2248,7 +2067,7 @@ function Portal({
   useEffect(()=>{if(access!=="member"){setDelegateView(false);setSections([]);return;}void fetch('/api/empire/admin-access',{cache:'no-store'}).then(r=>r.json()).then(data=>setSections(data.sections||[])).catch(()=>setSections([]))},[access]);
   const [loginError, setLoginError] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
-  const login = async (kind: Access, supplied: string, firstName = "") => {
+  const login = async (kind: Access, supplied: string, firstName = "", adminMember=false) => {
     setLoggingIn(true);
     setLoginError("");
     try {
@@ -2257,7 +2076,7 @@ function Portal({
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
           kind === "member"
-            ? { access: kind, firstName, code: supplied }
+            ? { access: kind, firstName, code: supplied, adminMember }
             : { access: kind, password: supplied },
         ),
       });
@@ -2267,6 +2086,9 @@ function Portal({
         return;
       }
       setPassword("");
+      setSections(result.sections||[]);
+      setDelegateView(adminMember);
+      window.sessionStorage.setItem("empire-volunteer-view",adminMember?"1":"0");
       setAccess(kind);
     } catch {
       setLoginError("We could not sign you in. Please check your connection and try again.");
@@ -2274,12 +2096,14 @@ function Portal({
       setLoggingIn(false);
     }
   };
+  useEffect(()=>{if(access==="member")setDelegateView(window.sessionStorage.getItem("empire-volunteer-view")==="1")},[access]);
   const leave = () => {
+    window.sessionStorage.removeItem("empire-volunteer-view");
     void fetch("/api/empire/auth", { method: "DELETE" });
     setPassword("");
     setAccess(null);
   };
-  if (access === "member") return <>{sections.length>0&&<div className="portal-shell" style={{paddingBlock:"16px",minHeight:0}}><button className="outline" onClick={()=>setDelegateView(value=>!value)}>{delegateView?"Back to Members Zone":"Volunteer admin tools"}</button></div>}{delegateView&&sections.length>0?<AdminZone password={password} onLeave={leave} sections={sections}/>:<MemberZone password={password} onLeave={leave}/>}</>;
+  if (access === "member") return <>{sections.length>0&&<div className="portal-shell" style={{paddingBlock:"16px",minHeight:0}}><button className="outline" onClick={()=>setDelegateView(value=>{window.sessionStorage.setItem("empire-volunteer-view",value?"0":"1");return !value})}>{delegateView?"Back to Members Zone":"Volunteer admin tools"}</button></div>}{delegateView&&sections.length>0?<AdminZone password={password} onLeave={leave} sections={sections}/>:<MemberZone password={password} onLeave={leave}/>}</>;
   if (access === "admin")
     return <AdminZone password={password} onLeave={leave} />;
   return (
@@ -2301,12 +2125,15 @@ function Portal({
           busy={loggingIn}
           onLogin={(firstName, code) => login("member", code, firstName)}
         />
+        <div className="admin-login-options">
         <LoginCard
           title="Admin Zone"
           description="Add members and publish team sheets, club documents and player-request forms."
           busy={loggingIn}
           onLogin={(value) => login("admin", value)}
         />
+          <MemberLoginCard title="Volunteer admin" description="Use your member details here if the main administrator has granted you admin access. Only your assigned sections will open." busy={loggingIn} onLogin={(firstName,code)=>login("member",code,firstName,true)} />
+        </div>
       </section>
       {loginError && <Status type="error" message={loginError} />}
     </main>
@@ -2423,31 +2250,34 @@ function MemberZone({
     rink: number;
     slots: string[];
   } | null>(null);
-  const [bookingName, setBookingName] = useState("");
+  const [identity,setIdentity]=useState<{id:number;name:string}|null>(null);
+  const [alerts,setAlerts]=useState<{id:number;opponent:string;competition:string;date:string;role:string}[]>([]);
   const [bookingType, setBookingType] = useState("Roll Up");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [memberTab, setMemberTab] = useState<
-    "team" | "players" | "documents" | "directory" | "competitions"
-  >("team");
+    "bookings" | "team" | "players" | "documents" | "directory" | "competitions"
+  >("bookings");
   const [directorySearch, setDirectorySearch] = useState("");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
   const refresh = useCallback(async () => {
     try {
-      const [bookingResponse, memberResponse, fileResponse, teamSheetResponse] = await Promise.all([
+      const [bookingResponse, memberResponse, fileResponse, teamSheetResponse, homeResponse] = await Promise.all([
         fetch(`/api/empire/bookings?date=${date}`, { headers }),
         fetch("/api/empire/members", { headers }),
         fetch("/api/empire/uploads", { headers }),
         fetch("/api/empire/team-sheets", { headers }),
+        fetch("/api/empire/member-home",{headers,cache:"no-store"}),
       ]);
       if (
         !bookingResponse.ok ||
         !memberResponse.ok ||
         !fileResponse.ok ||
-        !teamSheetResponse.ok
+        !teamSheetResponse.ok || !homeResponse.ok
       ) {
         throw new Error("Member data request failed");
       }
+      const home=await homeResponse.json();setIdentity(home.member);setAlerts(home.alerts??[]);
       setBookings((await bookingResponse.json()).bookings ?? []);
       setMembers((await memberResponse.json()).members ?? []);
       setFiles((await fileResponse.json()).files ?? []);
@@ -2462,8 +2292,10 @@ function MemberZone({
     const timer = window.setTimeout(handleUpdate, 0);
     window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("focus", handleUpdate);
+    const poll=window.setInterval(handleUpdate,60000);
     return () => {
       window.clearTimeout(timer);
+      window.clearInterval(poll);
       window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("focus", handleUpdate);
     };
@@ -2482,7 +2314,7 @@ function MemberZone({
           rinkNumber: selected.rink,
           timeSlots: selected.slots,
           bookingType,
-          bookingName,
+
         }),
       });
       const result = await response.json();
@@ -2494,7 +2326,7 @@ function MemberZone({
         `Rink ${selected.rink} is booked for ${selected.slots.join(", ")} on ${displayDate(date)}.`,
       );
       setSelected(null);
-      setBookingName("");
+
       setBookingType("Roll Up");
       void refresh();
     } catch {
@@ -2534,7 +2366,7 @@ function MemberZone({
       <div className="zone-head">
         <div>
           <p className="eyebrow">Members Zone</p>
-          <h1>Welcome to the club.</h1>
+          <h1>{identity ? `Hello ${identity.name}.` : "Welcome to the club."}</h1>
           <p>
             Book a rink, see the latest notices and find key club information in
             one place.
@@ -2544,7 +2376,60 @@ function MemberZone({
           Leave area
         </button>
       </div>
-      <section className="booking-panel">
+      {!!alerts.length&&<section className="member-selection-alerts" aria-label="Your match selections">{alerts.filter(alert=>alert.date>=clubToday()).map(alert=><div key={alert.id}><b>{alert.role==='reserve'?'You are a reserve':'You have been selected'} for Empire v {alert.opponent}</b><span>{displayDate(alert.date)} · {alert.competition}</span><button type="button" className="outline" onClick={()=>setMemberTab('team')}>View team sheets</button></div>)}</section>}
+      <div
+        className="member-area-tabs"
+        role="tablist"
+        aria-label="Members area sections"
+      >
+        <button className={memberTab === "bookings" ? "active" : ""} role="tab" aria-selected={memberTab === "bookings"} aria-controls="member-bookings" onClick={()=>setMemberTab("bookings")}>Rink bookings</button>
+        <button
+          className={memberTab === "competitions" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "competitions"}
+          aria-controls="member-competitions"
+          onClick={() => setMemberTab("competitions")}
+        >
+          Competitions
+        </button>
+        <button
+          className={memberTab === "team" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "team"}
+          aria-controls="member-team-sheets"
+          onClick={() => setMemberTab("team")}
+        >
+          Team sheets
+        </button>
+        <button
+          className={memberTab === "players" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "players"}
+          aria-controls="member-player-requests"
+          onClick={() => setMemberTab("players")}
+        >
+          Players required
+        </button>
+        <button
+          className={memberTab === "documents" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "documents"}
+          aria-controls="member-documents"
+          onClick={() => setMemberTab("documents")}
+        >
+          Club documents
+        </button>
+        <button
+          className={memberTab === "directory" ? "active" : ""}
+          role="tab"
+          aria-selected={memberTab === "directory"}
+          aria-controls="member-directory"
+          onClick={() => setMemberTab("directory")}
+        >
+          Club directory
+        </button>
+      </div>
+      {memberTab === "bookings" && <section className="booking-panel" id="member-bookings" role="tabpanel">
         <div className="booking-head">
           <div>
             <p className="eyebrow">Six-rink booking</p>
@@ -2629,8 +2514,8 @@ function MemberZone({
               </span>
             </div>
             <label>
-              Booking name
-              <input value={bookingName} onChange={(event) => setBookingName(event.target.value)} required maxLength={100} />
+              Booking for
+              <input value={identity?.name??""} readOnly aria-readonly="true" />
             </label>
             <label>
               Booking type
@@ -2656,59 +2541,8 @@ function MemberZone({
         )}
         {notice && <Status message={notice} />}
         {error && <Status type="error" message={error} />}
-      </section>
-      <div
-        className="member-area-tabs"
-        role="tablist"
-        aria-label="Members area sections"
-      >
-        <button
-          className={memberTab === "competitions" ? "active" : ""}
-          role="tab"
-          aria-selected={memberTab === "competitions"}
-          aria-controls="member-competitions"
-          onClick={() => setMemberTab("competitions")}
-        >
-          Competitions
-        </button>
-        <button
-          className={memberTab === "team" ? "active" : ""}
-          role="tab"
-          aria-selected={memberTab === "team"}
-          aria-controls="member-team-sheets"
-          onClick={() => setMemberTab("team")}
-        >
-          Team sheets
-        </button>
-        <button
-          className={memberTab === "players" ? "active" : ""}
-          role="tab"
-          aria-selected={memberTab === "players"}
-          aria-controls="member-player-requests"
-          onClick={() => setMemberTab("players")}
-        >
-          Players required
-        </button>
-        <button
-          className={memberTab === "documents" ? "active" : ""}
-          role="tab"
-          aria-selected={memberTab === "documents"}
-          aria-controls="member-documents"
-          onClick={() => setMemberTab("documents")}
-        >
-          Club documents
-        </button>
-        <button
-          className={memberTab === "directory" ? "active" : ""}
-          role="tab"
-          aria-selected={memberTab === "directory"}
-          aria-controls="member-directory"
-          onClick={() => setMemberTab("directory")}
-        >
-          Club directory
-        </button>
-      </div>
-      {memberTab === "competitions" ? (
+      </section>}
+      {memberTab === "bookings" ? null : memberTab === "competitions" ? (
         <section className="member-content" id="member-competitions">
           <CompetitionTool members={members} />
         </section>
@@ -2721,12 +2555,7 @@ function MemberZone({
         </section>
       ) : memberTab === "players" ? (
         <section className="member-content" id="member-player-requests">
-          <InfoList
-            title="Players required"
-            description="Let captains know when you are available to play."
-            files={group("players_required")}
-            password={password}
-          />
+          <PlayerRequestBoard password={password} />
         </section>
       ) : memberTab === "documents" ? (
         <section className="member-content" id="member-documents">
@@ -2754,15 +2583,13 @@ function MemberZone({
             </label>
           </div>
           <DirectoryEmail members={members} />
-          <div className="directory-list">
+          <div className="directory-list member-contact-rows">
             {visibleMembers.length ? (
               visibleMembers.map((member) => (
                 <article key={member.id}>
                   <b>{member.name}</b>
-                  <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
-                    {member.phone}
-                  </a>
-                  <a href={`mailto:${member.email}`}>{member.email}</a>
+                  <div><span>Email</span>{member.email?<a href={`mailto:${member.email}`}>{member.email}</a>:<span>Not provided</span>}</div>
+                  <div><span>Contact number</span>{member.phone?<a href={`tel:${member.phone.replaceAll(" ", "")}`}>{member.phone}</a>:<span>Not provided</span>}</div>
                 </article>
               ))
             ) : members.length ? (
@@ -2780,6 +2607,9 @@ function MemberZone({
   );
 }
 type PlayerRequest = {
+  time?:string;
+  venue?:string;
+  expired?:boolean;
   id: number;
   match: string;
   date: string;
@@ -2859,8 +2689,8 @@ function PlayerRequestBoard({ password }: { password: string }) {
     <article className="info-list player-board">
       <h2>Players required</h2>
       <p>Join or leave a sign-up sheet using your own member account. If your name is already on an earlier sheet, ask an administrator to update that entry rather than adding it again.</p>
-      {requests.length ? (
-        requests.map((r) => {
+      {requests.some(r=>!r.expired) ? (
+        requests.filter(r=>!r.expired).map((r) => {
           const names = r.names;
           return (
             <div className="request-card" key={r.id}>
@@ -2870,7 +2700,7 @@ function PlayerRequestBoard({ password }: { password: string }) {
                   <b>{r.match}</b>
                 </div>
                 <span className="request-card-meta">
-                  {r.date} · {r.playersRequired} player
+                  {displayDate(r.date)}{r.time&&` · ${r.time}`}{r.venue&&` · ${r.venue}`} · {r.playersRequired} player
                   {r.playersRequired === 1 ? "" : "s"} required
                 </span>
               </div>
@@ -2891,7 +2721,7 @@ function PlayerRequestBoard({ password }: { password: string }) {
                 disabled={!r.joined && names.length >= r.playersRequired}
                 onClick={() => void save(r.id, Boolean(r.joined))}
               >
-                {r.joined ? "Remove my name" : "Add my name"}
+                {r.joined ? "Withdraw availability" : "I’m available"}
               </button>
               <button
                 className="outline print-signup"
@@ -2909,13 +2739,14 @@ function PlayerRequestBoard({ password }: { password: string }) {
       ) : (
         <p className="empty">There are no player requests at the moment.</p>
       )}
+      {requests.some(r=>r.expired)&&<details className="signup-history"><summary>Past sign-up sheets</summary>{requests.filter(r=>r.expired).map(r=><article key={r.id}><h3>{r.match}</h3><p>{displayDate(r.date)} · {r.time} · {r.venue}</p><p>{r.names.join(', ')||'No names recorded.'}</p></article>)}</details>}
       {message && <Status message={message} />}
       {error && <Status type="error" message={error} />}
       {printRequest && (
         <section className="player-signup-print" aria-hidden="true">
           <p>Empire Bowls Club</p>
           <h1>{printRequest.match}</h1>
-          <p>{displayDate(printRequest.date)} · Player sign-up sheet</p>
+          <p>{displayDate(printRequest.date)} · {printRequest.time} · {printRequest.venue} · Player sign-up sheet</p>
           <ol>
             {Array.from({ length: printRequest.playersRequired }, (_, index) => (
               <li key={index}>{printRequest.names[index] || "____________________________"}</li>
@@ -3174,7 +3005,7 @@ function AdminMemberOverview({
         onMessage(result.error || "We could not issue a new member login code.");
         return;
       }
-      onMessage(`${member.name}'s new member login code is ${result.loginCode}. Give it to them privately.`);
+      onMessage(`${member.name}’s passcode has been updated in their member record.`);
       onChange(
         members.map((item) =>
           item.id === member.id ? { ...item, loginCode: result.loginCode, loginCodeStatus: "available" } : item,
@@ -4289,6 +4120,7 @@ function AdminPlayerRequestOverview({
                 />
               </label>
             </div>
+            <div className="form-columns"><label>Start time<input name="time" type="time" value={editing.time??''} onChange={event=>setEditing({...editing,time:event.target.value})} /></label><label>Home / away<select name="venue" value={editing.venue??''} onChange={event=>setEditing({...editing,venue:event.target.value})}><option value="">Not recorded</option><option>Home</option><option>Away</option><option>Split</option></select></label></div>
             {error && <Status type="error" message={error} />}
             <button className="primary" type="submit">
               Save sign-up changes
@@ -4302,7 +4134,7 @@ function AdminPlayerRequestOverview({
                 <div>
                   <b>{request.match}</b>
                   <span>
-                    {request.date} · {request.names.length}/{request.playersRequired} names
+                    {displayDate(request.date)} · {request.time} · {request.venue} · {request.names.length}/{request.playersRequired} names
                   </span>
                   {request.legacyNames?.map((name, index) => <div key={`legacy-${index}`}><span>{name} (earlier entry) </span><button className="text-button" type="button" onClick={() => void removeName(request, name, undefined, index)}>Remove name</button></div>)}
                   {request.registered?.map((entry) => <div key={entry.memberId}><span>{entry.name} </span><button className="text-button" type="button" onClick={() => void removeName(request, entry.name, entry.memberId)}>Remove name</button></div>)}
@@ -4766,7 +4598,7 @@ function SponsorAdminPanel({
       </form>
       {error && <Status type="error" message={error} />}
       <div className="sponsor-admin-list">
-        <h3>{sponsors.length ? "Added sponsors" : "No added sponsors yet"}</h3>
+        <h3>{sponsors.length ? "All club sponsors" : "No sponsors yet"}</h3>
         {sponsors.map((sponsor) => (
           <article key={sponsor.id}>
             <img src={sponsor.logoUrl} alt="" />
@@ -4775,7 +4607,7 @@ function SponsorAdminPanel({
               <span>{sponsor.description}</span>
               <a href={sponsor.website} target="_blank" rel="noreferrer">Open website ↗</a>
             </div>
-            <button type="button" onClick={() => void removeSponsor(sponsor)}>Remove</button>
+            <button type="button" onClick={() => void removeSponsor(sponsor)}>Delete sponsor</button>
           </article>
         ))}
       </div>
@@ -4894,6 +4726,7 @@ function FixtureImportPanel({
   };
   return (
     <section className="fixture-import-panel" aria-labelledby="fixture-import-heading">
+      <ManualFixture onSaved={async()=>{await refresh();notifyEmpireDataUpdated()}} />
       <div className="fixture-import-copy">
         <p className="eyebrow">Fixtures</p>
         <h2 id="fixture-import-heading">Import league fixtures</h2>
@@ -4911,7 +4744,7 @@ function FixtureImportPanel({
       <div className="fixture-admin-list">
         <div>
           <p className="eyebrow">Published fixtures</p>
-          <h3>{fixtures.length ? `${fixtures.length} in the list` : "No fixtures imported yet"}</h3>
+          <h3>{fixtures.length ? `${fixtures.length} in the list` : "No fixtures published yet"}</h3>
         </div>
         {fixtures.length ? (
           <ul>
@@ -5187,18 +5020,19 @@ function AdminZone({
         setActiveTab(storedTab);
         window.sessionStorage.removeItem(EMPIRE_ADMIN_ACTIVE_TAB_KEY);
       }
-      if (storedMessage && !storedMessage.startsWith("Member login codes:")) {
+      if (storedMessage && !/login code|passcode/i.test(storedMessage)) {
         setMessage(storedMessage);
       }
       window.sessionStorage.removeItem(EMPIRE_ADMIN_FLASH_MESSAGE_KEY);
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+  useEffect(()=>{setMessage("");setError("")},[activeTab]);
   const refresh = useCallback(async () => {
     const results = await Promise.allSettled([
       fetch("/api/empire/members", { headers }),
       fetch("/api/empire/committee", { headers }),
-      fetch("/api/empire/uploads", { headers }),
+      (!sections || sections.includes("documents") ? fetch("/api/empire/uploads", { headers }) : Promise.resolve(Response.json({files:[]}))),
       fetch("/api/empire/team-sheets", { headers }),
       fetch("/api/empire/gallery", { headers }),
     ]);
@@ -5234,7 +5068,7 @@ function AdminZone({
         ? `Some admin records could not be loaded (${failed.join(", ")}). Please try again.`
         : "",
     );
-  }, [headers]);
+  }, [headers,sections]);
   const adminTabs: Array<{ id: AdminTab; label: string; count?: number }> = [
     { id: "overview", label: "Overview" },
     { id: "members", label: "Members", count: members.length },
@@ -5254,8 +5088,9 @@ function AdminZone({
     },
     { id: "security", label: "Security" },
     { id: "admin-access", label: "Admin Access" },
+    { id: "champions", label: "Club champions" },
   ].filter(tab=>!sections || sections.includes((tab.id === "player-signups" ? "fixtures" : tab.id) as AdminSection)) as Array<{id:AdminTab;label:string;count?:number}>;
-  useEffect(()=>{if(!adminTabs.some(tab=>tab.id===activeTab))setActiveTab(adminTabs[0]?.id||"members")},[activeTab,sections]);
+  useEffect(()=>{if(sections?.length && !sections.includes((activeTab==="player-signups"?"fixtures":activeTab) as AdminSection)){const timer=window.setTimeout(()=>setActiveTab(sections[0]),0);return()=>window.clearTimeout(timer)}},[activeTab,sections]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void refresh();
@@ -5390,6 +5225,7 @@ function AdminZone({
         </article>
       </section>
       {activeTab === "admin-access" && !sections && <AdminAccessTool />}
+      {activeTab === "champions" && !sections && <ClubChampions admin />}
       <div className="admin-tabs">
         <div className="admin-tab-list" role="tablist" aria-label="Admin sections">
           {adminTabs.map((tab) => (
@@ -5409,6 +5245,7 @@ function AdminZone({
           ))}
         </div>
 
+        {activeTab === "overview" && (
         <section
           className="admin-tab-panel admin-overview-panel"
           id="admin-panel-overview"
@@ -5423,7 +5260,9 @@ function AdminZone({
             Your changes will continue to appear in the relevant public or members area.
           </p>
         </section>
+        )}
 
+        {activeTab === "members" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-members"
@@ -5491,7 +5330,9 @@ function AdminZone({
             </div>
           </div>
         </section>
+        )}
 
+        {activeTab === "competitions" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-competitions"
@@ -5501,11 +5342,15 @@ function AdminZone({
         >
           {activeTab === "competitions" && <CompetitionTool members={members} admin />}
         </section>
+        )}
 
+        {activeTab === "bookings" && (
         <section className="admin-tab-panel" id="admin-panel-bookings" role="tabpanel" aria-labelledby="admin-tab-bookings" hidden={activeTab !== "bookings"}>
           {activeTab === "bookings" && <><AdminBookings password={password} members={members} /><RinkUsage /></>}
         </section>
+        )}
 
+        {activeTab === "team-sheets" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-team-sheets"
@@ -5524,7 +5369,9 @@ function AdminZone({
             }}
           />
         </section>
+        )}
 
+        {activeTab === "committee" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-committee"
@@ -5534,7 +5381,9 @@ function AdminZone({
         >
           <AdminCommitteePanel members={committeeMembers} password={password} />
         </section>
+        )}
 
+        {activeTab === "fixtures" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-fixtures"
@@ -5550,7 +5399,9 @@ function AdminZone({
             }}
           />
         </section>
+        )}
 
+        {activeTab === "player-signups" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-player-signups"
@@ -5593,12 +5444,15 @@ function AdminZone({
                 />
               </label>
             </div>
+            <div className="form-columns"><label>Start time<input name="time" type="time" required /></label><label>Home / away<select name="venue" defaultValue="Home"><option>Home</option><option>Away</option><option>Split</option></select></label></div>
             <button className="primary" type="submit">
               Create sign-up sheet
             </button>
           </form>
         </section>
+        )}
 
+        {activeTab === "news" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-news"
@@ -5614,7 +5468,9 @@ function AdminZone({
             }}
           />
         </section>
+        )}
 
+        {activeTab === "gallery" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-gallery"
@@ -5632,7 +5488,9 @@ function AdminZone({
             }}
           />
         </section>
+        )}
 
+        {activeTab === "sponsors" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-sponsors"
@@ -5648,7 +5506,9 @@ function AdminZone({
             }}
           />
         </section>
+        )}
 
+        {activeTab === "documents" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-documents"
@@ -5696,7 +5556,9 @@ function AdminZone({
             </button>
           </form>
         </section>
+        )}
 
+        {activeTab === "security" && (
         <section
           className="admin-tab-panel"
           id="admin-panel-security"
@@ -5712,6 +5574,7 @@ function AdminZone({
             }}
           />
         </section>
+        )}
       </div>
       {message && <Status message={message} />}
       {error && <Status type="error" message={error} />}
