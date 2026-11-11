@@ -3,3 +3,21 @@
 @media(max-width:1000px){.admin-members-tab .admin-members-controls{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.admin-members-tab .admin-members-controls{grid-template-columns:1fr}.empire-member-card{padding:16px}.empire-member-heading{flex-direction:column;gap:12px}.empire-member-code{justify-content:flex-start}.empire-member-code small{text-align:left}.empire-member-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.empire-member-actions button{min-width:0;width:100%}.admin-members-tab>summary{display:flex!important;flex-wrap:wrap}.admin-members-tab>summary>.eyebrow{display:none}.empire-member-contact{flex-direction:column}}
 .admin-permission-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.admin-permission-options label{display:flex!important;align-items:center;gap:8px;font-size:15px!important}.admin-permission-options input{width:20px!important;height:20px!important;min-height:20px!important;margin:0!important}.admin-permission-options fieldset{border:1px solid #bbc8bb}@media(max-width:600px){.admin-permission-options{grid-template-columns:1fr}}
+
+/* Keep creation and directory in separate, top-aligned desktop columns. */
+.admin-zone .empire-members-layout{display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr);gap:28px;align-items:start}
+.empire-members-create,.empire-members-directory{min-width:0}
+.admin-zone .empire-members-create .admin-add-member{width:100%;margin:0;box-sizing:border-box}
+.empire-members-create .form-columns{grid-template-columns:repeat(2,minmax(0,1fr))}
+.empire-members-create .form-columns>label:last-child{grid-column:1/-1}
+.empire-members-directory .admin-members-tab{margin:0}
+.empire-members-directory .admin-members-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
+.empire-members-directory .admin-members-controls label{min-width:0}
+.empire-members-directory .admin-members-controls label:first-child{grid-column:1/-1}
+.empire-members-directory .admin-members-tab>summary{display:flex!important;flex-wrap:wrap;gap:10px!important;padding:20px}
+.empire-members-directory .admin-members-tab>summary .eyebrow{display:none}
+.empire-members-directory .admin-members-tab>summary .members-count{margin-left:auto}
+.empire-members-email{margin-bottom:24px}
+.empire-members-email .directory-email{margin:0;border:1px solid #c8c7b7;border-radius:12px;background:#f3eddd;color:#18394c}
+@media(max-width:1050px){.admin-zone .empire-members-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.empire-members-create .form-columns,.empire-members-directory .admin-members-controls{grid-template-columns:1fr}.empire-members-create .form-columns>label:last-child{grid-column:auto}}

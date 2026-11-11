@@ -3214,7 +3214,6 @@ function AdminMemberOverview({
             </label>
           </div>
         </div>
-        <DirectoryEmail members={members} />
         {ordered.length ? (
           <div className="empire-member-cards">
             {ordered.map(member => <article className="empire-member-card" key={member.id}>
@@ -5432,22 +5431,9 @@ function AdminZone({
           aria-labelledby="admin-tab-members"
           hidden={activeTab !== "members"}
         >
-          <AdminMemberOverview
-            members={members}
-            teamSheets={teamSheets}
-            password={password}
-            onChange={setMembers}
-            onMessage={(nextMessage) => {
-              setError("");
-              setMessage(nextMessage);
-            }}
-          />
-          {newMemberLogin && (
-            <MemberLoginEmailCard
-              member={newMemberLogin}
-              onDismiss={() => setNewMemberLogin(null)}
-            />
-          )}
+          <div className="empire-members-email"><DirectoryEmail members={members} /></div>
+          <div className="empire-members-layout">
+            <div className="empire-members-create">
           <form className="admin-card admin-card-members admin-add-member" onSubmit={addMember}>
             <p className="eyebrow">Member management</p>
             <h2>Add a member</h2>
@@ -5484,6 +5470,26 @@ function AdminZone({
               Add member
             </button>
           </form>
+          {newMemberLogin && (
+            <MemberLoginEmailCard
+              member={newMemberLogin}
+              onDismiss={() => setNewMemberLogin(null)}
+            />
+          )}
+            </div>
+            <div className="empire-members-directory">
+          <AdminMemberOverview
+            members={members}
+            teamSheets={teamSheets}
+            password={password}
+            onChange={setMembers}
+            onMessage={(nextMessage) => {
+              setError("");
+              setMessage(nextMessage);
+            }}
+          />
+            </div>
+          </div>
         </section>
 
         <section
