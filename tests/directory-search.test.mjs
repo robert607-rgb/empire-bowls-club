@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {directorySearch} from '../lib/directory-search.ts';
+test('matches names, email and phone without regard to case or surrounding space',()=>{const person={name:'Sam Jones',email:'SAM@example.com',phone:'07812 345678'};for(const q of [' Jones ','EXAMPLE','345678'])assert.equal(directorySearch(person,q),true);assert.equal(directorySearch(person,'no match'),false)});

@@ -6,6 +6,7 @@ import "./competition.css";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
 import DirectoryEmail from "./directory-email";
+import { directorySearch as matchesDirectorySearch } from "../lib/directory-search";
 import { pagePaths } from "./site-pages";
 import type { GalleryAlbum, GalleryPhoto } from "./api/empire/gallery/gallery-data";
 
@@ -2516,9 +2517,7 @@ function MemberZone({
     bookings.find(
       (booking) => booking.rinkNumber === rink && booking.timeSlot === slot,
     );
-  const visibleMembers = members.filter((member) =>
-    member.name.toLowerCase().includes(directorySearch.trim().toLowerCase()),
-  );
+  const visibleMembers = members.filter((member) => matchesDirectorySearch(member,directorySearch));
   const group = (category: ClubFile["category"]) =>
     files.filter((file) => file.category === category);
   return (
@@ -2736,10 +2735,10 @@ function MemberZone({
             <h2>Club contact details</h2>
             <p>For members’ use only. Please treat these details with care.</p>
             <label className="directory-search">
-              Search by name
+              Search by name, email or phone
               <input
                 type="search"
-                placeholder="Start typing a member’s name…"
+                placeholder="Search contact details…"
                 value={directorySearch}
                 onChange={(event) => setDirectorySearch(event.target.value)}
               />
@@ -2751,7 +2750,6 @@ function MemberZone({
               visibleMembers.map((member) => (
                 <article key={member.id}>
                   <b>{member.name}</b>
-                  <span>{member.membershipType}</span>
                   <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
                     {member.phone}
                   </a>
@@ -2759,7 +2757,7 @@ function MemberZone({
                 </article>
               ))
             ) : members.length ? (
-              <p className="empty">No members match that name.</p>
+              <p className="empty">No members match that search.</p>
             ) : (
               <p className="empty">
                 The directory will appear here as members are added by the club
@@ -3718,7 +3716,7 @@ function AdminTeamSheetManager({
                   {sheet.competition} · {displayDate(sheet.matchDate)}
                 </span>
               </div>
-              <TeamSheetEmail sheet={sheet} members={members} />
+              <TeamSheetEmail sheet={sheet} />
               <button
                 className="remove-member"
                 type="button"
@@ -3734,14 +3732,18 @@ function AdminTeamSheetManager({
   );
 }
 
-function TeamSheetEmail({ sheet, members }: { sheet: TeamSheet; members: Member[] }) {
-  const ids = [...sheet.rinks.flatMap(rink => rink.players.map(player => player.memberId)), ...(sheet.reserves || []).map(member => member.memberId)];
-  const selected = ids.map(id => members.find(member => member.id === id));
-  const emails = [...new Map(selected.filter((member): member is Member => !!member && /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(member.email.trim())).map(member => [member.email.trim().toLowerCase(), member.email.trim()])).values()];
-  const missing = selected.filter(member => !member || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(member.email.trim())).length;
+function TeamSheetEmail({ sheet }: { sheet: TeamSheet }) {
+  const [addresses,setAddresses]=useState<string[]>([]);
+  const [missing,setMissing]=useState(0);
+  const [status,setStatus]=useState("");
+  const [loaded,setLoaded]=useState(false);
+  async function load() {
+    setLoaded(false);setStatus("Loading current email addresses…");
+    try {const response=await fetch(`/api/empire/team-sheets/recipients?sheetId=${sheet.id}`,{cache:"no-store"}); const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not load email addresses.");setAddresses(result.addresses);setMissing(result.missing);setStatus("");setLoaded(true);}catch(error){setStatus(error instanceof Error?error.message:"Could not load email addresses.");}
+  }
   const team = [`Empire v ${sheet.opponent}`, sheet.competition, displayDate(sheet.matchDate), ...sheet.rinks.flatMap(rink => [`\nRink ${rink.rink} – ${rink.format}`, ...rink.players.map(player => `${player.position}: ${player.name}`)]), ...(sheet.reserves?.length ? [`\nReserves: ${sheet.reserves.map(member => member.name).join(", ")}`] : [])].join("\n");
-  const link = `mailto:?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent(`Team selection: Empire v ${sheet.opponent}`)}&body=${encodeURIComponent(team)}`;
-  return <details><summary>Email selected players</summary><p>{emails.length} unique addresses; {missing} player(s) without a usable address. Review your draft before sending.</p>{emails.length > 0 && link.length <= 1800 && <a href={link}>Open BCC email</a>}<label>BCC addresses<textarea readOnly rows={2} value={emails.join(", ")} onFocus={event => event.currentTarget.select()} /></label><label>Team selection<textarea readOnly rows={6} value={team} onFocus={event => event.currentTarget.select()} /></label><p>Copy the addresses into BCC and the selection into your message if your email app does not open.</p></details>;
+  const link = `mailto:?bcc=${encodeURIComponent(addresses.join(","))}&subject=${encodeURIComponent(`Team selection: Empire v ${sheet.opponent}`)}&body=${encodeURIComponent(team)}`;
+  return <details onToggle={event=>{if(event.currentTarget.open)void load()}}><summary>Email selected players</summary>{status&&<p role="status">{status}</p>}{loaded&&<><p>{addresses.length} unique addresses; {missing} player(s) without a usable address. Review your draft before sending.</p>{addresses.length > 0 && link.length <= 1800 && <a href={link}>Open BCC email</a>}<label>BCC addresses<textarea readOnly rows={2} value={addresses.join(", ")} onFocus={event => event.currentTarget.select()} /></label><label>Team selection<textarea readOnly rows={6} value={team} onFocus={event => event.currentTarget.select()} /></label><p>Copy the addresses into BCC and the selection into your message if your email app does not open.</p></>}</details>;
 }
 
 function AdminDocumentOverview({
