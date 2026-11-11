@@ -1,3 +1,4 @@
+import { parseRoster, validateRoster } from "../../../../lib/team-roster";
 import {
   apiError,
   cleanText,
@@ -42,14 +43,6 @@ function readRinks(value: unknown): RinkDraft[] {
   });
 }
 
-function readStoredRinks(value: string): RinkDraft[] {
-  try {
-    return readRinks(JSON.parse(value || "[]"));
-  } catch {
-    return [];
-  }
-}
-
 function readDetails(input: Record<string, unknown>) {
   return {
     opponent: cleanText(input.opponent, 160),
@@ -57,6 +50,7 @@ function readDetails(input: Record<string, unknown>) {
     matchDate: cleanText(input.matchDate, 10),
     rinkCount: Number(input.rinkCount),
     rinks: readRinks(input.rinks),
+    reserveIds: Array.isArray(input.reserveIds) ? input.reserveIds.map(Number) : [],
   };
 }
 
@@ -77,8 +71,7 @@ function validateDetails(details: ReturnType<typeof readDetails>) {
       return "Choose a member for every position in each rink.";
     }
   }
-  const ids = details.rinks.flatMap((rink) => rink.memberIds);
-  if (new Set(ids).size !== ids.length) {
+  if (!validateRoster(details.rinks, details.reserveIds)) {
     return "A member can only be selected once in the same team sheet.";
   }
   return "";
@@ -88,8 +81,9 @@ async function mapSheet(
   db: Awaited<ReturnType<typeof getEmpireDatabase>>,
   row: TeamSheetRow,
 ) {
-  const rinks = readStoredRinks(row.rinks_json);
-  const ids = [...new Set(rinks.flatMap((rink) => rink.memberIds))];
+  const stored = parseRoster(row.rinks_json);
+  const rinks = readRinks(stored.rinks);
+  const ids = [...new Set([...rinks.flatMap((rink) => rink.memberIds), ...stored.reserveIds])];
   const members = ids.length
     ? await db
         .prepare(`SELECT id, name FROM empire_members WHERE id IN (${ids.map(() => "?").join(", ")})`)
@@ -107,6 +101,7 @@ async function mapSheet(
     matchDate: row.match_date,
     rinkCount: row.rink_count,
     createdAt: row.created_at,
+    reserves: stored.reserveIds.map((memberId) => ({ memberId, name: names.get(memberId) ?? "Former member" })),
     rinks: rinks.map((rink, index) => ({
       rink: index + 1,
       format: rink.format,
@@ -153,7 +148,7 @@ export async function POST(request: Request) {
     const validationError = validateDetails(details);
     if (validationError) return Response.json({ error: validationError }, { status: 400 });
     const db = await getEmpireDatabase();
-    const memberIds = details.rinks.flatMap((rink) => rink.memberIds);
+    const memberIds = [...details.rinks.flatMap((rink) => rink.memberIds), ...details.reserveIds];
     const members = await db
       .prepare(`SELECT id FROM empire_members WHERE id IN (${memberIds.map(() => "?").join(", ")})`)
       .bind(...memberIds)
@@ -171,7 +166,7 @@ export async function POST(request: Request) {
         details.competition,
         details.matchDate,
         details.rinkCount,
-        JSON.stringify(details.rinks),
+        JSON.stringify({ rinks: details.rinks, reserveIds: details.reserveIds }),
         createdAt,
       )
       .run();
@@ -181,7 +176,7 @@ export async function POST(request: Request) {
       competition: details.competition,
       match_date: details.matchDate,
       rink_count: details.rinkCount,
-      rinks_json: JSON.stringify(details.rinks),
+      rinks_json: JSON.stringify({ rinks: details.rinks, reserveIds: details.reserveIds }),
       created_at: createdAt,
     };
     return Response.json({ sheet: await mapSheet(db, row) }, { status: 201 });

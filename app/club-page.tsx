@@ -131,6 +131,7 @@ type TeamSheet = {
   rinkCount: number;
   createdAt: string;
   rinks: TeamSheetRink[];
+  reserves?: { memberId: number; name: string }[];
 };
 type TeamSheetDraftRink = {
   format: TeamFormat;
@@ -2991,6 +2992,7 @@ function TeamSheetsPanel({
                         </section>
                       ))}
                     </div>
+                    {!!sheet.reserves?.length && <p><b>Reserves:</b> {sheet.reserves.map((member) => member.name).join(", ")}</p>}
                   </div>
                 )}
               </section>
@@ -3485,11 +3487,12 @@ function AdminTeamSheetManager({
   const [matchDate, setMatchDate] = useState(today());
   const [rinkCount, setRinkCount] = useState(1);
   const [rinks, setRinks] = useState<TeamSheetDraftRink[]>([blankRink()]);
+  const [reserveIds, setReserveIds] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const orderedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name));
   const assignedMemberIds = new Set(
-    rinks.flatMap((rink) => rink.memberIds).filter((id): id is number => id !== null),
+    [...rinks.flatMap((rink) => rink.memberIds).filter((id): id is number => id !== null), ...reserveIds],
   );
   const reset = () => {
     setOpponent("");
@@ -3497,6 +3500,7 @@ function AdminTeamSheetManager({
     setMatchDate(today());
     setRinkCount(1);
     setRinks([blankRink()]);
+    setReserveIds([]);
   };
   const changeRinkCount = (nextCount: number) => {
     setRinkCount(nextCount);
@@ -3545,6 +3549,7 @@ function AdminTeamSheetManager({
           competition,
           matchDate,
           rinkCount,
+          reserveIds,
           rinks: rinks.map((rink) => ({
             format: rink.format,
             memberIds: rink.memberIds.map((memberId) => memberId ?? 0),
@@ -3705,6 +3710,10 @@ function AdminTeamSheetManager({
             </section>
           ))}
         </div>
+        <fieldset><legend>Reserves</legend>
+          {reserveIds.map((id, index) => <div key={index}><label>Reserve {index + 1} <select value={id || ""} onChange={event => setReserveIds(current => current.map((value, i) => i === index ? Number(event.target.value) : value))}><option value="">Choose a member</option>{orderedMembers.map(member => <option key={member.id} value={member.id} disabled={assignedMemberIds.has(member.id) && member.id !== id}>{member.name}</option>)}</select></label><button type="button" onClick={() => setReserveIds(current => current.filter((_, i) => i !== index))}>Remove reserve</button></div>)}
+          <button type="button" disabled={reserveIds.length >= 40 || reserveIds.includes(0)} onClick={() => setReserveIds(current => [...current, 0])}>Add reserve</button>
+        </fieldset>
         {!members.length && (
           <p className="form-note">
             Add members to the directory before building a team sheet.
@@ -3725,6 +3734,7 @@ function AdminTeamSheetManager({
                   {sheet.competition} · {displayDate(sheet.matchDate)}
                 </span>
               </div>
+              <TeamSheetEmail sheet={sheet} members={members} />
               <button
                 className="remove-member"
                 type="button"
@@ -3738,6 +3748,16 @@ function AdminTeamSheetManager({
       ) : null}
     </section>
   );
+}
+
+function TeamSheetEmail({ sheet, members }: { sheet: TeamSheet; members: Member[] }) {
+  const ids = [...sheet.rinks.flatMap(rink => rink.players.map(player => player.memberId)), ...(sheet.reserves || []).map(member => member.memberId)];
+  const selected = ids.map(id => members.find(member => member.id === id));
+  const emails = [...new Map(selected.filter((member): member is Member => !!member && /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(member.email.trim())).map(member => [member.email.trim().toLowerCase(), member.email.trim()])).values()];
+  const missing = selected.filter(member => !member || !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(member.email.trim())).length;
+  const team = [`Empire v ${sheet.opponent}`, sheet.competition, displayDate(sheet.matchDate), ...sheet.rinks.flatMap(rink => [`\nRink ${rink.rink} – ${rink.format}`, ...rink.players.map(player => `${player.position}: ${player.name}`)]), ...(sheet.reserves?.length ? [`\nReserves: ${sheet.reserves.map(member => member.name).join(", ")}`] : [])].join("\n");
+  const link = `mailto:?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent(`Team selection: Empire v ${sheet.opponent}`)}&body=${encodeURIComponent(team)}`;
+  return <details><summary>Email selected players</summary><p>{emails.length} unique addresses; {missing} player(s) without a usable address. Review your draft before sending.</p>{emails.length > 0 && link.length <= 1800 && <a href={link}>Open BCC email</a>}<label>BCC addresses<textarea readOnly rows={2} value={emails.join(", ")} onFocus={event => event.currentTarget.select()} /></label><label>Team selection<textarea readOnly rows={6} value={team} onFocus={event => event.currentTarget.select()} /></label><p>Copy the addresses into BCC and the selection into your message if your email app does not open.</p></details>;
 }
 
 function AdminDocumentOverview({
