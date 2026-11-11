@@ -867,7 +867,6 @@ function HomePage({
   return (
     <>
       <section className="hero empire-hero">
-        <span className="peacock-tail-pattern peacock-tail-pattern-hero" aria-hidden="true" />
         <div className="hero-copy">
           <p className="eyebrow">Established in 1910 · Greenhithe, Kent</p>
           <h1>
@@ -905,7 +904,6 @@ function HomePage({
         </div>
       </section>
       <section className="quick-facts wrap single home-facts">
-        <span className="peacock-tail-pattern peacock-tail-pattern-facts" aria-hidden="true" />
         <article>
           <strong>Established 1910</strong>
           <span>A proud Greenhithe sporting tradition</span>
@@ -928,7 +926,6 @@ function HomePage({
         </article>
       </section>
       <section className="intro-grid wrap home-intro">
-        <span className="peacock-tail-pattern peacock-tail-pattern-intro" aria-hidden="true" />
         <div>
           <p className="eyebrow">The Empire welcome</p>
           <h2>A club for the game — and the people who make it.</h2>
@@ -964,7 +961,6 @@ function HomePage({
         </div>
       </section>
       <section className="upcoming-section home-upcoming">
-        <span className="peacock-tail-pattern peacock-tail-pattern-upcoming" aria-hidden="true" />
         <div className="wrap">
           <div className="section-heading">
             <div>
@@ -4171,9 +4167,13 @@ function AdminGalleryPanel({
   );
 }
 
-function AdminBookings({ password }: { password: string }) {
+function AdminBookings({ password, members }: { password: string; members: Member[] }) {
   const [date, setDate] = useState(today());
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [selected, setSelected] = useState<{rink:number; slots:string[]}|null>(null);
+  const [memberId, setMemberId] = useState("");
+  const [bookingType, setBookingType] = useState("Roll Up");
+  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     try {
@@ -4193,7 +4193,14 @@ function AdminBookings({ password }: { password: string }) {
       await refresh();
     } catch (failure) { setError(failure instanceof Error ? failure.message : "Booking could not be removed."); }
   };
-  return <section className="admin-card"><p className="eyebrow">Rink bookings</p><h2>Manage bookings</h2><p>Older bookings can be removed here. Fixture reservations are managed with their fixtures.</p><label>Date <input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>{error && <Status type="error" message={error} />}<div className="admin-files-list">{bookings.filter((booking) => booking.id !== null).map((booking) => <article key={booking.id}><div><b>Rink {booking.rinkNumber} · {booking.timeSlot}</b><span>{booking.bookingName}</span></div>{booking.canCancel ? <button className="remove-member" type="button" onClick={() => void remove(booking)}>Remove booking</button> : <span>Fixture reservation</span>}</article>)}</div>{!bookings.some((booking) => booking.id !== null) && <p className="empty">No bookings for this date.</p>}</section>;
+  async function book(event:FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if(!selected) return;
+    const member=members.find(m=>m.id===Number(memberId)); if(!member){setError("Choose a member.");return;}
+    try {const response=await fetch("/api/empire/bookings",{method:"POST",headers:{...apiHeaders("admin",password),"content-type":"application/json"},body:JSON.stringify({bookingDate:date,rinkNumber:selected.rink,timeSlots:selected.slots,memberId:member.id,bookingName:member.name,bookingType})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not save bookings.");setMessage(`Booked rink ${selected.rink}: ${selected.slots.join(", ")}.`);setSelected(null);setError("");await refresh();}catch(e){setError(e instanceof Error?e.message:"Could not save bookings.");}
+  }
+  return <section className="admin-card"><p className="eyebrow">Rink bookings</p><h2>Manage bookings</h2><p>Select one or more sessions on a rink, or remove an existing booking. Fixtures are managed in Fixtures.</p><label>Date <input type="date" value={date} onChange={event=>{setDate(event.target.value);setSelected(null)}} /></label>{error&&<Status type="error" message={error}/ >}{message&&<Status message={message}/ >}
+  <div className="booking-scroll"><table><thead><tr><th>Time</th>{[1,2,3,4,5,6].map(rink=><th key={rink}>Rink {rink}</th>)}</tr></thead><tbody>{timeSlots.map(slot=><tr key={slot}><th>{slot}</th>{[1,2,3,4,5,6].map(rink=>{const booking=bookings.find(item=>item.rinkNumber===rink&&item.timeSlot===slot);const checked=selected?.rink===rink&&selected.slots.includes(slot);return <td key={rink}><button type="button" className={booking?'taken':checked?'available selected-slot':'available'} aria-pressed={booking?undefined:checked} disabled={!!booking&&!booking.canCancel} onClick={()=>{if(booking){if(booking.canCancel)void remove(booking);return}setMessage("");setSelected(current=>{if(!current||current.rink!==rink)return {rink,slots:[slot]};const slots=current.slots.includes(slot)?current.slots.filter(value=>value!==slot):[...current.slots,slot];return slots.length?{rink,slots}:null})}}>{booking?<><b>{booking.bookingName}</b><span>{booking.canCancel?'Remove':'Unavailable'}</span></>:checked?'✓ Selected':'Available'}</button></td>})}</tr>)}</tbody></table></div>
+  {selected&&<form className="booking-form" onSubmit={book}><div><b>Rink {selected.rink}</b><span>{selected.slots.join(', ')} · {displayDate(date)}</span></div><label>Member<select required value={memberId} onChange={event=>setMemberId(event.target.value)}><option value="">Choose a member</option>{members.map(member=><option key={member.id} value={member.id}>{member.name}</option>)}</select></label><label>Booking type<select value={bookingType} onChange={event=>setBookingType(event.target.value)}><option>Roll Up</option><option>League</option><option>Competition</option><option>Neutral</option></select></label><button className="primary">Confirm booking</button><button type="button" onClick={()=>setSelected(null)}>Clear selection</button></form>}</section>;
 }
 
 function AdminPlayerRequestOverview({
@@ -5566,7 +5573,7 @@ function AdminZone({
         </section>
 
         <section className="admin-tab-panel" id="admin-panel-bookings" role="tabpanel" aria-labelledby="admin-tab-bookings" hidden={activeTab !== "bookings"}>
-          {activeTab === "bookings" && <><AdminBookings password={password} /><RinkUsage /></>}
+          {activeTab === "bookings" && <><AdminBookings password={password} members={members} /><RinkUsage /></>}
         </section>
 
         <section

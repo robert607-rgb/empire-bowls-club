@@ -3523,7 +3523,7 @@ body {
   isolation: isolate;
   background:
     linear-gradient(90deg, rgba(6, 26, 50, 0.97) 0%, rgba(8, 47, 77, 0.86) 48%, rgba(15, 76, 78, 0.45) 100%),
-    url("/optimized/club/empire-green-clubhouse.webp") center / cover no-repeat;
+    url("/optimized/club/empire-green-clubhouse.webp") center 72% / cover no-repeat;
 }
 
 @supports (background-image: image-set(url("/optimized/club/empire-green-clubhouse-768.webp") 1x)) {
@@ -5832,3 +5832,8 @@ footer {
     transform: none;
   }
 }
+/* Keep long contact details inside their card on narrow displays. */
+.contact-cards a { min-width: 0; }
+.contact-cards a small { display: block; max-width: 100%; overflow-wrap: anywhere; }
+@media (max-width: 680px) { .contact-cards a { flex-basis: 100%; width: 100%; } }
+@media (max-width: 900px) { .empire-hero { background-position: 64% 72%; } }

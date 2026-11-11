@@ -70,3 +70,8 @@ test('multiple sessions save atomically and reject a conflict without partial bo
  items=(await (await bookings.GET(req('bob','GET',undefined,'?date='+date))).json()).bookings;
  assert.equal(items.length,2);assert.ok(!items.some(x=>x.timeSlot==='12:00–14:00'));
 });
+test('admin can book several sessions on a member’s behalf with member ownership',async()=>{
+ const date='2026-11-03';const response=await bookings.POST(req('admin','POST',{bookingDate:date,rinkNumber:2,timeSlots:['10:00–12:00','12:00–14:00'],memberId:1,bookingType:'Roll Up',bookingName:'Ignored'}));assert.equal(response.status,201);
+ const list=(await (await bookings.GET(req('alice','GET',undefined,'?date='+date))).json()).bookings;assert.equal(list.length,2);assert.ok(list.every(b=>b.canCancel&&b.bookingName.startsWith('Alice Example')));
+ assert.equal((await bookings.POST(req('admin','POST',{bookingDate:date,rinkNumber:3,timeSlots:['10:00–12:00'],memberId:999,bookingName:'Unknown'}))).status,400);
+});

@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const input = await readJson(request);
     const db = await getEmpireDatabase();
     await ensureCompetitionSchema(db);
-    const result = await competitionMutation(db, { role: session.access, member_id: session.member_id, permissions: session.access === "admin" ? ["competitions"] : [] }, input, new Date().toISOString().slice(0, 10));
+    const result = await competitionMutation(db, { role: session.access, member_id: session.member_id, permissions: session.access === "admin" ? ["competitions"] : [] }, input, new Date().toISOString());
     return Response.json(result, { headers: privateHeaders });
   } catch (error) {
     if (error instanceof CompetitionError) return Response.json({ error: error.message }, { status: error.status, headers: privateHeaders });

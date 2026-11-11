@@ -58,13 +58,19 @@ export async function POST(request: Request) {
     if (session.access === "member" && session.member_id === null) return Response.json({ error: "Sign in with your own member details to book a rink." }, { status: 403 });
     const member = session.access === "member" ? await db.prepare("SELECT name FROM empire_members WHERE id = ?").bind(session.member_id).first<{ name: string }>() : null;
     if (session.access === "member" && !member) return unauthorized();
-    const bookingName = bookingType ? `${bookingNameInput} · ${bookingType}` : bookingNameInput;
+    const adminMemberId = session.access === "admin" && input.memberId !== undefined ? Number(input.memberId) : null;
+    if (adminMemberId !== null && (!Number.isSafeInteger(adminMemberId) || adminMemberId < 1)) return Response.json({ error: "Choose a valid member." }, { status: 400 });
+    const adminMember = adminMemberId ? await db.prepare("SELECT name FROM empire_members WHERE id = ?").bind(adminMemberId).first<{name:string}>() : null;
+    if (adminMemberId && !adminMember) return Response.json({ error: "That member is no longer in the directory." }, { status: 400 });
+    const ownerId = session.access === "member" ? session.member_id : adminMemberId;
+    const name = adminMember?.name || bookingNameInput;
+    const bookingName = bookingType ? `${name} · ${bookingType}` : name;
     try {
       const statements = [];
       for (const timeSlot of timeSlots) {
         const id = Array.from(crypto.getRandomValues(new Uint8Array(6))).reduce((number, byte) => number * 256 + byte, 0) + 1;
         statements.push(db.prepare("INSERT INTO empire_bookings (id, booking_date, rink_number, time_slot, booking_name, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, bookingDate, rinkNumber, timeSlot, bookingName, new Date().toISOString()));
-        if (session.access === "member") statements.push(db.prepare("INSERT INTO empire_booking_owners (booking_id, member_id) VALUES (?, ?)").bind(id, session.member_id));
+        if (ownerId !== null) statements.push(db.prepare("INSERT INTO empire_booking_owners (booking_id, member_id) VALUES (?, ?)").bind(id, ownerId));
       }
       await db.batch(statements);
     } catch (error) {

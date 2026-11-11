@@ -87,3 +87,10 @@ test('admin-only competition entries reject members and allow admin additions; s
  await mutate(db,member(2),{action:'competitionEntry',competitionId:created.id});
  assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM empire_competition_entries WHERE competition_id=?').get(created.id).n,2);
 });
+test('member deadline is enforced but admins can add entries after it',async()=>{
+ const db=new DB();const created=await mutate(db,admin,{action:'createCompetition',openEntries:true,memberEntry:true,deadline:'2026-10-27T12:00:00.000Z',name:'Deadline cup',playingFormat:'singles'});
+ await competitionMutation(db,member(1),{action:'competitionEntry',competitionId:created.id},'2026-10-27T11:59:00.000Z');
+ await assert.rejects(()=>competitionMutation(db,member(2),{action:'competitionEntry',competitionId:created.id},'2026-10-27T12:00:00.000Z'),e=>e instanceof CompetitionError&&e.status===409);
+ await competitionMutation(db,admin,{action:'competitionEntry',competitionId:created.id,memberId:2},'2026-10-27T12:01:00.000Z');
+ assert.equal(db.sql.prepare('SELECT deadline FROM empire_competitions WHERE id=?').get(created.id).deadline,'2026-10-27T12:00:00.000Z');
+});
