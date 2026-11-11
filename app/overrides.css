@@ -5881,3 +5881,8 @@ main :is(input,textarea,select){max-width:100%}
 main .status.success{background:#e4f4e9;color:#174b31!important;border-color:#21764d}main .status.error{background:#ffe8e9;color:#7d1e30!important;border-color:#9b243e}
 
 .player-slot{align-items:flex-start;min-height:48px}.player-slot>span:first-child{flex:0 0 27px}.player-slot>span:not(:first-child){display:block;flex:1;width:auto;height:auto;min-width:0;padding:3px 0;border-radius:0;background:transparent;font-size:15px;line-height:1.5;color:#17394c;overflow-wrap:anywhere}
+/* Final live-page reading checks: natural section order and clear labels. */
+.empire-about-page .accordion-list>details{order:0!important}
+.empire-about-page .accordion-list>details>summary i{color:#17394c!important}
+.empire-about-page .committee article :is(b,span,a){font-size:16px;line-height:1.6}
+.contact-cards a>span{color:#ffe59a}
