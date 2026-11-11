@@ -5857,11 +5857,11 @@ main :is(input,textarea,select){max-width:100%}
 .zone-shell .member-contact-rows>article :is(b,span){color:#17394c}
 .admin-zone :is(.admin-card,.admin-files-panel,.admin-members-panel,.fixture-import-panel,.team-sheet-admin) :is(h2,h3,h4,p,label,legend,small){color:#17394c}
 .admin-zone .sponsor-admin-list :is(b,span,a),.admin-zone .admin-files-list :is(b,span),.admin-zone .committee-admin-grid :is(b,strong,a){color:#17394c}
-.admin-zone :is(.admin-card,.admin-files-panel,.admin-members-panel,.fixture-import-panel,.team-sheet-admin) .status{color:#fff8e9}
+.admin-zone :is(.admin-card,.admin-files-panel,.admin-members-panel,.fixture-import-panel,.team-sheet-admin) .status{color:#17394c}
 .admin-zone :is(.admin-files-tab,.admin-members-tab)>summary :is(b,span){color:#17394c}
 :is(.booking-panel,.login-card,.contact-form) :is(p,label,small){color:#3b5362}
 :is(.booking-panel,.login-card,.contact-form) .eyebrow{color:#9b243e}
-:is(.booking-panel,.login-card,.contact-form) .status{color:#fff8e9}
+:is(.booking-panel,.login-card,.contact-form) .status{color:#17394c}
 :is(.booking-panel,.admin-zone,.zone-shell .member-content) .outline{color:#17394c;border-color:#567185;background:#fffaf0}
 /* The full-width About sections share a consistent reading surface. */
 .empire-about-page .accordion-list>details{background:#f7f1e2;color:#17394c}
@@ -5875,3 +5875,9 @@ main :is(input,textarea,select){max-width:100%}
 @media(max-width:600px){.empire-about-page .heritage-hero-collage{min-height:280px}.empire-about-page .heritage-hero-collage>div{left:20px;right:20px;bottom:20px}}
 
 :is(.portal-intro>.eyebrow,.zone-head .eyebrow,.play-hero .eyebrow){color:#ffe59a}
+
+.gallery-page .outline{color:#17394c;border-color:#567185;background:#fffaf0}
+
+main .status.success{background:#e4f4e9;color:#174b31!important;border-color:#21764d}main .status.error{background:#ffe8e9;color:#7d1e30!important;border-color:#9b243e}
+
+.player-slot{align-items:flex-start;min-height:48px}.player-slot>span:first-child{flex:0 0 27px}.player-slot>span:not(:first-child){display:block;flex:1;width:auto;height:auto;min-width:0;padding:3px 0;border-radius:0;background:transparent;font-size:15px;line-height:1.5;color:#17394c;overflow-wrap:anywhere}
