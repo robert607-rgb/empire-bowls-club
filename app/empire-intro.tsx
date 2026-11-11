@@ -8,6 +8,14 @@ export default function EmpireIntro() {
   const skip=useRef<HTMLButtonElement>(null);
   const close=()=>{setVisible(false);try{sessionStorage.setItem("empire-intro-v1","seen")}catch{}};
   useEffect(()=>{
+    const asset=new Image();
+    asset.onload=()=>setReady(true);
+    asset.onerror=()=>setVisible(false);
+    asset.src="/intro/ingress-abbey-reference.webp";
+    if(asset.complete&&asset.naturalWidth>0)setReady(true);
+    return ()=>{asset.onload=null;asset.onerror=null};
+  },[]);
+  useEffect(()=>{
     if(matchMedia("(prefers-reduced-motion: reduce)").matches){setVisible(false);return;}
     try{if(sessionStorage.getItem("empire-intro-v1")){setVisible(false);return;}}catch{}
     const old=document.body.style.overflow;document.body.style.overflow="hidden";skip.current?.focus();
