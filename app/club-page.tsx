@@ -253,15 +253,6 @@ function openMemberLoginEmail(member: {
   window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-const fallbackCommittee: CommitteeMember[] = [
-  { id: -1, role: "Chairman", name: "Steve Webster", phone: "07872 111577", sortOrder: 1, createdAt: "" },
-  { id: -2, role: "Secretary", name: "Ann Norris", phone: "07852 975351", sortOrder: 2, createdAt: "" },
-  { id: -3, role: "Treasurer & Competition Secretary", name: "Steve Webster", phone: "07872 111577", sortOrder: 3, createdAt: "" },
-  { id: -4, role: "Weekend Captain, Fixtures Secretary & NWK Representative", name: "Ray Norris", phone: "07706 084755", sortOrder: 4, createdAt: "" },
-  { id: -5, role: "Midweek Captain, Bar Manager & County Representative", name: "Dave Munday", phone: "07890 853525", sortOrder: 5, createdAt: "" },
-  { id: -6, role: "Head Greenkeeper", name: "Chris Read", phone: "07976 329351", sortOrder: 6, createdAt: "" },
-  { id: -7, role: "Safeguarding Officer", name: "Richard Stone", phone: "07980 389398", sortOrder: 7, createdAt: "" },
-];
 const fixtureMessage =
   "The fixtures are taking a winter break — we’ll see you next summer with a full schedule of games!";
 const fixtureHighlights: Array<{ date: string; event: string; type: string }> = [];
@@ -1047,34 +1038,12 @@ function SponsorsPage() {
   );
 }
 function AboutPage() {
-  const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>(fallbackCommittee);
-
-  useEffect(() => {
-    let current = true;
-    const loadCommittee = async () => {
-      try {
-        const response = await fetch("/api/empire/committee", { cache: "no-store" });
-        if (!response.ok) throw new Error("Committee request failed");
-        const result = await response.json();
-        if (current && Array.isArray(result.members)) {
-          setCommitteeMembers(result.members);
-        }
-      } catch {
-        // The saved list remains visible if the database is temporarily unavailable.
-      }
-    };
-    void loadCommittee();
-    return () => {
-      current = false;
-    };
-  }, []);
-
   return (
     <section className="page wrap empire-about-page">
       <p className="eyebrow">About the club</p>
       <h1>A century of community on the green.</h1>
       <p className="lead">
-        Explore the story, people and proud moments that make Empire Bowls Club
+        Explore the story and proud moments that make Empire Bowls Club
         what it is.
       </p>
       <div className="about-layout">
@@ -1445,40 +1414,10 @@ function AboutPage() {
               </div>
             </div>
           </details>
+
           <details name="empire-about">
             <summary>
               <span>02</span>
-              <b>The people of Empire</b>
-              <i>+</i>
-            </summary>
-            <div className="people-grid">
-              <div className="committee">
-                {committeeMembers.map((member) => (
-                  <article key={member.id}>
-                    <b>{member.role}</b>
-                    <span>{member.name}</span>
-                    <a href={`tel:${member.phone.replaceAll(" ", "")}`}>{member.phone}</a>
-                  </article>
-                ))}
-              </div>
-              <figure className="people-photo">
-                <img
-                  src="/optimized/club/empire-players.webp"
-                  srcSet="/optimized/club/empire-players-768.webp 768w, /optimized/club/empire-players.webp 1200w"
-                  alt="Empire Bowls Club members gathered together on the green"
-                  width={1200}
-                  height={900}
-                  sizes="(max-width: 680px) 90vw, 700px"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <figcaption>Empire bowlers together on the green.</figcaption>
-              </figure>
-            </div>
-          </details>
-          <details name="empire-about">
-            <summary>
-              <span>03</span>
               <b>Achievements</b>
               <i>+</i>
             </summary>
@@ -1700,7 +1639,7 @@ function AboutPage() {
               </p>
             </div>
           </details>
-          <details name="empire-about"><summary><span>04</span><b>Club champions</b><i>+</i></summary><ClubChampions /></details>
+          <details name="empire-about"><summary><span>03</span><b>Club champions</b><i>+</i></summary><ClubChampions /></details>
         </div>
 
       </div>
@@ -1942,6 +1881,22 @@ function PlayBowlsPage({ openPortal }: { openPortal: () => void }) {
   );
 }
 function ContactPage() {
+  const [committeeMembers,setCommitteeMembers]=useState<CommitteeMember[]>([]);
+  const [committeeLoading,setCommitteeLoading]=useState(true);
+  const [committeeError,setCommitteeError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    const load=async()=>{try{
+      const response=await fetch('/api/empire/committee',{cache:'no-store'});
+      if(!response.ok)throw new Error('Could not load the committee.');
+      const data=await response.json();
+      if(active){setCommitteeMembers(data.members??[]);setCommitteeError('')}
+    }catch{if(active)setCommitteeError('The committee list is temporarily unavailable. Please contact the club secretary.')}
+    finally{if(active)setCommitteeLoading(false)}};
+    void load();window.addEventListener(EMPIRE_DATA_UPDATED_EVENT,load);window.addEventListener('focus',load);
+    return()=>{active=false;window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT,load);window.removeEventListener('focus',load)};
+  },[]);
+
   const [sent, setSent] = useState(false);
   const submitContact = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -2047,6 +2002,12 @@ function ContactPage() {
           Knockhall Road. Turn right into Norton Lane.
         </p>
       </div>
+      <section className="contact-committee" aria-labelledby="contact-committee-heading">
+        <p className="eyebrow">The people of Empire</p>
+        <h2 id="contact-committee-heading">Club committee</h2>
+        <p>Meet the volunteers who help run Empire Bowls Club.</p>
+        {committeeLoading?<p role="status">Loading the committee…</p>:committeeError?<p role="status">{committeeError}</p>:committeeMembers.length?<div className="contact-committee-grid">{committeeMembers.map(member=><article key={member.id}><h3>{member.role}</h3><p>{member.name}</p>{member.phone&&<a href={`tel:${member.phone.replaceAll(' ','')}`}>{member.phone}</a>}</article>)}</div>:<p>The committee list will be published here soon.</p>}
+      </section>
     </section>
   );
 }
@@ -4869,10 +4830,10 @@ function AdminCommitteePanel({
   return (
     <section className="committee-admin-panel">
       <div className="committee-admin-intro">
-        <p className="eyebrow">About Us · The people of Empire</p>
+        <p className="eyebrow">Contact · Club committee</p>
         <h2>Manage committee members</h2>
         <p>
-          These saved records feed the committee list shown on the public About Us page.
+          These saved records feed the committee list shown at the bottom of the public Contact page.
           Update a name, role or contact number here and the public list will use the new details.
         </p>
       </div>

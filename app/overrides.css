@@ -5889,3 +5889,13 @@ main .status.success{background:#e4f4e9;color:#174b31!important;border-color:#21
 .empire-about-page .accordion-list>details .heritage-hero-collage strong{color:#fff9e9!important}
 .empire-about-page .accordion-list>details .heritage-hero-collage span{color:#ffe59a!important}
 .contact-map .eyebrow{color:#ffe59a}
+
+/* Saved committee records live only on the public Contact page. */
+.contact-committee{margin-top:40px;padding:clamp(22px,3vw,36px);border:1px solid #c8c7b7;border-top:4px solid #e4b82c;border-radius:14px;background:#f7f1e2;color:#17394c}
+.contact-committee>:is(h2,p){color:#17394c}.contact-committee>.eyebrow{color:#9b243e}
+.contact-committee-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px}
+.contact-committee-grid article{padding:20px;border:1px solid #c8c7b7;border-left:3px solid #e4b82c;border-radius:8px;background:#fffcf3;min-width:0}
+.contact-committee-grid h3{margin:0 0 8px;font:700 16px/1.5 Arial,sans-serif;color:#17394c;overflow-wrap:anywhere}
+.contact-committee-grid p{margin:0 0 8px;font-size:16px;color:#17394c}.contact-committee-grid a{display:inline-block;min-height:44px;align-content:center;font-size:16px;font-weight:700;color:#174d57;overflow-wrap:anywhere}
+@media(max-width:900px){.contact-committee-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.contact-committee-grid{grid-template-columns:1fr}}

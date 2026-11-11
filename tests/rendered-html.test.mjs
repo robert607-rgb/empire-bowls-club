@@ -57,6 +57,8 @@ test("old Google links redirect once and public pages have their own canonical U
     const html = await response.text();
     assert.ok(html.includes(`href="https://empirebowlsclub.co.uk${path}"`), `canonical ${path}`);
     assert.ok(html.includes(`href="/contact"`), "crawlable navigation");
+    if(path==="/about")assert.ok(!html.includes("The people of Empire"), "committee removed from About");
+    if(path==="/contact")assert.ok(html.includes("contact-committee-heading"), "Contact contains the committee section");
   }
   const www = await worker.fetch(new Request("https://www.empirebowlsclub.co.uk/about?ref=google"), env, ctx);
   assert.equal(www.headers.get("location"), "https://empirebowlsclub.co.uk/about?ref=google");
