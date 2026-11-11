@@ -5,6 +5,7 @@ import "./gallery-admin.css";
 import "./competition.css";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
+import EmpireIntro from "./empire-intro";
 import DirectoryEmail from "./directory-email";
 import { directorySearch as matchesDirectorySearch } from "../lib/directory-search";
 import { pagePaths } from "./site-pages";
@@ -867,6 +868,7 @@ function HomePage({
 }) {
   return (
     <>
+      <EmpireIntro />
       <section className="hero empire-hero">
         <div className="hero-copy">
           <p className="eyebrow">Established in 1910 · Greenhithe, Kent</p>
