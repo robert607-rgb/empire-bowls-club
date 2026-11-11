@@ -50,8 +50,7 @@ export default function EmpireIntro() {
           <path className="intro-green" d="M160 620L322 459Q500 440 678 459L840 620Z" fill="url(#green-pencil)" stroke="#718763" strokeWidth="1.5"/>
           <path className="intro-green-line" d="M81 409Q250 370 322 459L160 620M322 459Q500 440 678 459L840 620" fill="none" stroke="#627b59" strokeWidth="2" pathLength="1"/>
           <ellipse className="intro-jack" cx="614" cy="555" rx="9" ry="8" fill="#fffdf5" stroke="#a4a391"/>
-          <g className="intro-bowl"><ellipse cx="0" cy="0" rx="22" ry="20" fill="#2c4541" stroke="#263a37" strokeWidth="1.5"/><ellipse cx="5" cy="-2" rx="11" ry="15" fill="none" stroke="#a3ada1" strokeWidth="1"/><path d="M-15 7Q-20-8-8-15M-11 13Q-18 4-14-3" fill="none" stroke="#70847a"/></g>
-        </g>
+          </g><g className="intro-bowl"><g className="intro-bowl-spin"><ellipse cx="0" cy="0" rx="22" ry="20" fill="#2c4541" stroke="#263a37" strokeWidth="1.5"/><ellipse cx="5" cy="-2" rx="11" ry="15" fill="none" stroke="#a3ada1" strokeWidth="1"/><path d="M-15 7Q-20-8-8-15M-11 13Q-18 4-14-3" fill="none" stroke="#70847a"/></g></g>
       </svg>
       <div className="intro-welcome"><img src="/optimized/empire-crest.webp" alt="" width="512" height="512"/><h1>Welcome to Empire Bowls Club</h1><p>Greenhithe, Kent</p></div>
     </div>
