@@ -71,7 +71,7 @@ test('issuing a code for a new member persists it and permits sign-in',async()=>
  assert.equal((await server.getEmpireSession(new Request('https://club.test/',{headers:{cookie:`empire_session=${adminToken}`}}))).access,'admin');
 });
 
-test('admin reset and deletion revoke the affected member sessions',async()=>{
+test('admin reset and deactivation revoke sessions while retaining the member record',async()=>{
  const db=await server.getEmpireDatabase(), now=new Date().toISOString(), adminToken=crypto.randomUUID();
  await db.prepare("INSERT INTO empire_members(id,name,address,phone,email,membership_type,created_at) VALUES (4,'Morgan Example', '', '', '', 'Full member', ?)").bind(now).run();
  await db.prepare("INSERT INTO empire_members(id,name,address,phone,email,membership_type,created_at) VALUES (5,'Taylor Example', '', '', '', 'Full member', ?)").bind(now).run();
@@ -93,7 +93,9 @@ test('admin reset and deletion revoke the affected member sessions',async()=>{
  assert.equal(nextLogin.ok,true);
  const deleteResponse=await membersRoute.DELETE(request('DELETE'));
  assert.equal(deleteResponse.status,200);
+ assert.equal((await db.prepare("SELECT id FROM empire_members WHERE id = ?").bind(4).first()).id,4);
  assert.equal(await server.getEmpireSession(new Request('https://club.test/',{headers:{cookie:`empire_session=${nextLogin.token}`}})),null);
+ const reactivated=await membersRoute.PATCH(request('PATCH'));assert.equal(reactivated.status,200);const restoredCode=(await reactivated.json()).loginCode;assert.equal((await server.authenticateEmpireMember(new Request('https://club.test/api/empire/auth'),'Morgan',restoredCode)).ok,true);
  assert.equal((await server.getEmpireSession(otherRequest)).member_id,5);
  assert.equal((await server.getEmpireSession(new Request('https://club.test/',{headers:{cookie:`empire_session=${adminToken}`}}))).access,'admin');
 });

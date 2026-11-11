@@ -1,7 +1,6 @@
 import {
   apiError,
   cleanText,
-  ensureMemberLoginCode,
   getEmpireAccess,
   getEmpireDatabase,
   hasEmpireAccess,
@@ -212,7 +211,7 @@ export async function PUT(request: Request) {
         id,
       )
       .run();
-    const loginCode = await ensureMemberLoginCode(id);
+    const loginCode = null;
     return Response.json({
       member: mapMember(
         {
@@ -246,8 +245,7 @@ export async function DELETE(request: Request) {
     }
     const db = await getEmpireDatabase();
     await db.prepare("DELETE FROM empire_member_credentials WHERE member_id = ?").bind(id).run();
-    await db.prepare("DELETE FROM empire_members WHERE id = ?").bind(id).run();
-    return Response.json({ removed: true });
+    return Response.json({ deactivated: true });
   } catch (error) {
     return apiError(error);
   }

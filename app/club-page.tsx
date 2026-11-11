@@ -3085,7 +3085,10 @@ function AdminMemberOverview({
       gamesByMember.set(memberId, (gamesByMember.get(memberId) ?? 0) + 1);
     }
   }
-  const ordered = [...members].sort((a, b) => {
+  const [memberSearch,setMemberSearch]=useState("");
+  const [categoryFilter,setCategoryFilter]=useState("all");
+  const [statusFilter,setStatusFilter]=useState("all");
+  const ordered = members.filter(member => matchesDirectorySearch(member,memberSearch) && (categoryFilter === "all" || member.membershipType === categoryFilter) && (statusFilter === "all" || (member.loginCodeStatus === "not-issued" ? "inactive" : "active") === statusFilter)).sort((a, b) => {
     if (sort === "membershipType")
       return (
         a.membershipType.localeCompare(b.membershipType) ||
@@ -3096,7 +3099,7 @@ function AdminMemberOverview({
     return a.name.localeCompare(b.name);
   });
   const remove = async (member: Member) => {
-    if (!window.confirm(`Remove ${member.name} from the member directory?`))
+    if (!window.confirm(`Deactivate ${member.name}’s login? Their record and playing history will be retained.`))
       return;
     const response = await fetch("/api/empire/members", {
       method: "DELETE",
@@ -3110,9 +3113,9 @@ function AdminMemberOverview({
       onMessage("We could not remove that member.");
       return;
     }
-    onChange(members.filter((item) => item.id !== member.id));
+    onChange(members.map((item) => item.id === member.id ? { ...item, loginCode: "", loginCodeStatus: "not-issued" } : item));
     if (editing?.id === member.id) setEditing(null);
-    onMessage(`${member.name} has been removed from the member directory.`);
+    onMessage(`${member.name}’s login has been deactivated. Their record has been retained.`);
     notifyEmpireDataUpdated();
   };
   const update = async (event: FormEvent<HTMLFormElement>) => {
@@ -3184,9 +3187,13 @@ function AdminMemberOverview({
       <div className="admin-members-panel">
         <div className="admin-members-toolbar">
           <p>
-            Review the club directory, see each member’s login code, edit details or remove former members.
+            Review the club directory, see each member’s login code, edit details or deactivate access while retaining history.
           </p>
           <div className="admin-members-controls">
+            <label>Search members<input type="search" value={memberSearch} onChange={event=>setMemberSearch(event.target.value)} placeholder="Name, email or phone" /></label>
+            <label>Membership<select value={categoryFilter} onChange={event=>setCategoryFilter(event.target.value)}><option value="all">All memberships</option><option>Full member</option><option>Social member</option></select></label>
+            <label>Login status<select value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option value="all">All records</option><option value="active">Active logins</option><option value="inactive">Inactive logins</option></select></label>
+
             <label>
               Sort by
               <select
@@ -3265,7 +3272,7 @@ function AdminMemberOverview({
                           type="button"
                           onClick={() => void regenerateCode(member)}
                         >
-                          New code
+                          {member.loginCodeStatus === "not-issued" ? "Reactivate login" : "New code"}
                         </button>
                         <button
                           className="email-member-login"
@@ -3288,7 +3295,7 @@ function AdminMemberOverview({
                           type="button"
                           onClick={() => void remove(member)}
                         >
-                          Remove
+                          Deactivate login
                         </button>
                       </td>
                     </tr>
@@ -3474,7 +3481,7 @@ function AdminTeamSheetManager({
   const [reserveIds, setReserveIds] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const orderedMembers = [...members].sort((a, b) => a.name.localeCompare(b.name));
+  const orderedMembers = members.filter(member => member.loginCodeStatus !== "not-issued").sort((a, b) => a.name.localeCompare(b.name));
   const assignedMemberIds = new Set(
     [...rinks.flatMap((rink) => rink.memberIds).filter((id): id is number => id !== null), ...reserveIds],
   );

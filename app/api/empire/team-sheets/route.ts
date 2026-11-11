@@ -150,7 +150,7 @@ export async function POST(request: Request) {
     const db = await getEmpireDatabase();
     const memberIds = [...details.rinks.flatMap((rink) => rink.memberIds), ...details.reserveIds];
     const members = await db
-      .prepare(`SELECT id FROM empire_members WHERE id IN (${memberIds.map(() => "?").join(", ")})`)
+      .prepare(`SELECT id FROM empire_members WHERE id IN (${memberIds.map(() => "?").join(", ")}) AND EXISTS(SELECT 1 FROM empire_member_credentials credential WHERE credential.member_id=empire_members.id)`)
       .bind(...memberIds)
       .all<{ id: number }>();
     if ((members.results ?? []).length !== memberIds.length) {

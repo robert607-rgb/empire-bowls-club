@@ -9,7 +9,7 @@ const schemaBundle = await build({ entryPoints: ['lib/competition-schema.ts'], b
 const { COMPETITION_SCHEMA, ensureCompetitionSchema } = await import('data:text/javascript;base64,' + Buffer.from(schemaBundle.outputFiles[0].text).toString('base64'));
 
 class DB {
-  constructor() { this.sql = new DatabaseSync(':memory:'); this.sql.exec('CREATE TABLE empire_members (id INTEGER PRIMARY KEY, name TEXT NOT NULL)'); for (let id=1; id<=260; id++) this.sql.prepare('INSERT INTO empire_members VALUES (?,?)').run(id,`Member ${id}`); for (const ddl of COMPETITION_SCHEMA) this.sql.exec(ddl); }
+  constructor() { this.sql = new DatabaseSync(':memory:'); this.sql.exec('CREATE TABLE empire_members (id INTEGER PRIMARY KEY, name TEXT NOT NULL)'); for (let id=1; id<=260; id++) this.sql.prepare('INSERT INTO empire_members VALUES (?,?)').run(id,`Member ${id}`); this.sql.exec('CREATE TABLE empire_member_credentials(member_id INTEGER PRIMARY KEY); INSERT INTO empire_member_credentials SELECT id FROM empire_members'); for (const ddl of COMPETITION_SCHEMA) this.sql.exec(ddl); }
   prepare(sql) { const db=this.sql; let args=[]; return { bind(...values) {args=values; return this;}, async all() {return {results:db.prepare(sql).all(...args)};}, async first() {return db.prepare(sql).get(...args) ?? null;}, async run() {const result=db.prepare(sql).run(...args);return {meta:{changes:Number(result.changes)}};} }; }
   async batch(statements) { this.sql.exec('BEGIN'); try {const result=[]; for (const statement of statements) result.push(await statement.run()); this.sql.exec('COMMIT'); return result;} catch(error) {this.sql.exec('ROLLBACK');throw error;} }
 }
@@ -94,3 +94,5 @@ test('member deadline is enforced but admins can add entries after it',async()=>
  await competitionMutation(db,admin,{action:'competitionEntry',competitionId:created.id,memberId:2},'2026-10-27T12:01:00.000Z');
  assert.equal(db.sql.prepare('SELECT deadline FROM empire_competitions WHERE id=?').get(created.id).deadline,'2026-10-27T12:00:00.000Z');
 });
+
+test('inactive members cannot be added to new competitions',async()=>{const db=new DB();db.sql.prepare('DELETE FROM empire_member_credentials WHERE member_id=1').run();await assert.rejects(()=>mutate(db,admin,{action:'createCompetition',name:'Inactive check',playingFormat:'singles',memberIds:[1,2]}),e=>e instanceof CompetitionError&&e.status===400)});
