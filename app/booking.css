@@ -47,3 +47,8 @@
   font-size: 11px;
   font-weight: 800;
 }
+.booking-scroll button.selected-slot { outline: 4px solid #ca8a04; outline-offset: -4px; background: #fff2bf; color: #143b2d; font-weight: 800; }
+.directory-email { margin: 1rem 0; padding: 1rem; border: 1px solid currentColor; border-radius: .6rem; }
+.directory-email summary { cursor: pointer; font-weight: 700; }
+.directory-email label { display: block; margin: .75rem 0; }
+.directory-email textarea { display: block; width: 100%; color: #172e24; background: #fff; }

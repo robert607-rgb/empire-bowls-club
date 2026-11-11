@@ -46,22 +46,36 @@ export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
   try {
     const input = await readJson(request);
-    const bookingDate = cleanText(input.bookingDate, 10), timeSlot = cleanText(input.timeSlot, 20);
+    const bookingDate = cleanText(input.bookingDate, 10);
+    const timeSlots = Array.isArray(input.timeSlots) ? input.timeSlots.map((value) => cleanText(value, 20)) : [cleanText(input.timeSlot, 20)];
     const rinkNumber = typeof input.rinkNumber === "number" ? input.rinkNumber : Number(input.rinkNumber);
     const bookingType = cleanText(input.bookingType, 20);
     const bookingNameInput = cleanText(input.bookingName, 100);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || !slots.has(timeSlot) || !Number.isInteger(rinkNumber) || rinkNumber < 1 || rinkNumber > 6 || !bookingNameInput || (bookingType && !["Roll Up", "League", "Competition", "Neutral"].includes(bookingType))) return Response.json({ error: "Please choose a valid date, rink, session and booking details." }, { status: 400 });
-    if (isMaintenanceSlot(bookingDate, timeSlot)) return Response.json({ error: "Friday 10am–12pm is reserved for green maintenance." }, { status: 409 });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || (!timeSlots.length || timeSlots.length > slots.size || new Set(timeSlots).size !== timeSlots.length || timeSlots.some((slot) => !slots.has(slot))) || !Number.isInteger(rinkNumber) || rinkNumber < 1 || rinkNumber > 6 || !bookingNameInput || (bookingType && !["Roll Up", "League", "Competition", "Neutral"].includes(bookingType))) return Response.json({ error: "Please choose a valid date, rink, session and booking details." }, { status: 400 });
+    if (timeSlots.some((slot) => isMaintenanceSlot(bookingDate, slot))) return Response.json({ error: "Friday 10am–12pm is reserved for green maintenance." }, { status: 409 });
     const db = await getEmpireDatabase();
     await ensureMemberOwnership(db);
     if (session.access === "member" && session.member_id === null) return Response.json({ error: "Sign in with your own member details to book a rink." }, { status: 403 });
     const member = session.access === "member" ? await db.prepare("SELECT name FROM empire_members WHERE id = ?").bind(session.member_id).first<{ name: string }>() : null;
     if (session.access === "member" && !member) return unauthorized();
     const bookingName = bookingType ? `${bookingNameInput} · ${bookingType}` : bookingNameInput;
-    const id = Array.from(crypto.getRandomValues(new Uint8Array(6))).reduce((number, byte) => number * 256 + byte, 0) + 1;
-    try { const statements = [db.prepare("INSERT INTO empire_bookings (id, booking_date, rink_number, time_slot, booking_name, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, bookingDate, rinkNumber, timeSlot, bookingName, new Date().toISOString())]; if (session.access === "member") statements.push(db.prepare("INSERT INTO empire_booking_owners (booking_id, member_id) VALUES (?, ?)").bind(id, session.member_id)); await db.batch(statements); }
-    catch (error) { if (String(error).toLowerCase().includes("unique")) return Response.json({ error: "That rink has just been booked. Please choose another available session." }, { status: 409 }); throw error; }
-    return Response.json({ booking: { bookingDate, rinkNumber, timeSlot, bookingName } }, { status: 201 });
+    try {
+      const statements = [];
+      for (const timeSlot of timeSlots) {
+        const id = Array.from(crypto.getRandomValues(new Uint8Array(6))).reduce((number, byte) => number * 256 + byte, 0) + 1;
+        statements.push(db.prepare("INSERT INTO empire_bookings (id, booking_date, rink_number, time_slot, booking_name, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(id, bookingDate, rinkNumber, timeSlot, bookingName, new Date().toISOString()));
+        if (session.access === "member") statements.push(db.prepare("INSERT INTO empire_booking_owners (booking_id, member_id) VALUES (?, ?)").bind(id, session.member_id));
+      }
+      await db.batch(statements);
+    } catch (error) {
+      if (String(error).toLowerCase().includes("unique")) {
+        const existing = await db.prepare("SELECT time_slot FROM empire_bookings WHERE booking_date = ? AND rink_number = ?").bind(bookingDate, rinkNumber).all<{ time_slot: string }>();
+        const conflicts = (existing.results ?? []).map((row) => row.time_slot).filter((slot) => timeSlots.includes(slot));
+        return Response.json({ error: `A selected session is no longer available${conflicts.length ? `: ${conflicts.join(", ")}` : ""}. No bookings were saved.` }, { status: 409 });
+      }
+      throw error;
+    }
+    return Response.json({ bookings: timeSlots.map((timeSlot) => ({ bookingDate, rinkNumber, timeSlot, bookingName })) }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
 

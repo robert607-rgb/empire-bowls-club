@@ -58,3 +58,15 @@ test('duplicate cleanup does not discard a sheet with linked signups',async()=>{
  assert.ok(result.requests.some(request=>request.id===11 && request.names.includes('Alice Example')));
  assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM empire_player_signups WHERE request_id = ?').bind(11).first()).count,1);
 });
+
+test('multiple sessions save atomically and reject a conflict without partial bookings',async()=>{
+ const date='2026-11-02';
+ let res=await bookings.POST(req('alice','POST',{bookingDate:date,rinkNumber:1,timeSlots:['10:00–12:00','14:00–16:00'],bookingType:'Roll Up',bookingName:'Alice'}));
+ assert.equal(res.status,201);
+ let items=(await (await bookings.GET(req('alice','GET',undefined,'?date='+date))).json()).bookings;
+ assert.equal(items.length,2);assert.ok(items.every(x=>x.canCancel));
+ res=await bookings.POST(req('bob','POST',{bookingDate:date,rinkNumber:1,timeSlots:['12:00–14:00','14:00–16:00'],bookingType:'Roll Up',bookingName:'Bob'}));
+ assert.equal(res.status,409);
+ items=(await (await bookings.GET(req('bob','GET',undefined,'?date='+date))).json()).bookings;
+ assert.equal(items.length,2);assert.ok(!items.some(x=>x.timeSlot==='12:00–14:00'));
+});

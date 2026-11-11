@@ -2426,7 +2426,7 @@ function MemberZone({
   const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
   const [selected, setSelected] = useState<{
     rink: number;
-    slot: string;
+    slots: string[];
   } | null>(null);
   const [bookingName, setBookingName] = useState("");
   const [bookingType, setBookingType] = useState("Roll Up");
@@ -2485,7 +2485,7 @@ function MemberZone({
         body: JSON.stringify({
           bookingDate: date,
           rinkNumber: selected.rink,
-          timeSlot: selected.slot,
+          timeSlots: selected.slots,
           bookingType,
           bookingName,
         }),
@@ -2496,7 +2496,7 @@ function MemberZone({
         return;
       }
       setNotice(
-        `Rink ${selected.rink} is booked for ${selected.slot} on ${displayDate(date)}.`,
+        `Rink ${selected.rink} is booked for ${selected.slots.join(", ")} on ${displayDate(date)}.`,
       );
       setSelected(null);
       setBookingName("");
@@ -2563,7 +2563,7 @@ function MemberZone({
               type="date"
               min={today()}
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={(event) => { setDate(event.target.value); setSelected(null); }}
             />
           </label>
         </div>
@@ -2589,13 +2589,18 @@ function MemberZone({
                     return (
                       <td key={rink}>
                         <button
-                          className={booking ? "taken" : "available"}
+                          className={booking ? "taken" : selected?.rink === rink && selected.slots.includes(slot) ? "available selected-slot" : "available"}
+                          aria-pressed={!booking ? selected?.rink === rink && selected.slots.includes(slot) : undefined}
                           disabled={Boolean(booking) && !booking?.canCancel}
                           onClick={() => {
                             if (booking && booking.id !== null && booking.canCancel) {
                               void removeBooking(booking);
                             } else {
-                              setSelected({ rink, slot });
+                              setSelected((previous) => {
+                                if (!previous || previous.rink !== rink) return { rink, slots: [slot] };
+                                const slots = previous.slots.includes(slot) ? previous.slots.filter((item) => item !== slot) : [...previous.slots, slot];
+                                return slots.length ? { rink, slots } : null;
+                              });
                               setNotice("");
                               setError("");
                             }
@@ -2611,7 +2616,7 @@ function MemberZone({
                               </span>
                             </>
                           ) : (
-                            "Available"
+                            selected?.rink === rink && selected.slots.includes(slot) ? "✓ Selected" : "Available"
                           )}
                         </button>
                       </td>
@@ -2627,7 +2632,7 @@ function MemberZone({
             <div>
               <b>Rink {selected.rink}</b>
               <span>
-                {selected.slot} · {displayDate(date)}
+                {selected.slots.join(", ")} · {displayDate(date)}
               </span>
             </div>
             <label>
