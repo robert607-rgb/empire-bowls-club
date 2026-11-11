@@ -890,18 +890,6 @@ function HomePage({
             </button>
           </div>
         </div>
-        <div className="hero-emblem">
-          <img
-            src="/optimized/empire-crest.webp"
-            srcSet="/optimized/empire-crest-256.webp 256w, /optimized/empire-crest.webp 512w"
-            alt="Empire Bowls Club crest"
-            width={512}
-            height={512}
-            sizes="min(286px, 28vw)"
-            decoding="async"
-          />
-          <span>EST. 1910</span>
-        </div>
       </section>
       <section className="quick-facts wrap single home-facts">
         <article>
