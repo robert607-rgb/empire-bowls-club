@@ -1,7 +1,9 @@
+import { memberSections, revokeSections } from "../../../../lib/empire-admin-access";
 import {
   apiError,
   cleanText,
   getEmpireAccess,
+  getEmpireSession,
   getEmpireDatabase,
   hasEmpireAccess,
   issueMemberLoginCode,
@@ -86,6 +88,12 @@ function validateMember(
   return "";
 }
 
+async function protectedTarget(request:Request,id:number){
+ if(request.headers.get("x-empire-admin")!=="1")return false;
+ const session=await getEmpireSession(request);
+ return !!session?.member_id && session.member_id!==id && (await memberSections(await getEmpireDatabase(),id)).length>0;
+}
+
 export async function GET(request: Request) {
   const access = await getEmpireAccess(request);
   if (!access) return unauthorized();
@@ -97,8 +105,10 @@ export async function GET(request: Request) {
       )
       .all<MemberRow>();
     const rows = result.results ?? [];
+    const locked=new Set<number>();
+    if(access === "admin" && request.headers.get("x-empire-admin")==="1")for(const row of rows)if(await protectedTarget(request,row.id))locked.add(row.id);
     const loginCodes = access === "admin"
-      ? await readMemberLoginCodes(rows.map((member) => member.id))
+      ? await readMemberLoginCodes(rows.filter(member=>!locked.has(member.id)).map((member) => member.id))
       : [];
     const codesByMemberId = new Map(loginCodes.map((item) => [item.memberId, item]));
     return Response.json(
@@ -107,6 +117,7 @@ export async function GET(request: Request) {
           access === "admin"
             ? {
                 ...mapMember(member, true),
+                adminLocked: locked.has(member.id),
                 loginCode: codesByMemberId.get(member.id)?.code ?? "",
                 loginCodeStatus: codesByMemberId.get(member.id)?.status ?? "not-issued",
               }
@@ -188,6 +199,7 @@ export async function PUT(request: Request) {
     if (validationError) {
       return Response.json({ error: validationError }, { status: 400 });
     }
+    if(await protectedTarget(request,id))return Response.json({error:"Only the main administrator can change another admin account."},{status:403});
     const db = await getEmpireDatabase();
     const current = await db
       .prepare("SELECT id, name, date_of_birth, address, phone, email, membership_type, created_at FROM empire_members WHERE id = ?")
@@ -243,8 +255,10 @@ export async function DELETE(request: Request) {
     if (!Number.isInteger(id)) {
       return Response.json({ error: "Choose a valid member." }, { status: 400 });
     }
+    if(await protectedTarget(request,id))return Response.json({error:"Only the main administrator can change another admin account."},{status:403});
     const db = await getEmpireDatabase();
     await db.prepare("DELETE FROM empire_member_credentials WHERE member_id = ?").bind(id).run();
+    await revokeSections(db,id);
     return Response.json({ deactivated: true });
   } catch (error) {
     return apiError(error);
@@ -262,6 +276,7 @@ export async function PATCH(request: Request) {
     if (!Number.isInteger(id)) {
       return Response.json({ error: "Choose a valid member." }, { status: 400 });
     }
+    if(await protectedTarget(request,id))return Response.json({error:"Only the main administrator can change another admin account."},{status:403});
     const loginCode = await issueMemberLoginCode(id);
     if (!loginCode) {
       return Response.json({ error: "That member no longer exists." }, { status: 404 });

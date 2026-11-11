@@ -5,6 +5,7 @@ import {
   getEmpireDatabase,
   getRuntimeEnv,
   hasEmpireAccess,
+  getEmpireSession,
   MULTIPART_BODY_LIMIT_BYTES,
   readJson,
   sameOrigin,
@@ -137,6 +138,7 @@ export async function POST(request: Request) {
     }
     assertRequestSize(request, MULTIPART_BODY_LIMIT_BYTES);
     const draft = readDraft(await request.formData());
+    if((await getEmpireSession(request))?.member_id !== null && draft.category !== "club_document") return Response.json({error:"Documents access covers club documents only."},{status:403});
     const validationError = validateDraft(draft, true);
     if (validationError) {
       return Response.json({ error: validationError }, { status: 400 });
@@ -223,6 +225,7 @@ export async function PUT(request: Request) {
       return Response.json({ error: "That file no longer exists." }, { status: 404 });
     }
 
+    if((await getEmpireSession(request))?.member_id !== null && (current.category !== "club_document" || draft.category !== "club_document")) return Response.json({error:"Documents access covers club documents only."},{status:403});
     let bucket: R2Bucket | undefined;
     let replacement: ReturnType<typeof uploadedFile> | null = null;
     if (draft.file) {
@@ -314,12 +317,13 @@ export async function DELETE(request: Request) {
     }
     const db = await getEmpireDatabase();
     const current = await db
-      .prepare("SELECT object_key FROM empire_uploads WHERE id = ?")
+      .prepare("SELECT object_key, category FROM empire_uploads WHERE id = ?")
       .bind(id)
-      .first<{ object_key: string }>();
+      .first<{ object_key: string; category: string }>();
     if (!current) {
       return Response.json({ error: "That file no longer exists." }, { status: 404 });
     }
+    if((await getEmpireSession(request))?.member_id !== null && current.category !== "club_document") return Response.json({error:"Documents access covers club documents only."},{status:403});
     await db.prepare("DELETE FROM empire_uploads WHERE id = ?").bind(id).run();
     try {
       const { BUCKET } = await getRuntimeEnv();

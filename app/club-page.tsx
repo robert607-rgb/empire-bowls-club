@@ -2,10 +2,13 @@
 
 import "./gallery.css";
 import "./gallery-admin.css";
+import "./member-overview.css";
 import "./competition.css";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
 import EmpireIntro from "./empire-intro";
+import AdminAccessTool from "./admin-access-tool";
+import type { AdminSection } from "../lib/empire-admin-access";
 import DirectoryEmail from "./directory-email";
 import { directorySearch as matchesDirectorySearch } from "../lib/directory-search";
 import { pagePaths } from "./site-pages";
@@ -34,7 +37,8 @@ type AdminTab =
   | "gallery"
   | "sponsors"
   | "documents"
-  | "security";
+  | "security"
+  | "admin-access";
 export type Page =
   | "Home"
   | "About the Club"
@@ -89,6 +93,7 @@ type Member = {
   email: string;
   membershipType: "Full member" | "Social member";
   createdAt: string;
+  adminLocked?: boolean;
   loginCode?: string;
   loginCodeStatus?: "available" | "unavailable" | "not-issued";
 };
@@ -329,12 +334,12 @@ const sponsors: Sponsor[] = [
     linkLabel: "Visit nhheating.co.uk",
   },
 ];
-function apiHeaders(_access: Access, _password: string) {
+function apiHeaders(_access: Access, _password: string): Record<string,string> {
   // Browser credentials are now held in a short-lived HttpOnly cookie, so no
   // password or bearer token is exposed to the page or sent in request headers.
   void _access;
   void _password;
-  return {};
+  return _access === "admin" ? {"x-empire-admin":"1"} : {};
 }
 function Status({
   message,
@@ -2238,6 +2243,9 @@ function Portal({
   setAccess: (value: Access | null) => void;
   setPassword: (value: string) => void;
 }) {
+  const [sections,setSections]=useState<AdminSection[]>([]);
+  const [delegateView,setDelegateView]=useState(false);
+  useEffect(()=>{if(access!=="member"){setDelegateView(false);setSections([]);return;}void fetch('/api/empire/admin-access',{cache:'no-store'}).then(r=>r.json()).then(data=>setSections(data.sections||[])).catch(()=>setSections([]))},[access]);
   const [loginError, setLoginError] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
   const login = async (kind: Access, supplied: string, firstName = "") => {
@@ -2271,8 +2279,7 @@ function Portal({
     setPassword("");
     setAccess(null);
   };
-  if (access === "member")
-    return <MemberZone password={password} onLeave={leave} />;
+  if (access === "member") return <>{sections.length>0&&<div className="portal-shell" style={{paddingBlock:"16px",minHeight:0}}><button className="outline" onClick={()=>setDelegateView(value=>!value)}>{delegateView?"Back to Members Zone":"Volunteer admin tools"}</button></div>}{delegateView&&sections.length>0?<AdminZone password={password} onLeave={leave} sections={sections}/>:<MemberZone password={password} onLeave={leave}/>}</>;
   if (access === "admin")
     return <AdminZone password={password} onLeave={leave} />;
   return (
@@ -3178,7 +3185,7 @@ function AdminMemberOverview({
     }
   };
   return (
-    <details className="admin-members-tab">
+    <details className="admin-members-tab" open>
       <summary>
         <span className="eyebrow">Member records</span>
         <b>Members overview</b>
@@ -3209,100 +3216,19 @@ function AdminMemberOverview({
         </div>
         <DirectoryEmail members={members} />
         {ordered.length ? (
-          <div className="member-table-wrap">
-            <table className="member-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Membership</th>
-                  <th>{selectionYear} games</th>
-                  <th>Date of birth</th>
-                  <th>Date joined</th>
-                  <th>Contact</th>
-                  <th>Login code</th>
-                  <th>
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {ordered.map((member) => (
-                  <Fragment key={member.id}>
-                    <tr>
-                      <td>
-                        <b>{member.name}</b>
-                      </td>
-                      <td>
-                        <span
-                          className={`member-badge ${member.membershipType === "Social member" ? "social" : "full"}`}
-                        >
-                          {member.membershipType}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="games-selected">
-                          {gamesByMember.get(member.id) ?? 0}
-                        </span>
-                      </td>
-                      <td>{formatDateOfBirth(member.dateOfBirth)}</td>
-                      <td>{formatJoinedDate(member.createdAt)}</td>
-                      <td>
-                        <a href={`mailto:${member.email}`}>{member.email}</a>
-                        <a href={`tel:${member.phone.replaceAll(" ", "")}`}>
-                          {member.phone}
-                        </a>
-                      </td>
-                      <td>
-                        <code className="member-login-code">{member.loginCode || (member.loginCodeStatus === "unavailable" ? "Unavailable" : "Not issued")}</code>
-                        {member.loginCodeStatus === "unavailable" && <small>The saved code cannot be displayed; the existing login may still work. New code replaces it.</small>}
-                      </td>
-                      <td className="member-actions">
-                        <button
-                          className="edit-member"
-                          type="button"
-                          onClick={() => {
-                            setEditing({ ...member, address: member.address ?? "" });
-                            setEditError("");
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="issue-member-code"
-                          type="button"
-                          onClick={() => void regenerateCode(member)}
-                        >
-                          {member.loginCodeStatus === "not-issued" ? "Reactivate login" : "New code"}
-                        </button>
-                        <button
-                          className="email-member-login"
-                          type="button"
-                          disabled={!member.loginCode}
-                          onClick={() => {
-                            if (member.loginCode) {
-                              openMemberLoginEmail({
-                                name: member.name,
-                                email: member.email,
-                                loginCode: member.loginCode,
-                              });
-                            }
-                          }}
-                        >
-                          Email details
-                        </button>
-                        <button
-                          className="remove-member"
-                          type="button"
-                          onClick={() => void remove(member)}
-                        >
-                          Deactivate login
-                        </button>
-                      </td>
-                    </tr>
-                    {editing?.id === member.id && (
-                      <tr className="member-edit-row">
-                        <td colSpan={8}>
-                          <form onSubmit={update}>
+          <div className="empire-member-cards">
+            {ordered.map(member => <article className="empire-member-card" key={member.id}>
+              <div className="empire-member-heading"><div><h3>{member.name}</h3><span className="member-badge">{member.membershipType}</span></div><div className="empire-member-code"><span>Login code</span><code>{member.adminLocked ? "Main admin only" : member.loginCode || (member.loginCodeStatus === "unavailable" ? "Unavailable" : "Not issued")}</code><small>{member.adminLocked ? "Protected admin account" : member.loginCodeStatus === "not-issued" ? "Inactive login" : "Active login"}</small></div></div>
+              <div className="empire-member-contact"><a href={`mailto:${member.email}`}>{member.email}</a><a href={`tel:${member.phone.replaceAll(" ", "")}`}>{member.phone}</a></div>
+              <dl className="empire-member-facts"><div><dt>{selectionYear} games</dt><dd>{gamesByMember.get(member.id) ?? 0}</dd></div><div><dt>Date of birth</dt><dd>{formatDateOfBirth(member.dateOfBirth)}</dd></div><div><dt>Date joined</dt><dd>{formatJoinedDate(member.createdAt)}</dd></div></dl>
+              {member.loginCodeStatus === "unavailable" && <p className="empire-code-note">The saved code cannot be displayed. Their current login may still work; creating a new code replaces it.</p>}
+              <div className="empire-member-actions">
+                <button disabled={member.adminLocked} type="button" onClick={()=>{setEditing({...member,address:member.address??""});setEditError("")}}>Edit details</button>
+                <button type="button" disabled={member.adminLocked||!member.loginCode} onClick={()=>{if(member.loginCode)openMemberLoginEmail({name:member.name,email:member.email,loginCode:member.loginCode})}}>Welcome email</button>
+                <button disabled={member.adminLocked} type="button" onClick={()=>void regenerateCode(member)}>{member.loginCodeStatus === "not-issued" ? "Reactivate & issue code" : "Reset passcode"}</button>
+                {member.loginCodeStatus !== "not-issued" && <button disabled={member.adminLocked} className="empire-deactivate" type="button" onClick={()=>void remove(member)}>Deactivate</button>}
+              </div>
+              {editing?.id===member.id && <div className="empire-member-edit">                          <form onSubmit={update}>
                             <div className="member-edit-heading">
                               <b>Edit {member.name}</b>
                               <button
@@ -3399,14 +3325,8 @@ function AdminMemberOverview({
                             <button className="primary" type="submit">
                               Save member changes
                             </button>
-                          </form>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
+                          </form></div>}
+            </article>)}
           </div>
         ) : (
           <p className="empty">No members have been added yet.</p>
@@ -3748,7 +3668,7 @@ function TeamSheetEmail({ sheet }: { sheet: TeamSheet }) {
   const [loaded,setLoaded]=useState(false);
   async function load() {
     setLoaded(false);setStatus("Loading current email addresses…");
-    try {const response=await fetch(`/api/empire/team-sheets/recipients?sheetId=${sheet.id}`,{cache:"no-store"}); const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not load email addresses.");setAddresses(result.addresses);setMissing(result.missing);setStatus("");setLoaded(true);}catch(error){setStatus(error instanceof Error?error.message:"Could not load email addresses.");}
+    try {const response=await fetch(`/api/empire/team-sheets/recipients?sheetId=${sheet.id}`,{cache:"no-store",headers:{"x-empire-admin":"1"}}); const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not load email addresses.");setAddresses(result.addresses);setMissing(result.missing);setStatus("");setLoaded(true);}catch(error){setStatus(error instanceof Error?error.message:"Could not load email addresses.");}
   }
   const team = [`Empire v ${sheet.opponent}`, sheet.competition, displayDate(sheet.matchDate), ...sheet.rinks.flatMap(rink => [`\nRink ${rink.rink} – ${rink.format}`, ...rink.players.map(player => `${player.position}: ${player.name}`)]), ...(sheet.reserves?.length ? [`\nReserves: ${sheet.reserves.map(member => member.name).join(", ")}`] : [])].join("\n");
   const link = `mailto:?bcc=${encodeURIComponent(addresses.join(","))}&subject=${encodeURIComponent(`Team selection: Empire v ${sheet.opponent}`)}&body=${encodeURIComponent(team)}`;
@@ -5224,16 +5144,18 @@ function AdminCommitteePanel({
 function AdminZone({
   password,
   onLeave,
+  sections,
 }: {
   password: string;
   onLeave: () => void;
+  sections?: AdminSection[];
 }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [committeeMembers, setCommitteeMembers] = useState<CommitteeMember[]>([]);
   const [files, setFiles] = useState<ClubFile[]>([]);
   const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbum[]>([]);
   const [teamSheets, setTeamSheets] = useState<TeamSheet[]>([]);
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [activeTab, setActiveTab] = useState<AdminTab>(sections?.[0] || "members");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [newMemberLogin, setNewMemberLogin] = useState<{
@@ -5332,7 +5254,9 @@ function AdminZone({
       count: files.filter((file) => file.category === "club_document").length,
     },
     { id: "security", label: "Security" },
-  ];
+    { id: "admin-access", label: "Admin Access" },
+  ].filter(tab=>!sections || sections.includes((tab.id === "player-signups" ? "fixtures" : tab.id) as AdminSection)) as Array<{id:AdminTab;label:string;count?:number}>;
+  useEffect(()=>{if(!adminTabs.some(tab=>tab.id===activeTab))setActiveTab(adminTabs[0]?.id||"members")},[activeTab,sections]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void refresh();
@@ -5466,6 +5390,7 @@ function AdminZone({
           </b>
         </article>
       </section>
+      {activeTab === "admin-access" && !sections && <AdminAccessTool />}
       <div className="admin-tabs">
         <div className="admin-tab-list" role="tablist" aria-label="Admin sections">
           {adminTabs.map((tab) => (

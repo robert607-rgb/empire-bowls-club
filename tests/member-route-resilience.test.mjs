@@ -5,7 +5,7 @@ import ts from "typescript";
 import { decodeMemberLoginCodes } from "../app/api/empire/member-code-display.ts";
 
 const route = (await readFile(new URL("../app/api/empire/members/route.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
-const mapped = route.replace(/import \{([\s\S]*?)\} from "\.\.\/_server";/, "const {$1} = globalThis.__memberRouteDependencies;");
+const mapped = route.replace(/import \{ memberSections, revokeSections \} from "[^"\n]+";/, "const memberSections=async()=>[], revokeSections=async()=>{};").replace(/import \{([\s\S]*?)\} from "\.\.\/_server";/, "const {$1} = globalThis.__memberRouteDependencies;");
 assert.notEqual(mapped, route, "route dependency mapping must succeed");
 const js = ts.transpileModule(mapped, {compilerOptions:{module:ts.ModuleKind.ESNext}}).outputText;
 const fixture = { id: 1, name: "Example Member", date_of_birth: null, address: "example", phone: "example", email: "example@example.invalid", membership_type: "Full member", created_at: "2026-01-01" };

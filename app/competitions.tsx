@@ -14,8 +14,8 @@ const isActiveMember=(member:DirectoryMember)=>member.account_status!=="inactive
 type DirectoryMember = { id: number; name: string; membership_type?: string; account_status?: string };
 type Self = { memberId?: number | null; isTest?: boolean };
 type Props = { competitions: Competition[]; members: DirectoryMember[]; self?: Self; admin: boolean; refresh: () => Promise<void>; onDirty?:(dirty:boolean)=>void; allowCreate?:boolean };
-async function updateCompetition(payload: Record<string, unknown>) {
-  const response = await fetch("/api/empire/competitions", { method: "POST", credentials:"same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload.action==="create"?{...payload,action:"createCompetition"}:{...payload,action:"competitionResult",id:payload.matchId,revision:payload.matchVersion,scoreA:payload.scoreOne,scoreB:payload.scoreTwo}) });
+async function updateCompetition(payload: Record<string, unknown>, admin=false) {
+  const response = await fetch("/api/empire/competitions", { method: "POST", credentials:"same-origin", headers: { "Content-Type": "application/json", ...(admin ? {"x-empire-admin":"1"} : {}) }, body: JSON.stringify(payload.action==="create"?{...payload,action:"createCompetition"}:{...payload,action:"competitionResult",id:payload.matchId,revision:payload.matchVersion,scoreA:payload.scoreOne,scoreB:payload.scoreTwo}) });
   const data = await response.json() as { id: string; error?: string };
   if (!response.ok) throw new Error(data.error || "The competition could not be saved.");
   return {...data,id:String(data.id)};
@@ -31,7 +31,7 @@ export function Competitions({ competitions, members, self, admin, refresh,onDir
   const [message, setMessage] = useState("");
   const competition = competitions.find(item => item.id === selectedId||item.id.startsWith(selectedId+":")) || competitions[0];
   const report = async (match: CompetitionMatch, scoreOne: number, scoreTwo: number) => {
-    await updateCompetition({ action: "result", matchId: match.id, matchVersion: match.version, scoreOne, scoreTwo });
+    await updateCompetition({ action: "result", matchId: match.id, matchVersion: match.version, scoreOne, scoreTwo },admin);
     await refresh();
     setMessage("Result saved. The competition has been updated.");
   };
@@ -68,7 +68,7 @@ export function CompetitionBuilder({ members, onCreated,onDirty }: { members: Di
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError("");
     try {
-      const data = await updateCompetition({ action: "create", name, format, playingFormat, legs, leagueCount, winPoints: points.win, drawPoints: points.draw, lossPoints: points.loss, memberIds: selected, teams });
+      const data = await updateCompetition({ action: "create", name, format, playingFormat, legs, leagueCount, winPoints: points.win, drawPoints: points.draw, lossPoints: points.loss, memberIds: selected, teams },true);
       onDirty?.(false);await onCreated(data.id);
     } catch (failure) { setError(failure instanceof Error ? failure.message : "The competition could not be created."); }
     finally { setBusy(false); }

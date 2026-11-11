@@ -14,6 +14,7 @@ export default function DirectoryEmail({ members }: { members: DirectoryContact[
   }
   return <details className="directory-email">
     <summary>Email members</summary>
+    <div className="directory-email-body">
     <p>Choose a group and review your message before sending. Addresses are placed in BCC.</p>
     <label>Recipients <select value={group} onChange={event => { setGroup(event.target.value); setMessage(""); }}>
       <option value="all">All members</option><option value="Full member">Full members</option><option value="Social member">Social members</option>
@@ -26,5 +27,6 @@ export default function DirectoryEmail({ members }: { members: DirectoryContact[
       <p>If no email app opens, copy the addresses and paste them into its BCC field.</p>
     </> : <p>No usable email addresses in this group.</p>}
     <p role="status">{message}</p>
+    </div>
   </details>;
 }

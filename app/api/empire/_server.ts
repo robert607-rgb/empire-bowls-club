@@ -1,3 +1,4 @@
+import { memberSections, requestSection } from "../../../lib/empire-admin-access";
 import { decodeMemberLoginCodes } from "./member-code-display";
 
 export type EmpireAccess = "member" | "admin";
@@ -308,6 +309,10 @@ export async function getEmpireSession(request: Request): Promise<SessionRow | n
   if (!row || new Date(row.expires_at).getTime() <= Date.now() || (row.access === "member" && row.member_id === null)) {
     await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token)]);
     return null;
+  }
+  if(row.access === "member" && row.member_id !== null && request.headers.get("x-empire-admin") === "1") {
+    const section=requestSection(request);
+    if(section && (await memberSections(db,row.member_id)).includes(section)) return {...row,access:"admin"};
   }
   return row;
 }
