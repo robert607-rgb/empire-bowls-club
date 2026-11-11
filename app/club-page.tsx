@@ -5,6 +5,7 @@ import "./gallery-admin.css";
 import "./competition.css";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
+import DirectoryEmail from "./directory-email";
 import { pagePaths } from "./site-pages";
 import type { GalleryAlbum, GalleryPhoto } from "./api/empire/gallery/gallery-data";
 
@@ -2754,6 +2755,7 @@ function MemberZone({
               />
             </label>
           </div>
+          <DirectoryEmail members={members} />
           <div className="directory-list">
             {visibleMembers.length ? (
               visibleMembers.map((member) => (
@@ -3079,9 +3081,6 @@ function AdminMemberOverview({
   const [sort, setSort] = useState<"name" | "membershipType" | "createdAt">(
     "name",
   );
-  const [emailGroup, setEmailGroup] = useState<"all" | "full" | "social">(
-    "all",
-  );
   const [editing, setEditing] = useState<Member | null>(null);
   const [editError, setEditError] = useState("");
   const selectionYear = new Date().getFullYear();
@@ -3105,30 +3104,6 @@ function AdminMemberOverview({
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     return a.name.localeCompare(b.name);
   });
-  const selectedForEmail = members.filter((member) => {
-    if (emailGroup === "full") return member.membershipType === "Full member";
-    if (emailGroup === "social")
-      return member.membershipType === "Social member";
-    return true;
-  });
-  const copyEmails = async () => {
-    const emails = selectedForEmail
-      .map((member) => member.email.trim())
-      .filter(Boolean)
-      .join(", ");
-    if (!emails) {
-      onMessage("There are no email addresses in that membership group.");
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(emails);
-      onMessage(
-        `${selectedForEmail.length} ${emailGroup === "all" ? "member" : `${emailGroup} member`} email address${selectedForEmail.length === 1 ? "" : "es"} copied.`,
-      );
-    } catch {
-      onMessage("We could not copy those email addresses. Please try again.");
-    }
-  };
   const remove = async (member: Member) => {
     if (!window.confirm(`Remove ${member.name} from the member directory?`))
       return;
@@ -3232,29 +3207,9 @@ function AdminMemberOverview({
                 <option value="createdAt">Date joined</option>
               </select>
             </label>
-            <label>
-              Copy emails for
-              <select
-                value={emailGroup}
-                onChange={(event) =>
-                  setEmailGroup(event.target.value as typeof emailGroup)
-                }
-              >
-                <option value="all">All members</option>
-                <option value="full">Full members</option>
-                <option value="social">Social members</option>
-              </select>
-            </label>
-            <button
-              className="copy-emails"
-              type="button"
-              onClick={() => void copyEmails()}
-            >
-              Copy {selectedForEmail.length} email
-              {selectedForEmail.length === 1 ? "" : "s"}
-            </button>
           </div>
         </div>
+        <DirectoryEmail members={members} />
         {ordered.length ? (
           <div className="member-table-wrap">
             <table className="member-table">
