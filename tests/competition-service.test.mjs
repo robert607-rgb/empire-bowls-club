@@ -77,3 +77,13 @@ test('schema upgrade preserves existing competition records and results',async()
  await ensureCompetitionSchema(db);const row=db.sql.prepare('SELECT title,entry_mode FROM empire_competitions WHERE id=1').get();assert.equal(row.title,'Existing');assert.equal(row.entry_mode,'fixed');
 });
 test('admin can archive a competition without deleting entries or results',async()=>{const db=new DB(),created=await mutate(db,admin,{action:'createCompetition',name:'Cup',format:'knockout',playingFormat:'singles',memberIds:[1,2]});const original=db.sql.prepare('SELECT * FROM empire_competitions WHERE id=?').get(created.id);const n=db.sql.prepare('SELECT COUNT(*) AS n FROM empire_competition_entries WHERE competition_id=?').get(created.id).n;await assert.rejects(()=>mutate(db,member(1),{action:'archiveCompetition',competitionId:created.id,revision:original.revision}),error=>error instanceof CompetitionError&&error.status===403);await assert.rejects(()=>mutate(db,admin,{action:'archiveCompetition',competitionId:created.id,revision:original.revision+1}),error=>error instanceof CompetitionError&&error.status===409);await mutate(db,admin,{action:'archiveCompetition',competitionId:created.id,revision:original.revision});assert.equal(db.sql.prepare('SELECT archived FROM empire_competitions WHERE id=?').get(created.id).archived,1);assert.equal(db.sql.prepare('SELECT COUNT(*) AS n FROM empire_competition_entries WHERE competition_id=?').get(created.id).n,n);await mutate(db,admin,{action:'restoreCompetition',competitionId:created.id,revision:original.revision+1});assert.equal(db.sql.prepare('SELECT archived FROM empire_competitions WHERE id=?').get(created.id).archived,0)});
+test('admin-only competition entries reject members and allow admin additions; settings persist',async()=>{
+ const db=new DB(); const created=await mutate(db,admin,{action:'createCompetition',openEntries:true,memberEntry:false,name:'Admin entries',playingFormat:'singles'});
+ assert.equal(db.sql.prepare('SELECT member_entry FROM empire_competitions WHERE id=?').get(created.id).member_entry,0);
+ await assert.rejects(()=>mutate(db,member(1),{action:'competitionEntry',competitionId:created.id}), e=>e instanceof CompetitionError&&e.status===403);
+ await mutate(db,admin,{action:'competitionEntry',competitionId:created.id,memberId:1});
+ const current=db.sql.prepare('SELECT revision FROM empire_competitions WHERE id=?').get(created.id);
+ await mutate(db,admin,{action:'setMemberEntry',competitionId:created.id,memberEntry:true,revision:current.revision});
+ await mutate(db,member(2),{action:'competitionEntry',competitionId:created.id});
+ assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM empire_competition_entries WHERE competition_id=?').get(created.id).n,2);
+});
