@@ -1,3 +1,4 @@
+import { toWorkerStream } from "@/lib/worker-streams";
 import {
   apiError,
   assertRequestSize,
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
         const detail = photoDetails[index];
         if (!detail) throw new Error("The image could not be prepared.");
         const objectKey = `empire/gallery/${albumId}/${crypto.randomUUID()}-${detail.fileName}`;
-        await BUCKET.put(objectKey, file.stream(), {
+        await BUCKET.put(objectKey, toWorkerStream(file.stream()), {
           httpMetadata: { contentType: detail.contentType, contentDisposition: `inline; filename="${detail.fileName}"` },
         });
         objectKeys.push(objectKey);

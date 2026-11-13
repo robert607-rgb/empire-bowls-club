@@ -1,3 +1,4 @@
+import { toWorkerStream } from "@/lib/worker-streams";
 import {
   apiError,
   assertRequestSize,
@@ -174,7 +175,7 @@ export async function POST(request: Request) {
       }
       const image = uploadedImage(draft.file);
       try {
-        await BUCKET.put(image.objectKey, draft.file.stream(), {
+        await BUCKET.put(image.objectKey, toWorkerStream(draft.file.stream()), {
           httpMetadata: {
             contentType: image.contentType,
             contentDisposition: `inline; filename=\"${image.safeName}\"`,
@@ -281,7 +282,7 @@ export async function PUT(request: Request) {
       replacement = uploadedImage(draft.file);
       uploadedKey = replacement.objectKey;
       try {
-        await bucket.put(uploadedKey, draft.file.stream(), {
+        await bucket.put(uploadedKey, toWorkerStream(draft.file.stream()), {
           httpMetadata: {
             contentType: replacement.contentType,
             contentDisposition: `inline; filename=\"${replacement.safeName}\"`,

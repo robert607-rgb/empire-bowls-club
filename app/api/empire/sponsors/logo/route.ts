@@ -1,3 +1,4 @@
+import { toWebStream } from "@/lib/worker-streams";
 import { apiError, getEmpireDatabase, getRuntimeEnv } from "../../_server";
 
 type SponsorLogoRow = { logo_object_key: string; logo_file_name: string; logo_content_type: string };
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     const object = await BUCKET.get(row.logo_object_key);
     if (!object) return new Response("Not found", { status: 404 });
     const filename = row.logo_file_name.replace(/[\"\\]/g, "-");
-    return new Response(object.body, {
+    return new Response(toWebStream(object.body), {
       headers: {
         "content-type": row.logo_content_type,
         "content-disposition": `inline; filename="${filename}"`,

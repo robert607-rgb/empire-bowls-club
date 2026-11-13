@@ -1,3 +1,4 @@
+import { toWebStream } from "@/lib/worker-streams";
 import { apiError, getEmpireDatabase, getRuntimeEnv } from "../../_server";
 
 type PhotoRow = { object_key: string; file_name: string; content_type: string };
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
     const object = await BUCKET.get(row.object_key);
     if (!object) return new Response("Not found", { status: 404 });
     const filename = row.file_name.replace(/[\"\\]/g, "-");
-    return new Response(object.body, {
+    return new Response(toWebStream(object.body), {
       headers: {
         "content-type": row.content_type,
         "content-disposition": `inline; filename="${filename}"`,

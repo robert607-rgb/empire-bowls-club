@@ -19,6 +19,7 @@ if [[ ! -x "${vinext}" ]]; then
 fi
 
 node "${script_dir}/check-auth-runtime.mjs" "${SITES_PROJECT_ROOT}"
+node "${SITES_PROJECT_ROOT}/node_modules/typescript/bin/tsc" --noEmit --incremental false --project "${SITES_PROJECT_ROOT}/tsconfig.json"
 
 echo "Running bounded vinext build..."
 timeout \

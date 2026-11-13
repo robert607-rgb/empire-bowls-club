@@ -14,6 +14,14 @@ const authCheck = spawnSync(process.execPath, ["scripts/check-auth-runtime.mjs",
 if (authCheck.error) throw authCheck.error;
 if (authCheck.status !== 0) process.exit(authCheck.status ?? 1);
 
+const typecheck = spawnSync(process.execPath, ["node_modules/typescript/bin/tsc", "--noEmit", "--incremental", "false"], {
+  cwd: root,
+  env,
+  stdio: "inherit",
+});
+if (typecheck.error) throw typecheck.error;
+if (typecheck.status !== 0) process.exit(typecheck.status ?? 1);
+
 const vinext = process.platform === "win32"
   ? path.join(root, "node_modules", ".bin", "vinext.cmd")
   : path.join(root, "node_modules", ".bin", "vinext");

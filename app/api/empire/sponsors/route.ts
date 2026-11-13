@@ -1,3 +1,4 @@
+import { toWorkerStream } from "@/lib/worker-streams";
 import {originalSponsors} from "../../../../lib/original-sponsors";
 import {
   apiError,
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     }
     const { BUCKET } = await getRuntimeEnv();
     if (!BUCKET) return Response.json({ error: "Image storage is not available yet." }, { status: 503 });
-    await BUCKET.put(image.objectKey, file.stream(), {
+    await BUCKET.put(image.objectKey, toWorkerStream(file.stream()), {
       httpMetadata: { contentType: image.contentType, contentDisposition: `inline; filename="${image.safeName}"` },
     });
     const createdAt = new Date().toISOString();
