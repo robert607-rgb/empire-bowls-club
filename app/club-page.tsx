@@ -8,11 +8,13 @@ import "./member-workflows.css";
 import ClubChampions from "./club-champions";
 import ManualFixture from "./manual-fixture";
 import {clubToday} from "../lib/club-date";
+import {loadMemberHome} from "../lib/member-home-data";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
 import EmpireIntro from "./empire-intro";
 import AdminAccessTool from "./admin-access-tool";
 import type { AdminSection } from "../lib/empire-admin-access";
+import { ADMIN_SECTION_LABELS } from "../lib/empire-admin-sections";
 import DirectoryEmail from "./directory-email";
 import { directorySearch as matchesDirectorySearch } from "../lib/directory-search";
 import { pagePaths } from "./site-pages";
@@ -2223,26 +2225,9 @@ function MemberZone({
   const headers = useMemo(() => apiHeaders("member", password), [password]);
   const refresh = useCallback(async () => {
     try {
-      const [bookingResponse, memberResponse, fileResponse, teamSheetResponse, homeResponse] = await Promise.all([
-        fetch(`/api/empire/bookings?date=${date}`, { headers }),
-        fetch("/api/empire/members", { headers }),
-        fetch("/api/empire/uploads", { headers }),
-        fetch("/api/empire/team-sheets", { headers }),
-        fetch("/api/empire/member-home",{headers,cache:"no-store"}),
-      ]);
-      if (
-        !bookingResponse.ok ||
-        !memberResponse.ok ||
-        !fileResponse.ok ||
-        !teamSheetResponse.ok || !homeResponse.ok
-      ) {
-        throw new Error("Member data request failed");
-      }
-      const home=await homeResponse.json();setIdentity(home.member);setAlerts(home.alerts??[]);
-      setBookings((await bookingResponse.json()).bookings ?? []);
-      setMembers((await memberResponse.json()).members ?? []);
-      setFiles((await fileResponse.json()).files ?? []);
-      setTeamSheets((await teamSheetResponse.json()).sheets ?? []);
+      const data=await loadMemberHome(date,headers);
+      setIdentity(data.member);setAlerts(data.alerts);
+      setBookings(data.bookings);setMembers(data.members);setFiles(data.files);setTeamSheets(data.sheets);
       setError("");
     } catch {
       setError("We could not refresh the members area. Please try again.");
@@ -3838,6 +3823,24 @@ function AdminGalleryPanel({
       setRemovingId(null);
     }
   };
+  const updateAlbum = async (album: GalleryAlbum, body: Record<string, unknown>) => {
+    setError(""); setSaving(true);
+    try {
+      const response=await fetch("/api/empire/gallery",{method:"PATCH",headers:{...apiHeaders("admin",password),"content-type":"application/json"},body:JSON.stringify({albumId:album.id,...body})});
+      const result=await response.json() as {album?:GalleryAlbum;error?:string};
+      if(!response.ok||!result.album)throw new Error(result.error||"The album could not be updated.");
+      onChange(albums.map(item=>item.id===album.id?result.album!:item));notifyEmpireDataUpdated();onMessage("Gallery updated.");
+    } catch(e) {setError(e instanceof Error?e.message:"The album could not be updated.");} finally {setSaving(false);}
+  };
+  const addPhotos = async (album:GalleryAlbum, event:React.ChangeEvent<HTMLInputElement>) => {
+    const input=event.currentTarget, originals=Array.from(input.files||[]);if(!originals.length)return;
+    if(originals.length>24){setError("Please add no more than 24 photos at a time.");input.value="";return;}
+    setError("");setSaving(true);let updated=album;
+    try {const converted:File[]=[];for(const file of originals)converted.push(await convertToGalleryWebp(file));
+      for(const batch of splitGalleryPhotos(converted)){const data=new FormData();data.set("albumId",String(album.id));batch.forEach(photo=>data.append("photos",photo));const response=await fetch("/api/empire/gallery",{method:"POST",headers:apiHeaders("admin",password),body:data});const result=await readGalleryResponse(response);if(!result.album)throw new Error("The album could not be refreshed.");updated=result.album;onChange(albums.map(item=>item.id===album.id?updated:item));}
+      notifyEmpireDataUpdated();onMessage("Photos added to the gallery.");
+    }catch(e){setError(e instanceof Error?e.message:"The photos could not be added.");}finally{input.value="";setSaving(false);}
+  };
   return (
     <div className="gallery-admin-stack">
       <form className="admin-card gallery-upload-form" onSubmit={upload}>
@@ -3857,7 +3860,7 @@ function AdminGalleryPanel({
           <article className="gallery-admin-album" key={album.id}>
             <div className="gallery-admin-album-heading">
               <div><b>{album.title}</b><span>{album.photos.length} {album.photos.length === 1 ? "photo" : "photos"}</span>{album.description && <small>{album.description}</small>}</div>
-              <button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void remove(album)}>{removingId === `album-${album.id}` ? "Deleting…" : "Delete album"}</button>
+              <button type="button" disabled={saving} onClick={()=>{const title=window.prompt("Album title",album.title);if(title?.trim())void updateAlbum(album,{action:"edit",title,description:album.description})}}>Edit album</button><label>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={saving} onChange={event=>void addPhotos(album,event)}/></label><button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void remove(album)}>{removingId === `album-${album.id}` ? "Deleting…" : "Delete album"}</button>
             </div>
             <div className="gallery-admin-photo-grid" aria-label={`${album.title} photos`}>
               {album.photos.map((photo) => (
@@ -3865,6 +3868,7 @@ function AdminGalleryPanel({
                   <img src={photo.imageUrl} alt={photo.fileName} />
                   <figcaption>
                     <span title={photo.fileName}>{photo.fileName}</span>
+                    <button type="button" disabled={saving || album.photos[0]?.id === photo.id} onClick={()=>void updateAlbum(album,{action:"cover",photoId:photo.id})}>{album.photos[0]?.id === photo.id ? "Main photo" : "Use as main photo"}</button>
                     <button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void removePhoto(album, photo)}>{removingId === `photo-${photo.id}` ? "Deleting…" : "Delete photo"}</button>
                   </figcaption>
                 </figure>
@@ -4991,10 +4995,10 @@ function AdminZone({
   useEffect(()=>{setMessage("");setError("")},[activeTab]);
   const refresh = useCallback(async () => {
     const results = await Promise.allSettled([
-      fetch("/api/empire/members", { headers }),
+      (!sections || sections.includes("members") ? fetch("/api/empire/members", { headers }) : Promise.resolve(Response.json({members:[]}))),
       fetch("/api/empire/committee", { headers }),
       (!sections || sections.includes("documents") ? fetch("/api/empire/uploads", { headers }) : Promise.resolve(Response.json({files:[]}))),
-      fetch("/api/empire/team-sheets", { headers }),
+      (!sections || sections.includes("team-sheets") ? fetch("/api/empire/team-sheets", { headers }) : Promise.resolve(Response.json({sheets:[]}))),
       fetch("/api/empire/gallery", { headers }),
     ]);
     const failed: string[] = [];
@@ -5050,8 +5054,8 @@ function AdminZone({
     { id: "security", label: "Security" },
     { id: "admin-access", label: "Admin Access" },
     { id: "champions", label: "Club champions" },
-  ].filter(tab=>!sections || sections.includes((tab.id === "player-signups" ? "fixtures" : tab.id) as AdminSection)) as Array<{id:AdminTab;label:string;count?:number}>;
-  useEffect(()=>{if(sections?.length && !sections.includes((activeTab==="player-signups"?"fixtures":activeTab) as AdminSection)){const timer=window.setTimeout(()=>setActiveTab(sections[0]),0);return()=>window.clearTimeout(timer)}},[activeTab,sections]);
+  ].filter(tab=>!sections || sections.includes(tab.id as AdminSection)).map(tab=>({...tab,label:ADMIN_SECTION_LABELS[tab.id as AdminSection] ?? tab.label})) as Array<{id:AdminTab;label:string;count?:number}>;
+  useEffect(()=>{if(sections?.length && !sections.includes(activeTab as AdminSection)){const timer=window.setTimeout(()=>setActiveTab(sections[0]),0);return()=>window.clearTimeout(timer)}},[activeTab,sections]);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void refresh();
@@ -5169,7 +5173,7 @@ function AdminZone({
           Leave area
         </button>
       </div>
-      <section className="admin-summary">
+      {!sections && <section className="admin-summary">
         <article>
           <span>Members</span>
           <b>{members.length}</b>
@@ -5184,9 +5188,9 @@ function AdminZone({
             {files.filter((file) => file.category === "club_document").length}
           </b>
         </article>
-      </section>
+      </section>}
       {activeTab === "admin-access" && !sections && <AdminAccessTool />}
-      {activeTab === "champions" && !sections && <ClubChampions admin />}
+      {activeTab === "champions" && (!sections || sections.includes("champions")) && <ClubChampions admin />}
       <div className="admin-tabs">
         <div className="admin-tab-list" role="tablist" aria-label="Admin sections">
           {adminTabs.map((tab) => (

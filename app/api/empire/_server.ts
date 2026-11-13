@@ -1,3 +1,4 @@
+import {createMemberAndCredential,type NewMember} from "./member-create";
 import { memberSections, requestSection } from "../../../lib/empire-admin-access";
 import { decodeMemberLoginCodes } from "./member-code-display";
 
@@ -195,6 +196,17 @@ async function createUniqueMemberLoginCode(db: D1Database, memberId: number, rep
     const code = newMemberLoginCode();
     const saved = await saveMemberLoginCode(db, memberId, code, replace);
     if (saved.inserted) return code;
+  }
+  throw new Error("Could not create a unique member login code.");
+}
+
+export async function createMemberWithLogin(member:NewMember){
+  const db=await getEmpireDatabase();
+  for(let attempt=0;attempt<100;attempt++){
+    const code=newMemberLoginCode(),salt=hex(crypto.getRandomValues(new Uint8Array(18)));
+    const material={salt,hash:await passwordHash(code,salt),encryptedCode:await encryptMemberLoginCode(db,code),fingerprint:await memberCodeFingerprint(db,code)};
+    try {return {id:await createMemberAndCredential(db,member,material),code};}
+    catch(error){if(!String(error).includes("empire_member_credentials.code_fingerprint"))throw error;}
   }
   throw new Error("Could not create a unique member login code.");
 }

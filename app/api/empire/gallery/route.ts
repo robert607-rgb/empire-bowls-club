@@ -12,7 +12,7 @@ import {
 } from "../_server";
 import { listGalleryAlbums } from "./gallery-data";
 
-const MAX_PHOTOS_PER_ALBUM = 24;
+const MAX_PHOTOS_PER_UPLOAD = 24;
 const MAX_PHOTO_BYTES = 15 * 1024 * 1024;
 
 function readPhotos(form: FormData) {
@@ -33,7 +33,7 @@ export async function GET() {
   try {
     return Response.json(
       { albums: await listGalleryAlbums() },
-      { headers: { "cache-control": "public, max-age=60, s-maxage=300, stale-while-revalidate=86400" } },
+      { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
     return apiError(error);
@@ -59,8 +59,8 @@ export async function POST(request: Request) {
     const description = cleanText(form.get("description"), 500);
     const photos = readPhotos(form);
     const appending = albumIdFromForm !== null;
-    if ((!appending && !title) || !photos.length || photos.length > MAX_PHOTOS_PER_ALBUM) {
-      return Response.json({ error: `Add an album title and between 1 and ${MAX_PHOTOS_PER_ALBUM} photos.` }, { status: 400 });
+    if ((!appending && !title) || !photos.length || photos.length > MAX_PHOTOS_PER_UPLOAD) {
+      return Response.json({ error: `Add an album title and between 1 and ${MAX_PHOTOS_PER_UPLOAD} photos.` }, { status: 400 });
     }
     const photoDetails = photos.map(safePhoto);
     if (photoDetails.some((photo) => !photo)) {
@@ -78,13 +78,6 @@ export async function POST(request: Request) {
         .bind(albumIdFromForm)
         .first<{ id: number }>();
       if (!existingAlbum) return Response.json({ error: "That gallery album no longer exists." }, { status: 404 });
-      const existingPhotos = await db
-        .prepare("SELECT COUNT(*) AS count FROM empire_gallery_photos WHERE album_id = ?")
-        .bind(albumIdFromForm)
-        .first<{ count: number }>();
-      if (Number(existingPhotos?.count ?? 0) + photos.length > MAX_PHOTOS_PER_ALBUM) {
-        return Response.json({ error: `An album can contain no more than ${MAX_PHOTOS_PER_ALBUM} photos.` }, { status: 400 });
-      }
       albumId = albumIdFromForm;
     } else {
       const created = await db.prepare(
@@ -189,4 +182,24 @@ export async function DELETE(request: Request) {
   } catch (error) {
     return apiError(error);
   }
+}
+
+export async function PATCH(request: Request) {
+  if (!(await hasEmpireAccess(request, true))) return unauthorized();
+  if (!sameOrigin(request)) return Response.json({ error: "Invalid request origin." }, { status: 403 });
+  try {
+    const input = await readJson(request), albumId = Number(input.albumId), db = await getEmpireDatabase();
+    if (!Number.isSafeInteger(albumId) || albumId < 1) return Response.json({ error: "Choose an album." }, { status: 400 });
+    if (input.action === "cover") {
+      const photoId = Number(input.photoId);
+      if (!Number.isSafeInteger(photoId) || photoId < 1 || !await db.prepare("SELECT id FROM empire_gallery_photos WHERE id=? AND album_id=?").bind(photoId, albumId).first()) return Response.json({ error: "Choose a photo from this album." }, { status: 400 });
+      await db.prepare("UPDATE empire_gallery_photos SET sort_order=(SELECT COALESCE(MIN(sort_order),0)-1 FROM empire_gallery_photos WHERE album_id=?) WHERE id=? AND album_id=?").bind(albumId,photoId,albumId).run();
+    } else if (input.action === "edit") {
+      const title = cleanText(input.title,160), description = cleanText(input.description,500);
+      if (!title) return Response.json({ error: "Enter an album title." }, { status: 400 });
+      const result = await db.prepare("UPDATE empire_gallery_albums SET title=?,description=? WHERE id=?").bind(title,description,albumId).run();
+      if (!result.meta.changes) return Response.json({error:"That album no longer exists."},{status:404});
+    } else return Response.json({error:"Choose an album action."},{status:400});
+    const albums = await listGalleryAlbums(); return Response.json({album:albums.find(album=>album.id===albumId)});
+  } catch (error) { return apiError(error); }
 }

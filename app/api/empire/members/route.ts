@@ -7,6 +7,7 @@ import {
   getEmpireDatabase,
   hasEmpireAccess,
   issueMemberLoginCode,
+  createMemberWithLogin,
   readJson,
   readMemberLoginCodes,
   sameOrigin,
@@ -142,28 +143,14 @@ export async function POST(request: Request) {
     if (validationError) {
       return Response.json({ error: validationError }, { status: 400 });
     }
-    const db = await getEmpireDatabase();
     const createdAt = new Date().toISOString();
-    const result = await db
-      .prepare(
-        "INSERT INTO empire_members (name, date_of_birth, address, phone, email, membership_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      )
-      .bind(
-        member.name,
-        member.dateOfBirth,
-        member.address,
-        member.phone,
-        member.email,
-        member.membershipType,
-        createdAt,
-      )
-      .run();
-    const loginCode = await issueMemberLoginCode(Number(result.meta.last_row_id));
+    const created = await createMemberWithLogin(member);
+    const loginCode = created.code;
     return Response.json(
       {
         member: mapMember(
           {
-            id: Number(result.meta.last_row_id),
+            id: created.id,
             name: member.name,
             date_of_birth: member.dateOfBirth,
             address: member.address,
