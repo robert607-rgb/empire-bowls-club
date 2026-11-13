@@ -7,7 +7,7 @@ import "./competition.css";
 import "./member-workflows.css";
 import ClubChampions from "./club-champions";
 import ManualFixture from "./manual-fixture";
-import {clubToday} from "../lib/club-date";
+import {clubToday,millisecondsUntilNextClubDay} from "../lib/club-date";
 import {loadMemberHome} from "../lib/member-home-data";
 import CompetitionTool from "./competition-tool";
 import RinkUsage from "./rink-usage";
@@ -98,6 +98,7 @@ type Member = {
   phone: string;
   email: string;
   membershipType: "Full member" | "Social member";
+  gender?: string;
   createdAt: string;
   adminLocked?: boolean;
   loginCode?: string;
@@ -145,6 +146,7 @@ type TeamSheet = {
   createdAt: string;
   rinks: TeamSheetRink[];
   reserves?: { memberId: number; name: string }[];
+  archived?: boolean;
 };
 type TeamSheetDraftRink = {
   format: TeamFormat;
@@ -2235,11 +2237,15 @@ function MemberZone({
   useEffect(() => {
     const handleUpdate = () => void refresh();
     const timer = window.setTimeout(handleUpdate, 0);
+    let midnightTimer:number;
+    const scheduleMidnight=()=>{midnightTimer=window.setTimeout(()=>{setAlerts(current=>current.filter(alert=>alert.date>=clubToday()));scheduleMidnight()},millisecondsUntilNextClubDay()+5)};
+    scheduleMidnight();
     window.addEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("focus", handleUpdate);
     const poll=window.setInterval(handleUpdate,60000);
     return () => {
       window.clearTimeout(timer);
+      window.clearTimeout(midnightTimer);
       window.clearInterval(poll);
       window.removeEventListener(EMPIRE_DATA_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("focus", handleUpdate);
@@ -3044,6 +3050,10 @@ function AdminMemberOverview({
                                 </select>
                               </label>
                               <label>
+                                Male / Female
+                                <select name="gender" value={editing.gender ?? ""} onChange={event=>setEditing({...editing,gender:event.target.value})}><option value="">Not specified</option><option>Male</option><option>Female</option></select>
+                              </label>
+                              <label>
                                 Date of birth
                                 <input
                                   name="dateOfBirth"
@@ -3289,6 +3299,17 @@ function AdminTeamSheetManager({
       setError("The team sheet could not be removed. Please try again.");
     }
   };
+  const archive = async (sheet: TeamSheet, restore=false) => {
+    setError("");
+    try {
+      const response=await fetch('/api/empire/team-sheets',{method:'PATCH',headers:{...apiHeaders('admin',password),'content-type':'application/json'},body:JSON.stringify({id:sheet.id,restore})});
+      const result=await response.json();
+      if(!response.ok)throw new Error(result.error||'The team sheet could not be updated.');
+      onChange(sheets.map(item=>item.id===sheet.id?{...item,archived:!restore}:item));
+      onMessage(`Team sheet for Empire v ${sheet.opponent} ${restore?'restored':'archived'}.`);
+      notifyEmpireDataUpdated();
+    } catch(error) {setError(error instanceof Error?error.message:'The team sheet could not be updated.');}
+  };
   return (
     <section className="team-sheet-admin">
       <div className="admin-section-heading">
@@ -3412,7 +3433,7 @@ function AdminTeamSheetManager({
       </form>
       {sheets.length ? (
         <div className="published-team-sheets">
-          {sheets.map((sheet) => (
+          {sheets.filter(sheet=>!sheet.archived).map((sheet) => (
             <article key={sheet.id}>
               <div>
                 <b>Empire v {sheet.opponent}</b>
@@ -3421,6 +3442,7 @@ function AdminTeamSheetManager({
                 </span>
               </div>
               <TeamSheetEmail sheet={sheet} />
+              {sheet.matchDate < clubToday() && <button type="button" onClick={()=>void archive(sheet)}>Archive</button>}
               <button
                 className="remove-member"
                 type="button"
@@ -3432,6 +3454,7 @@ function AdminTeamSheetManager({
           ))}
         </div>
       ) : null}
+      {sheets.some(sheet=>sheet.archived) && <details><summary>Archived team sheets</summary>{sheets.filter(sheet=>sheet.archived).map(sheet=><article key={sheet.id}><b>Empire v {sheet.opponent}</b> · {sheet.competition} · {displayDate(sheet.matchDate)} <button type="button" onClick={()=>void archive(sheet,true)}>Restore</button></article>)}</details>}
     </section>
   );
 }
@@ -5264,6 +5287,10 @@ function AdminZone({
                 <input name="email" type="email" required maxLength={160} />
               </label>
             </div>
+            <label>
+              Male / Female
+              <select name="gender" defaultValue=""><option value="">Not specified</option><option>Male</option><option>Female</option></select>
+            </label>
             <label>
               Membership type
               <select name="membershipType" defaultValue="Full member">

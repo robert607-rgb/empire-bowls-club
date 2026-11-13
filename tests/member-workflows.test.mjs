@@ -5,8 +5,9 @@ class DB{
  INSERT INTO empire_members VALUES(1,'Alice Example','alice@example.test','Full member'),(2,'Bob Example','bob@example.test','Full member'),(3,'Reserve Member','reserve@example.test','Full member');
  CREATE TABLE empire_member_credentials(member_id INTEGER PRIMARY KEY);INSERT INTO empire_member_credentials VALUES(1),(2),(3);
  CREATE TABLE empire_admin_access(member_id INTEGER PRIMARY KEY,sections TEXT,updated_at TEXT);INSERT INTO empire_admin_access VALUES(1,'["fixtures"]','now');
- CREATE TABLE empire_team_sheets(id INTEGER PRIMARY KEY,opponent TEXT,competition TEXT,match_date TEXT,rinks_json TEXT);
- INSERT INTO empire_team_sheets VALUES(1,'Future','League','2099-12-01','{"rinks":[{"format":"Singles","memberIds":[1]}],"reserveIds":[3]}'),(2,'Past','League','2020-01-01','[{"format":"Singles","memberIds":[1]}]'),(3,'Other member','League','2099-12-02','[{"format":"Singles","memberIds":[2]}]');
+ CREATE TABLE empire_team_sheets(id INTEGER PRIMARY KEY,opponent TEXT,competition TEXT,match_date TEXT,rinks_json TEXT,rink_count INTEGER DEFAULT 1,created_at TEXT DEFAULT '');
+ CREATE TABLE empire_team_sheet_archives(sheet_id INTEGER PRIMARY KEY,archived_at TEXT NOT NULL);
+ INSERT INTO empire_team_sheets(id,opponent,competition,match_date,rinks_json) VALUES(1,'Future','League','2099-12-01','{"rinks":[{"format":"Singles","memberIds":[1]}],"reserveIds":[3]}'),(2,'Past','League','2020-01-01','[{"format":"Singles","memberIds":[1]}]'),(3,'Other member','League','2099-12-02','[{"format":"Singles","memberIds":[2]}]');
  CREATE TABLE empire_fixtures(id INTEGER PRIMARY KEY,fixture_date TEXT,start_time TEXT,opponent TEXT,competition TEXT,rink_count INTEGER,rinks_json TEXT,time_slot TEXT,booking_key TEXT,result_text TEXT,created_at TEXT);
  CREATE TABLE empire_bookings(id INTEGER PRIMARY KEY,booking_date TEXT,rink_number INTEGER,time_slot TEXT,booking_name TEXT,fixture_key TEXT,created_at TEXT,UNIQUE(booking_date,rink_number,time_slot));
  CREATE TABLE empire_sponsors(id INTEGER PRIMARY KEY,title TEXT,description TEXT,website TEXT,logo_object_key TEXT,logo_file_name TEXT,logo_content_type TEXT,created_at TEXT);
@@ -20,6 +21,17 @@ globalThis.__workflowDeps={getEmpireDatabase:async()=>db,getEmpireSession:async 
 async function load(path){const result=await build({entryPoints:[path],bundle:true,platform:'node',format:'esm',write:false,plugins:[{name:'deps',setup(b){b.onResolve({filter:/\/\_server$/},()=>({path:'server',namespace:'test'}));b.onLoad({filter:/.*/,namespace:'test'},()=>({contents:'export const {'+Object.keys(globalThis.__workflowDeps).join(',')+'}=globalThis.__workflowDeps;',loader:'js'}))}}]});return import('data:text/javascript;base64,'+Buffer.from(result.outputFiles[0].text).toString('base64'))}
 const home=await load('app/api/empire/member-home/route.ts'),fixtures=await load('app/api/empire/fixtures/route.ts'),champions=await load('app/api/empire/champions/route.ts'),sponsors=await load('app/api/empire/sponsors/route.ts'),auth=await load('app/api/empire/auth/route.ts');
 const req=(role,method='GET',body)=>new Request('https://club.test/api',{method,headers:{role,origin:'https://club.test','content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
+test('team sheets can be archived after the match, preserving the record and hiding it from members',async()=>{
+ const team=await load('app/api/empire/team-sheets/route.ts');
+ assert.equal((await team.PATCH(req('alice','PATCH',{id:2}))).status,401);
+ assert.equal((await team.PATCH(req('admin','PATCH',{id:1}))).status,400);
+ assert.equal((await team.PATCH(req('admin','PATCH',{id:2}))).status,200);
+ assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM empire_team_sheets WHERE id=2').get().n,1);
+ assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM empire_team_sheet_archives WHERE sheet_id=2').get().n,1);
+ const members=await(await team.GET(req('alice'))).json();assert.equal(members.sheets.some(sheet=>sheet.id===2),false);
+ const admin=await(await team.GET(req('admin'))).json();assert.equal(admin.sheets.find(sheet=>sheet.id===2).archived,true);
+ assert.equal((await team.PATCH(req('admin','PATCH',{id:2,restore:true}))).status,200);
+});
 test('personal welcome and selected/reserve alerts use the authenticated ID and exclude past or deleted matches',async()=>{
  assert.equal((await home.GET(req('guest'))).status,401);const alice=await(await home.GET(req('alice'))).json();assert.equal(alice.member.name,'Alice Example');assert.deepEqual(alice.alerts.map(a=>[a.id,a.role]),[[1,'player']]);assert.deepEqual((await(await home.GET(req('reserve'))).json()).alerts.map(a=>a.role),['reserve']);db.sql.exec('DELETE FROM empire_team_sheets WHERE id=1');assert.equal((await(await home.GET(req('alice'))).json()).alerts.length,0)
 });
@@ -36,6 +48,7 @@ test('champion year and records round-trip; non-admin and malformed writes are r
 test('separate volunteer login rejects accounts without grants and returns only granted sections',async()=>{
  const before=sessions.size;assert.equal((await auth.POST(req('guest','POST',{access:'member',firstName:'Bob',code:'0042',adminMember:true}))).status,403);assert.equal(sessions.size,before);const response=await auth.POST(req('guest','POST',{access:'member',firstName:'Alice',code:'0042',adminMember:true}));assert.equal(response.status,200);assert.deepEqual((await response.json()).sections,['fixtures','player-signups']);assert.ok(response.headers.get('set-cookie'));db.sql.exec('DELETE FROM empire_admin_access WHERE member_id=1');assert.equal((await auth.POST(req('guest','POST',{access:'member',firstName:'Alice',code:'0042',adminMember:true}))).status,403)
 });
-const dateBundle=await build({entryPoints:['lib/club-date.ts'],bundle:true,platform:'node',format:'esm',write:false});const {clubToday}=await import('data:text/javascript;base64,'+Buffer.from(dateBundle.outputFiles[0].text).toString('base64'));
+const dateBundle=await build({entryPoints:['lib/club-date.ts'],bundle:true,platform:'node',format:'esm',write:false});const {clubToday,millisecondsUntilNextClubDay}=await import('data:text/javascript;base64,'+Buffer.from(dateBundle.outputFiles[0].text).toString('base64'));
 test('match alerts expire according to the club date including British Summer Time',()=>{assert.equal(clubToday(new Date('2027-06-01T22:59:59Z')),'2027-06-01');assert.equal(clubToday(new Date('2027-06-01T23:00:00Z')),'2027-06-02');assert.equal(clubToday(new Date('2027-12-01T23:00:00Z')),'2027-12-01')});
+test('the alert expiry timer reaches local midnight across summer and winter',()=>{assert.equal(millisecondsUntilNextClubDay(new Date('2027-06-01T22:59:50Z')),10000);assert.equal(millisecondsUntilNextClubDay(new Date('2027-12-01T23:59:50Z')),10000)});
 

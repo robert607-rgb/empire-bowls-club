@@ -17,6 +17,21 @@ const admin = {role:'admin',member_id:null,permissions:['competitions']};
 const member = id => ({role:'member',member_id:id,permissions:[]});
 const mutate = (db, actor, body) => competitionMutation(db,actor,body,'2026-10-26');
 
+test('knockout round play-by dates are saved separately from entry deadlines and protected', async () => {
+  const db = new DB();
+  const created = await mutate(db, admin, {action:'createCompetition',name:'Knockout cup',format:'knockout',playingFormat:'singles',memberIds:[1,2,3,4]});
+  const save = {action:'setRoundDeadline',competitionId:created.id,round:1,date:'2027-05-25'};
+  await assert.rejects(()=>mutate(db,member(1),save),error=>error instanceof CompetitionError&&error.status===403);
+  await assert.rejects(()=>mutate(db,admin,{...save,date:'2027-02-30'}),error=>error instanceof CompetitionError&&error.status===400);
+  await mutate(db,admin,save);
+  assert.equal(db.sql.prepare('SELECT play_by FROM empire_competition_round_dates WHERE competition_id=? AND round=1').get(created.id).play_by,'2027-05-25');
+  assert.equal(db.sql.prepare('SELECT deadline FROM empire_competitions WHERE id=?').get(created.id).deadline,null);
+  await mutate(db,admin,{...save,date:'2027-06-01'});
+  assert.equal(db.sql.prepare('SELECT play_by FROM empire_competition_round_dates WHERE competition_id=? AND round=1').get(created.id).play_by,'2027-06-01');
+  await mutate(db,admin,{...save,date:''});
+  assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM empire_competition_round_dates WHERE competition_id=?').get(created.id).n,0);
+});
+
 for (const format of ['singles','pairs','triples','rinks']) for (const structure of ['knockout','league']) test(`${format} ${structure} stores team rosters and generates matches`, async () => {
   const db = new DB(), size={singles:1,pairs:2,triples:3,rinks:4}[format];
   const input={action:'createCompetition', name:'Club championship',format:structure,playingFormat:format,memberIds:[1,2,3],teams:Array.from({length:3},(_,team)=>({name:`Team ${team+1}`,memberIds:Array.from({length:size},(_,i)=>team*size+i+1)})),legs:2,leagueCount:1,winPoints:2,drawPoints:1,lossPoints:0};

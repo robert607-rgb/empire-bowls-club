@@ -3,6 +3,7 @@ export const COMPETITION_SCHEMA = [
   `CREATE TABLE IF NOT EXISTS empire_competition_entries (id INTEGER PRIMARY KEY, competition_id INTEGER NOT NULL, member_id INTEGER NOT NULL, partner_ids TEXT NOT NULL DEFAULT '[]', entry_name TEXT NOT NULL DEFAULT '', entry_order INTEGER NOT NULL DEFAULT 0, players_json TEXT NOT NULL DEFAULT '[]', league_no INTEGER NOT NULL DEFAULT 1, UNIQUE(competition_id,member_id))`,
   `CREATE TABLE IF NOT EXISTS empire_competition_participants (competition_id INTEGER NOT NULL, member_id INTEGER NOT NULL, entry_id INTEGER NOT NULL, PRIMARY KEY(competition_id,member_id))`,
   `CREATE TABLE IF NOT EXISTS empire_competition_matches (id INTEGER PRIMARY KEY, competition_id INTEGER NOT NULL, round INTEGER NOT NULL, slot INTEGER NOT NULL, entry_a INTEGER, entry_b INTEGER, source_a INTEGER, source_b INTEGER, state TEXT NOT NULL DEFAULT '', winner_entry_id INTEGER, score_a INTEGER, score_b INTEGER, league_no INTEGER NOT NULL DEFAULT 1, revision INTEGER NOT NULL DEFAULT 0, reported_by INTEGER, reported_role TEXT NOT NULL DEFAULT '', UNIQUE(competition_id,round,slot))`,
+  `CREATE TABLE IF NOT EXISTS empire_competition_round_dates (competition_id INTEGER NOT NULL, round INTEGER NOT NULL, play_by TEXT NOT NULL, PRIMARY KEY(competition_id,round))`,
 ] as const;
 
 export async function ensureCompetitionSchema(db: D1Database) {

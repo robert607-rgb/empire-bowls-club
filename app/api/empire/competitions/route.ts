@@ -15,7 +15,8 @@ export async function GET(request: Request) {
     const clause = session.access === "admin" ? "" : "WHERE c.published=1 AND c.archived=0";
     const competitionEntries = (await db.prepare(`SELECT e.* FROM empire_competition_entries e JOIN empire_competitions c ON c.id=e.competition_id ${clause} ORDER BY e.entry_order,e.id`).all()).results ?? [];
     const competitionMatches = (await db.prepare(`SELECT m.* FROM empire_competition_matches m JOIN empire_competitions c ON c.id=m.competition_id ${clause} ORDER BY m.round,m.slot`).all()).results ?? [];
-    return Response.json({ competitions, competitionEntries, competitionMatches, sessionMemberId: session.access === "member" ? session.member_id : null }, { headers: privateHeaders });
+    const roundDates = (await db.prepare(`SELECT d.* FROM empire_competition_round_dates d JOIN empire_competitions c ON c.id=d.competition_id ${clause}`).all()).results ?? [];
+    return Response.json({ competitions, competitionEntries, competitionMatches, roundDates, sessionMemberId: session.access === "member" ? session.member_id : null }, { headers: privateHeaders });
   } catch (error) { return apiError(error); }
 }
 

@@ -22,6 +22,7 @@ type MemberRow = {
   phone: string;
   email: string;
   membership_type: "Full member" | "Social member";
+  gender: string | null;
   created_at: string;
 };
 
@@ -33,6 +34,7 @@ function mapMember(member: MemberRow, includeAddress: boolean) {
       ? {
           address: member.address,
           dateOfBirth: member.date_of_birth ?? "",
+          gender: member.gender ?? "",
         }
       : {}),
     phone: member.phone,
@@ -54,7 +56,8 @@ function readMember(input: Record<string, unknown>) {
       : input.membershipType === "Full member"
         ? "Full member"
         : "";
-  return { name, dateOfBirth, address, phone, email, membershipType };
+  const gender = input.gender === 'Male' || input.gender === 'Female' ? input.gender : '';
+  return { name, dateOfBirth, address, phone, email, membershipType, gender };
 }
 
 function isValidDateOfBirth(value: string) {
@@ -102,7 +105,7 @@ export async function GET(request: Request) {
     const db = await getEmpireDatabase();
     const result = await db
       .prepare(
-        "SELECT id, name, date_of_birth, address, phone, email, membership_type, created_at FROM empire_members ORDER BY name COLLATE NOCASE ASC",
+        "SELECT id, name, date_of_birth, address, phone, email, membership_type, gender, created_at FROM empire_members ORDER BY name COLLATE NOCASE ASC",
       )
       .all<MemberRow>();
     const rows = result.results ?? [];
@@ -157,6 +160,7 @@ export async function POST(request: Request) {
             phone: member.phone,
             email: member.email,
             membership_type: member.membershipType as MemberRow["membership_type"],
+            gender: member.gender || null,
             created_at: createdAt,
           },
           true,
@@ -189,7 +193,7 @@ export async function PUT(request: Request) {
     if(await protectedTarget(request,id))return Response.json({error:"Only the main administrator can change another admin account."},{status:403});
     const db = await getEmpireDatabase();
     const current = await db
-      .prepare("SELECT id, name, date_of_birth, address, phone, email, membership_type, created_at FROM empire_members WHERE id = ?")
+      .prepare("SELECT id, name, date_of_birth, address, phone, email, membership_type, gender, created_at FROM empire_members WHERE id = ?")
       .bind(id)
       .first<MemberRow>();
     if (!current) {
@@ -198,7 +202,7 @@ export async function PUT(request: Request) {
     const dateOfBirth = member.dateOfBirth || current.date_of_birth || null;
     await db
       .prepare(
-        "UPDATE empire_members SET name = ?, date_of_birth = ?, address = ?, phone = ?, email = ?, membership_type = ? WHERE id = ?",
+        "UPDATE empire_members SET name = ?, date_of_birth = ?, address = ?, phone = ?, email = ?, membership_type = ?, gender = ? WHERE id = ?",
       )
       .bind(
         member.name,
@@ -207,6 +211,7 @@ export async function PUT(request: Request) {
         member.phone,
         member.email,
         member.membershipType,
+        member.gender || null,
         id,
       )
       .run();
@@ -221,6 +226,7 @@ export async function PUT(request: Request) {
           phone: member.phone,
           email: member.email,
           membership_type: member.membershipType as MemberRow["membership_type"],
+          gender: member.gender || null,
         },
         true,
       ),

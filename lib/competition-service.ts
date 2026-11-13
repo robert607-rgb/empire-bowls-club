@@ -73,6 +73,17 @@ export async function competitionMutation(db:D1Database,s:Session,p:Row,today:st
  if(p.action==='restoreCompetition'){requireAdmin(s);if(!Number.isInteger(p.revision))fail(400,'Refresh before restoring.');const restored=await db.prepare('UPDATE empire_competitions SET archived=0,revision=revision+1 WHERE id=? AND revision=? AND archived=1').bind(numberId(p.competitionId),p.revision).run();if(!restored.meta.changes)fail(409,'Competition changed. Refresh before restoring.');return {ok:true,id:numberId(p.competitionId)};}
  const competitionId=numberId(p.competitionId),comp=await db.prepare('SELECT * FROM empire_competitions WHERE id=? AND archived=0').bind(competitionId).first<Row>();
  if(!comp)fail(404,'Competition not found.');
+ if(p.action==='setRoundDeadline') {
+  requireAdmin(s);
+  const round=Number(p.round),date=String(p.date??'');
+  if(comp.structure!=='Knockout'||!Number.isInteger(round)||round<1||round>6)fail(400,'Choose a knockout round.');
+  const exists=await db.prepare('SELECT id FROM empire_competition_matches WHERE competition_id=? AND round=? LIMIT 1').bind(comp.id,round).first<Row>();
+  if(!exists)fail(400,'That round is not in this draw.');
+  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))fail(400,'Choose a valid play-by date.');
+  if(date)await db.prepare('INSERT INTO empire_competition_round_dates (competition_id,round,play_by) VALUES (?,?,?) ON CONFLICT(competition_id,round) DO UPDATE SET play_by=excluded.play_by').bind(comp.id,round,date).run();
+  else await db.prepare('DELETE FROM empire_competition_round_dates WHERE competition_id=? AND round=?').bind(comp.id,round).run();
+  return {ok:true,id:comp.id};
+ }
  if(p.action==='archiveCompetition') {requireAdmin(s);if(!Number.isInteger(p.revision)||p.revision!==comp.revision)fail(409,'Competition changed. Refresh before archiving.');const saved=await db.prepare('UPDATE empire_competitions SET archived=1,revision=revision+1 WHERE id=? AND revision=? AND archived=0').bind(comp.id,comp.revision).run();if(!saved.meta.changes)fail(409,'Competition changed. Refresh before archiving.');return {ok:true,id:comp.id};}
  if(p.action==='setMemberEntry') {requireAdmin(s);if(typeof p.memberEntry!=='boolean'||!Number.isInteger(p.revision))fail(400,'Choose an entry setting and refresh the competition.');const changed=await db.prepare("UPDATE empire_competitions SET member_entry=?,revision=revision+1 WHERE id=? AND revision=? AND archived=0 AND status='Entries open'").bind(p.memberEntry?1:0,comp.id,p.revision).run();if(!changed.meta.changes)fail(409,'Competition changed or entries are closed. Refresh and try again.');return {ok:true,id:comp.id};}
  if(p.action==='competitionEntry') {

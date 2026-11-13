@@ -574,6 +574,7 @@ export async function getEmpireDatabase() {
       runtime.DB.prepare(
         "CREATE INDEX IF NOT EXISTS idx_empire_team_sheets_date ON empire_team_sheets (match_date)",
       ),
+      runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_team_sheet_archives (sheet_id INTEGER PRIMARY KEY, archived_at TEXT NOT NULL)"),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_access_accounts (
         access TEXT PRIMARY KEY,
         salt TEXT NOT NULL,
@@ -662,6 +663,10 @@ async function ensureEmpireSchemaCompatibility(db: D1Database) {
     .prepare("PRAGMA table_info(empire_members)")
     .all<{ name: string }>();
   const hasDateOfBirth = (columns.results ?? []).some((column) => column.name === "date_of_birth");
+  if (!(columns.results ?? []).some((column) => column.name === "gender")) {
+    try { await db.prepare("ALTER TABLE empire_members ADD COLUMN gender TEXT").run(); }
+    catch (error) { const updated=await db.prepare("PRAGMA table_info(empire_members)").all<{name:string}>(); if (!(updated.results??[]).some(column=>column.name==='gender')) throw error; }
+  }
   if (hasDateOfBirth) return;
 
   // The first production schema did not include date_of_birth. D1 keeps that
