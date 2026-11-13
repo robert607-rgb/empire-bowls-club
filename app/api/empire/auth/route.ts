@@ -49,6 +49,7 @@ export async function POST(request: Request) {
           request,
           typeof input.firstName === "string" ? input.firstName.trim() : "",
           typeof input.code === "string" ? input.code.trim() : "",
+          input.adminMember === true,
         )
       : await authenticateEmpireAccess(
           request,

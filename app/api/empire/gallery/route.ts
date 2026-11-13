@@ -194,6 +194,12 @@ export async function PATCH(request: Request) {
       const photoId = Number(input.photoId);
       if (!Number.isSafeInteger(photoId) || photoId < 1 || !await db.prepare("SELECT id FROM empire_gallery_photos WHERE id=? AND album_id=?").bind(photoId, albumId).first()) return Response.json({ error: "Choose a photo from this album." }, { status: 400 });
       await db.prepare("UPDATE empire_gallery_photos SET sort_order=(SELECT COALESCE(MIN(sort_order),0)-1 FROM empire_gallery_photos WHERE album_id=?) WHERE id=? AND album_id=?").bind(albumId,photoId,albumId).run();
+    } else if (input.action === "order") {
+      const ids = input.photoIds;
+      if (!Array.isArray(ids) || !ids.length || ids.length > 2000 || ids.some(id => !Number.isSafeInteger(id) || id < 1) || new Set(ids).size !== ids.length) return Response.json({error:"Choose a valid photo order."},{status:400});
+      const sorted = [...ids].sort((a,b) => a-b);
+      const result = await db.prepare(`UPDATE empire_gallery_photos SET sort_order=(SELECT CAST(key AS INTEGER) FROM json_each(?) WHERE value=empire_gallery_photos.id) WHERE album_id=? AND (SELECT json_group_array(id) FROM (SELECT id FROM empire_gallery_photos WHERE album_id=? ORDER BY id))=?`).bind(JSON.stringify(ids),albumId,albumId,JSON.stringify(sorted)).run();
+      if (!result.meta.changes) return Response.json({error:"The album has changed. Refresh and try again."},{status:409});
     } else if (input.action === "edit") {
       const title = cleanText(input.title,160), description = cleanText(input.description,500);
       if (!title) return Response.json({ error: "Enter an album title." }, { status: 400 });

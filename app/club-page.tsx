@@ -2027,7 +2027,8 @@ function Portal({
 }) {
   const [sections,setSections]=useState<AdminSection[]>([]);
   const [delegateView,setDelegateView]=useState(false);
-  useEffect(()=>{if(access!=="member"){setDelegateView(false);setSections([]);return;}void fetch('/api/empire/admin-access',{cache:'no-store'}).then(r=>r.json()).then(data=>setSections(data.sections||[])).catch(()=>setSections([]))},[access]);
+  const [delegated,setDelegated]=useState(false);
+  useEffect(()=>{if(access!=="member"){setDelegateView(false);setDelegated(false);setSections([]);return;}void fetch('/api/empire/admin-access',{cache:'no-store'}).then(r=>r.json()).then(data=>{setDelegated(!!data.delegated);setDelegateView(!!data.delegated);setSections(data.sections||[])}).catch(()=>{setDelegated(false);setSections([])})},[access]);
   const [loginError, setLoginError] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
   const login = async (kind: Access, supplied: string, firstName = "", adminMember=false) => {
@@ -2050,8 +2051,8 @@ function Portal({
       }
       setPassword("");
       setSections(result.sections||[]);
+      setDelegated(adminMember);
       setDelegateView(adminMember);
-      window.sessionStorage.setItem("empire-volunteer-view",adminMember?"1":"0");
       setAccess(kind);
     } catch {
       setLoginError("We could not sign you in. Please check your connection and try again.");
@@ -2059,14 +2060,12 @@ function Portal({
       setLoggingIn(false);
     }
   };
-  useEffect(()=>{if(access==="member")setDelegateView(window.sessionStorage.getItem("empire-volunteer-view")==="1")},[access]);
   const leave = () => {
-    window.sessionStorage.removeItem("empire-volunteer-view");
     void fetch("/api/empire/auth", { method: "DELETE" });
     setPassword("");
     setAccess(null);
   };
-  if (access === "member") return <>{sections.length>0&&<div className="portal-shell" style={{paddingBlock:"16px",minHeight:0}}><button className="outline" onClick={()=>setDelegateView(value=>{window.sessionStorage.setItem("empire-volunteer-view",value?"0":"1");return !value})}>{delegateView?"Back to Members Zone":"Volunteer admin tools"}</button></div>}{delegateView&&sections.length>0?<AdminZone password={password} onLeave={leave} sections={sections}/>:<MemberZone password={password} onLeave={leave}/>}</>;
+  if (access === "member") return <>{delegated&&sections.length>0&&<div className="portal-shell" style={{paddingBlock:"16px",minHeight:0}}><button className="outline" onClick={()=>setDelegateView(value=>!value)}>{delegateView?"Back to Members Zone":"Volunteer admin tools"}</button></div>}{delegated&&delegateView&&sections.length>0?<AdminZone password={password} onLeave={leave} sections={sections}/>:<MemberZone password={password} onLeave={leave}/>}</>;
   if (access === "admin")
     return <AdminZone password={password} onLeave={leave} />;
   return (
@@ -3863,11 +3862,13 @@ function AdminGalleryPanel({
               <button type="button" disabled={saving} onClick={()=>{const title=window.prompt("Album title",album.title);if(title?.trim())void updateAlbum(album,{action:"edit",title,description:album.description})}}>Edit album</button><label>Add photos<input type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={saving} onChange={event=>void addPhotos(album,event)}/></label><button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void remove(album)}>{removingId === `album-${album.id}` ? "Deleting…" : "Delete album"}</button>
             </div>
             <div className="gallery-admin-photo-grid" aria-label={`${album.title} photos`}>
-              {album.photos.map((photo) => (
+              {album.photos.map((photo, index) => (
                 <figure className="gallery-admin-photo" key={photo.id}>
                   <img src={photo.imageUrl} alt={photo.fileName} />
                   <figcaption>
                     <span title={photo.fileName}>{photo.fileName}</span>
+                    <button type="button" disabled={saving || index === 0} onClick={() => { const ids=album.photos.map(item=>item.id); [ids[index-1],ids[index]]=[ids[index],ids[index-1]]; void updateAlbum(album,{action:"order",photoIds:ids}); }}>Move earlier</button>
+                    <button type="button" disabled={saving || index === album.photos.length-1} onClick={() => { const ids=album.photos.map(item=>item.id); [ids[index],ids[index+1]]=[ids[index+1],ids[index]]; void updateAlbum(album,{action:"order",photoIds:ids}); }}>Move later</button>
                     <button type="button" disabled={saving || album.photos[0]?.id === photo.id} onClick={()=>void updateAlbum(album,{action:"cover",photoId:photo.id})}>{album.photos[0]?.id === photo.id ? "Main photo" : "Use as main photo"}</button>
                     <button className="remove-member" type="button" disabled={removingId !== null} onClick={() => void removePhoto(album, photo)}>{removingId === `photo-${photo.id}` ? "Deleting…" : "Delete photo"}</button>
                   </figcaption>

@@ -6,3 +6,12 @@ const result=await build({entryPoints:['app/api/empire/gallery/route.ts'],bundle
 test('gallery admin can select the cover and rename albums without changing other albums',async()=>{assert.equal((await patch({action:'cover',albumId:1,photoId:3})).status,400);assert.equal((await patch({action:'cover',albumId:1,photoId:2})).status,200);let list=await(await route.GET()).json();assert.equal(list.albums.find(a=>a.id===1).photos[0].id,2);assert.equal((await patch({action:'edit',albumId:1,title:'Renamed',description:'New description'})).status,200);assert.equal(db.prepare('SELECT title FROM empire_gallery_albums WHERE id=1').get().title,'Renamed');globalThis.__galleryAuth=false;assert.equal((await patch({action:'cover',albumId:1,photoId:1})).status,401)});
 
 test('gallery admins can append photos beyond 24 in multiple uploads',async()=>{globalThis.__galleryAuth=true;const form=new FormData();form.set('albumId','1');for(let i=0;i<24;i++)form.append('photos',new File(['test'],'photo'+i+'.webp',{type:'image/webp'}));const result=await route.POST(new Request('https://club.example/api/empire/gallery',{method:'POST',body:form}));assert.equal(result.status,201);assert.equal(db.prepare('SELECT COUNT(*) AS n FROM empire_gallery_photos WHERE album_id=1').get().n,26)});
+
+test('gallery photo order persists and rejects incomplete and cross-album lists',async()=>{
+ globalThis.__galleryAuth=true;const ids=db.prepare('SELECT id FROM empire_gallery_photos WHERE album_id=1 ORDER BY sort_order,id').all().map(p=>p.id);const reordered=[...ids].reverse();
+ assert.equal((await patch({action:'order',albumId:1,photoIds:ids.slice(1)})).status,409);
+ assert.equal((await patch({action:'order',albumId:1,photoIds:[...ids.slice(0,-1),3]})).status,409);
+ assert.equal((await patch({action:'order',albumId:1,photoIds:reordered})).status,200);
+ const list=await(await route.GET()).json();assert.deepEqual(list.albums.find(a=>a.id===1).photos.map(p=>p.id),reordered);
+ globalThis.__galleryAuth=false;assert.equal((await patch({action:'order',albumId:1,photoIds:ids})).status,401);
+});

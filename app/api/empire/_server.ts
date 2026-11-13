@@ -60,7 +60,7 @@ type MemberCredentialRow = {
   code_fingerprint: string;
 };
 type MemberCodeKeyRow = { secret: string };
-type SessionRow = { access: EmpireAccess; expires_at: string; member_id: number | null };
+type SessionRow = { access: EmpireAccess; expires_at: string; member_id: number | null; delegated?: boolean };
 
 function hex(bytes: Uint8Array) {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -310,19 +310,20 @@ export async function getEmpireSession(request: Request): Promise<SessionRow | n
   if (!/^[a-f0-9-]{36}$/i.test(token)) return null;
   const db = await getEmpireDatabase();
   const row = await db
-    .prepare(`SELECT s.access, s.expires_at, CASE WHEN c.member_id IS NOT NULL THEN m.id ELSE NULL END AS member_id
+    .prepare(`SELECT s.access, s.expires_at, CASE WHEN c.member_id IS NOT NULL THEN m.id ELSE NULL END AS member_id, CASE WHEN da.token IS NULL THEN 0 ELSE 1 END AS delegated
       FROM empire_sessions s
       LEFT JOIN empire_session_members sm ON sm.token = s.token
+      LEFT JOIN empire_session_delegates da ON da.token = s.token
       LEFT JOIN empire_members m ON m.id = sm.member_id
       LEFT JOIN empire_member_credentials c ON c.member_id = m.id AND c.code_hash = sm.credential_hash
       WHERE s.token = ?`)
     .bind(token)
     .first<SessionRow>();
   if (!row || new Date(row.expires_at).getTime() <= Date.now() || (row.access === "member" && row.member_id === null)) {
-    await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token)]);
+    await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_delegates WHERE token = ?").bind(token)]);
     return null;
   }
-  if(row.access === "member" && row.member_id !== null && request.headers.get("x-empire-admin") === "1") {
+  if(row.access === "member" && row.delegated && row.member_id !== null && request.headers.get("x-empire-admin") === "1") {
     const section=requestSection(request);
     if(section && (await memberSections(db,row.member_id)).includes(section)) return {...row,access:"admin"};
   }
@@ -391,7 +392,7 @@ export async function authenticateEmpireAccess(request: Request, access: EmpireA
   return { ok: true as const, ...session };
 }
 
-export async function authenticateEmpireMember(request: Request, firstName: string, code: string) {
+export async function authenticateEmpireMember(request: Request, firstName: string, code: string, delegated = false) {
   const db = await getEmpireDatabase();
   const visitor = await fingerprint(request);
   if (!(await loginRateLimit(db, visitor))) return { ok: false as const, rateLimited: true };
@@ -424,6 +425,7 @@ export async function authenticateEmpireMember(request: Request, firstName: stri
   }
   await db.prepare("DELETE FROM empire_login_attempts WHERE visitor_hash = ?").bind(visitor).run();
   const session = await createEmpireSession(db, "member", matchedMemberId, matchedCredentialHash);
+  if (delegated) await db.prepare("INSERT INTO empire_session_delegates (token) VALUES (?)").bind(session.token).run();
   return { ok: true as const, ...session };
 }
 
@@ -431,7 +433,7 @@ export async function endEmpireSession(request: Request) {
   const token = readCookie(request, "empire_session");
   if (/^[a-f0-9-]{36}$/i.test(token)) {
     const db = await getEmpireDatabase();
-    await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token)]);
+    await db.batch([db.prepare("DELETE FROM empire_sessions WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_members WHERE token = ?").bind(token), db.prepare("DELETE FROM empire_session_delegates WHERE token = ?").bind(token)]);
   }
 }
 
@@ -586,7 +588,9 @@ export async function getEmpireDatabase() {
       )`),
       runtime.DB.prepare("CREATE INDEX IF NOT EXISTS empire_sessions_expiry ON empire_sessions (expires_at)"),
       runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_session_members (token TEXT PRIMARY KEY, member_id INTEGER NOT NULL, credential_hash TEXT)"),
+      runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_session_delegates (token TEXT PRIMARY KEY)"),
       runtime.DB.prepare("DELETE FROM empire_session_members WHERE token NOT IN (SELECT token FROM empire_sessions)"),
+      runtime.DB.prepare("DELETE FROM empire_session_delegates WHERE token NOT IN (SELECT token FROM empire_sessions)"),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_login_attempts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         visitor_hash TEXT NOT NULL,
