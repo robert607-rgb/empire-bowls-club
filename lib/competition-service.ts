@@ -75,12 +75,13 @@ export async function competitionMutation(db:D1Database,s:Session,p:Row,today:st
  if(!comp)fail(404,'Competition not found.');
  if(p.action==='setRoundDeadline') {
   requireAdmin(s);
-  const round=Number(p.round),date=String(p.date??'');
+  const round=Number(p.round),date=String(p.date??''),mode=p.mode??'by';
+  if(mode!=='by'&&mode!=='on')fail(400,'Choose Play by or Play on.');
   if(comp.structure!=='Knockout'||!Number.isInteger(round)||round<1||round>6)fail(400,'Choose a knockout round.');
   const exists=await db.prepare('SELECT id FROM empire_competition_matches WHERE competition_id=? AND round=? LIMIT 1').bind(comp.id,round).first<Row>();
   if(!exists)fail(400,'That round is not in this draw.');
-  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))fail(400,'Choose a valid play-by date.');
-  if(date)await db.prepare('INSERT INTO empire_competition_round_dates (competition_id,round,play_by) VALUES (?,?,?) ON CONFLICT(competition_id,round) DO UPDATE SET play_by=excluded.play_by').bind(comp.id,round,date).run();
+  if(date&&(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date))fail(400,'Choose a valid round date.');
+  if(date)await db.prepare('INSERT INTO empire_competition_round_dates (competition_id,round,play_by,date_mode) VALUES (?,?,?,?) ON CONFLICT(competition_id,round) DO UPDATE SET play_by=excluded.play_by,date_mode=excluded.date_mode').bind(comp.id,round,date,mode).run();
   else await db.prepare('DELETE FROM empire_competition_round_dates WHERE competition_id=? AND round=?').bind(comp.id,round).run();
   return {ok:true,id:comp.id};
  }

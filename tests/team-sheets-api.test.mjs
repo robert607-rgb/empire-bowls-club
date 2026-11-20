@@ -26,3 +26,24 @@ test('player email lookup is private and only includes the selected team and res
  const make=role=>new Request(`https://club.test/api/recipients?sheetId=${id}`,{headers:{role}});
  assert.equal((await rec.GET(make('member'))).status,401); const output=await rec.GET(make('admin'));assert.equal(output.status,200);const result=await output.json();assert.deepEqual(result.addresses,['one@example.com','three@example.com']);assert.equal(result.missing,1);
 });
+
+test('linked drafts keep vacant positions private and publish using the canonical fixture',async()=>{
+ sql.exec("CREATE TABLE empire_fixtures(id INTEGER PRIMARY KEY,opponent TEXT,competition TEXT,fixture_date TEXT,start_time TEXT); INSERT INTO empire_fixtures VALUES(7,'Fixture club','Fixture league','2027-04-04','14:30');");
+ const entry={...base,fixtureId:7,venue:'Home & Away',rinks:[{format:'Pairs',memberIds:[0,2],venue:'Away'}],draft:true};
+ const created=await api.POST(request('admin','POST',entry));
+ assert.equal(created.status,201);
+ const {sheet}=await created.json();
+ assert.equal(sheet.matchDate,'2027-04-04');
+ assert.equal(sheet.startTime,'14:30');
+ assert.equal(sheet.rinks[0].players[0].position,'Skip');
+ assert.equal(sheet.rinks[0].venue,'Away');
+ const memberSheets=async()=>(await (await api.GET(request('member','GET'))).json()).sheets;
+ assert.ok(!(await memberSheets()).some(item=>item.id===sheet.id));
+ const publish={...entry,id:sheet.id,revision:sheet.revision,draft:false,rinks:[{...entry.rinks[0],memberIds:[1,2]}]};
+ assert.equal((await api.POST(request('admin','POST',publish))).status,200);
+ const published=(await memberSheets()).find(item=>item.id===sheet.id);
+ assert.equal(published.opponent,'Fixture club');
+ assert.equal(published.revision,undefined);
+ assert.equal(published.rinks[0].venue,'Away');
+ assert.equal((await api.POST(request('admin','POST',publish))).status,409);
+});

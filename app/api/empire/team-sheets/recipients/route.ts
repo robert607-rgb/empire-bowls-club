@@ -1,5 +1,5 @@
 import { apiError, getEmpireDatabase, hasEmpireAccess, unauthorized } from "../../_server";
-import { parseRoster } from "../../../../../lib/team-roster";
+import { parseRoster, publishedRoster } from "../../../../../lib/team-roster";
 
 const headers = { "cache-control": "private, no-store", vary: "Cookie", "x-robots-tag": "noindex" };
 export async function GET(request: Request) {
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   if (!Number.isSafeInteger(id) || id < 1) return Response.json({error:"Choose a team sheet."},{status:400,headers});
   try {
     const db = await getEmpireDatabase();
-    const row = await db.prepare("SELECT rinks_json FROM empire_team_sheets WHERE id = ?").bind(id).first<{rinks_json:string}>();
+    const row = await db.prepare(`SELECT s.rinks_json FROM empire_team_sheets s LEFT JOIN empire_team_sheet_archives a ON a.sheet_id = s.id WHERE s.id = ? AND a.sheet_id IS NULL AND ${publishedRoster}`).bind(id).first<{rinks_json:string}>();
     if (!row) return Response.json({error:"Team sheet not found."},{status:404,headers});
     const roster = parseRoster(row.rinks_json);
     const ids = [...new Set([...roster.rinks.flatMap(rink=>rink.memberIds),...roster.reserveIds])].filter(id=>Number.isSafeInteger(id)&&id>0);

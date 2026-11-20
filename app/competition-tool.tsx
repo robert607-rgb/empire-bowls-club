@@ -34,9 +34,28 @@ export default function CompetitionTool({members, admin=false}:{members:{id:numb
  if(!data) return <section className="competition-panel" aria-live="polite">{error ? <><p role="alert">{error}</p><button className="primary" type="button" onClick={()=>void refresh()}>Try again</button></> : "Loading competitions…"}</section>;
  const roundDates=(data.competitions||[]).filter((c:Row)=>!c.archived&&c.structure==='Knockout'&&c.status!=='Entries open').map((c:Row)=>{
   const rounds=[...new Set<number>((data.competitionMatches||[]).filter((m:Row)=>m.competition_id===c.id).map((m:Row)=>Number(m.round)))].sort((a,b)=>a-b);
-  return <section key={c.id} className="competition-round-dates"><h3>{c.title}: play-by dates</h3>{rounds.map(round=>{
-   const date=(data.roundDates||[]).find((d:Row)=>d.competition_id===c.id&&d.round===round)?.play_by||'';
-   return admin?<form key={`${c.id}-${round}-${date}`} onSubmit={async event=>{event.preventDefault();const value=String(new FormData(event.currentTarget).get('date')||'');try{const response=await fetch('/api/empire/competitions',{method:'POST',headers:{'Content-Type':'application/json','x-empire-admin':'1'},body:JSON.stringify({action:'setRoundDeadline',competitionId:c.id,round,date:value})});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error||'Could not save play-by date.');await refresh()}catch(e){setError(e instanceof Error?e.message:'Could not save play-by date.')}}}><label>Round {round} play by <input name="date" type="date" defaultValue={date}/></label> <button type="submit">Save</button></form>:<p key={round}>Round {round}: {date?`play by ${date}`:'No play-by date set'}</p>;
+  return <section key={c.id} className="competition-round-dates"><h3>{c.title} round dates</h3>{rounds.map(round=>{
+   const setting=(data.roundDates||[]).find((d:Row)=>d.competition_id===c.id&&d.round===round);
+   const date=setting?.play_by||'';
+   const mode=setting?.date_mode==='on'?'on':'by';
+   return admin ? <form key={`${c.id}-${round}-${date}-${mode}`} onSubmit={async event => {
+    event.preventDefault();
+    const fields=new FormData(event.currentTarget);
+    try {
+     const response=await fetch('/api/empire/competitions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-empire-admin':'1'},
+      body:JSON.stringify({action:'setRoundDeadline',competitionId:c.id,round,date:fields.get('date'),mode:fields.get('mode')}),
+     });
+     const body=await response.json() as {error?:string};
+     if(!response.ok)throw new Error(body.error||'Could not save round date.');
+     await refresh();
+    } catch(e) {setError(e instanceof Error?e.message:'Could not save round date.');}
+   }}>
+    <label>Round {round} <select name="mode" defaultValue={mode}><option value="by">Play by</option><option value="on">Play on</option></select></label>
+    <label>Date <input name="date" type="date" defaultValue={date}/></label>
+    <button type="submit">Save</button>
+   </form> : <p key={round}>Round {round} · {date ? `Play ${mode} ${new Intl.DateTimeFormat('en-GB',{dateStyle:'medium',timeZone:'UTC'}).format(new Date(date))}` : 'Date to be confirmed'}</p>;
   })}</section>;
  });
  return <section className="competition-panel">{error && <p role="alert">{error}</p>}<Registration data={{...data,directory,session:{memberId:data.sessionMemberId}}} admin={admin} refresh={refresh}/>{admin&&(data.competitions||[]).filter((c:Row)=>!c.archived&&c.status!=='Entries open').map((c:Row)=><p key={c.id}><button type="button" className="text-link" onClick={async()=>{if(!window.confirm(`Archive ${c.title}? Entries and results will be retained.`))return;try{const response=await fetch('/api/empire/competitions',{method:'POST',headers:{'Content-Type':'application/json','x-empire-admin':'1'},body:JSON.stringify({action:'archiveCompetition',competitionId:c.id,revision:c.revision})});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error||'Could not archive.');await refresh()}catch(e){setError(e instanceof Error?e.message:'Could not archive.')}}}>Archive {c.title}</button></p>)}{admin&&(data.competitions||[]).some((c:Row)=>c.archived)&&<details><summary>Archived competitions</summary>{(data.competitions||[]).filter((c:Row)=>c.archived).map((c:Row)=><p key={c.id}>{c.title} <button type="button" className="text-link" onClick={async()=>{try{const response=await fetch('/api/empire/competitions',{method:'POST',headers:{'Content-Type':'application/json','x-empire-admin':'1'},body:JSON.stringify({action:'restoreCompetition',competitionId:c.id,revision:c.revision})});const body=await response.json() as {error?:string};if(!response.ok)throw new Error(body.error||'Could not restore.');await refresh()}catch(e){setError(e instanceof Error?e.message:'Could not restore.')}}}>Restore</button></p>)}</details>}{roundDates}{competitionViews({...data,directory}).length>0&&<Competitions allowCreate={false} competitions={competitionViews({...data,directory})} members={directory} self={{memberId:data.sessionMemberId,isTest:!data.sessionMemberId}} admin={admin} refresh={async()=>{await refresh()}}/>}</section>;

@@ -5,6 +5,8 @@ import "./gallery-admin.css";
 import "./member-overview.css";
 import "./competition.css";
 import "./member-workflows.css";
+import { AvailabilityCalendar } from "./availability-calendar";
+import { matchLocations, rinkLocations, type MatchLocation, type RinkLocation } from "../lib/team-roster";
 import ClubChampions from "./club-champions";
 import ManualFixture from "./manual-fixture";
 import {clubToday,millisecondsUntilNextClubDay} from "../lib/club-date";
@@ -134,6 +136,7 @@ type TeamSheetPlayer = {
 };
 type TeamSheetRink = {
   rink: number;
+  venue?: RinkLocation;
   format: TeamFormat;
   players: TeamSheetPlayer[];
 };
@@ -142,6 +145,11 @@ type TeamSheet = {
   opponent: string;
   competition: string;
   matchDate: string;
+  startTime?: string;
+  venue?: MatchLocation;
+  fixtureId?: number;
+  draft?: boolean;
+  revision?: string;
   rinkCount: number;
   createdAt: string;
   rinks: TeamSheetRink[];
@@ -150,6 +158,7 @@ type TeamSheet = {
 };
 type TeamSheetDraftRink = {
   format: TeamFormat;
+  venue?: RinkLocation;
   memberIds: Array<number | null>;
 };
 type NewsItem = {
@@ -2215,12 +2224,12 @@ function MemberZone({
     slots: string[];
   } | null>(null);
   const [identity,setIdentity]=useState<{id:number;name:string}|null>(null);
-  const [alerts,setAlerts]=useState<{id:number;opponent:string;competition:string;date:string;role:string}[]>([]);
+  const [alerts,setAlerts]=useState<{id:number;opponent:string;competition:string;date:string;role:string;startTime?:string;venue?:string}[]>([]);
   const [bookingType, setBookingType] = useState("Roll Up");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [memberTab, setMemberTab] = useState<
-    "bookings" | "team" | "players" | "documents" | "directory" | "competitions"
+    "bookings" | "team" | "players" | "documents" | "directory" | "competitions" | "unavailability"
   >("bookings");
   const [directorySearch, setDirectorySearch] = useState("");
   const headers = useMemo(() => apiHeaders("member", password), [password]);
@@ -2327,13 +2336,14 @@ function MemberZone({
           Leave area
         </button>
       </div>
-      {!!alerts.length&&<section className="member-selection-alerts" aria-label="Your match selections">{alerts.filter(alert=>alert.date>=clubToday()).map(alert=><div key={alert.id}><b>{alert.role==='reserve'?'You are a reserve':'You have been selected'} for Empire v {alert.opponent}</b><span>{displayDate(alert.date)} · {alert.competition}</span><button type="button" className="outline" onClick={()=>setMemberTab('team')}>View team sheets</button></div>)}</section>}
+      {!!alerts.length&&<section className="member-selection-alerts" aria-label="Your match selections">{alerts.filter(alert=>alert.date>=clubToday()).map(alert=><div key={alert.id}><b>{alert.role==='reserve'?'You are a reserve':'You have been selected'} for Empire v {alert.opponent}</b><span>{displayDate(alert.date)} · {alert.competition}{alert.startTime ? ` · ${alert.startTime}` : ''}{alert.venue ? ` · ${alert.venue}` : ''}</span><button type="button" className="outline" onClick={()=>setMemberTab('team')}>View team sheets</button></div>)}</section>}
       <div
         className="member-area-tabs"
         role="tablist"
         aria-label="Members area sections"
       >
         <button className={memberTab === "bookings" ? "active" : ""} role="tab" aria-selected={memberTab === "bookings"} aria-controls="member-bookings" onClick={()=>setMemberTab("bookings")}>Rink bookings</button>
+        <button className={memberTab === "unavailability" ? "active" : ""} role="tab" aria-selected={memberTab === "unavailability"} aria-controls="member-unavailability" onClick={() => setMemberTab("unavailability")}>My unavailability</button>
         <button
           className={memberTab === "competitions" ? "active" : ""}
           role="tab"
@@ -2507,6 +2517,10 @@ function MemberZone({
       ) : memberTab === "players" ? (
         <section className="member-content" id="member-player-requests">
           <PlayerRequestBoard password={password} />
+        </section>
+      ) : memberTab === "unavailability" ? (
+        <section className="member-content" id="member-unavailability" role="tabpanel">
+          <MemberAvailability />
         </section>
       ) : memberTab === "documents" ? (
         <section className="member-content" id="member-documents">
@@ -2709,6 +2723,48 @@ function PlayerRequestBoard({ password }: { password: string }) {
   );
 }
 
+function MemberAvailability() {
+  const [dates, setDates] = useState<string[]>([]);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/empire/team-sheets/availability", { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error("Could not load your unavailable dates.");
+        const data = await response.json() as { dates: string[] };
+        setDates(data.dates);
+        setReady(true);
+      })
+      .catch(() => { if (!controller.signal.aborted) setError("Could not load your unavailable dates."); });
+    return () => controller.abort();
+  }, []);
+
+  async function save(change: { available: string[]; unavailable: string[] }) {
+    setError("");
+    try {
+      const response = await fetch("/api/empire/team-sheets/availability", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(change),
+      });
+      const data = await response.json() as { dates: string[]; error?: string };
+      if (!response.ok) throw new Error(data.error || "Could not save your unavailable dates.");
+      setDates(data.dates);
+      notifyEmpireDataUpdated();
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not save your unavailable dates.");
+      return false;
+    }
+  }
+
+  return <>{error && <Status type="error" message={error} />}{ready
+    ? <AvailabilityCalendar today={clubToday()} savedDates={dates} save={save} />
+    : !error && <p role="status">Loading your unavailable dates…</p>}</>;
+}
+
 function TeamSheetsPanel({
   sheets,
   legacyFiles,
@@ -2739,7 +2795,7 @@ function TeamSheetsPanel({
                   <span className="team-sheet-card-kicker">{sheet.competition}</span>
                   <b>Empire v {sheet.opponent}</b>
                   <span>
-                    {displayDate(sheet.matchDate)} · {sheet.rinkCount} rink
+                    {displayDate(sheet.matchDate)}{sheet.startTime && ` · ${sheet.startTime}`}{sheet.venue && ` · ${sheet.venue}`} · {sheet.rinkCount} rink
                     {sheet.rinkCount === 1 ? "" : "s"}
                   </span>
                   <small>{open ? "Hide team" : "View team"}</small>
@@ -2752,7 +2808,7 @@ function TeamSheetsPanel({
                         <section className="team-sheet-rink" key={rink.rink}>
                           <div className="team-sheet-rink-head">
                             <b>Rink {rink.rink}</b>
-                            <span>{rink.format}</span>
+                            <span>{rink.format}{rink.venue && ` · ${rink.venue}`}</span>
                           </div>
                           <ul>
                             {rink.players.map((player) => (
@@ -3181,11 +3237,41 @@ function AdminTeamSheetManager({
   const [opponent, setOpponent] = useState("");
   const [competition, setCompetition] = useState("");
   const [matchDate, setMatchDate] = useState(today());
+  const [startTime, setStartTime] = useState("");
+  const [venue, setVenue] = useState<MatchLocation>("Home");
+  const [fixtureId, setFixtureId] = useState<number | null>(null);
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [editing, setEditing] = useState<TeamSheet | null>(null);
+  const [unavailable, setUnavailable] = useState<{ date: string; memberIds: number[] }>({ date: "", memberIds: [] });
+  const [availabilityError, setAvailabilityError] = useState(false);
   const [rinkCount, setRinkCount] = useState(1);
   const [rinks, setRinks] = useState<TeamSheetDraftRink[]>([blankRink()]);
   const [reserveIds, setReserveIds] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/empire/fixtures", { signal: controller.signal })
+      .then(async response => {
+        if (response.ok) setFixtures((await response.json()).fixtures ?? []);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+  useEffect(() => {
+    setAvailabilityError(false);
+    if (!matchDate) return;
+    const controller = new AbortController();
+    void fetch(`/api/empire/team-sheets/availability?date=${encodeURIComponent(matchDate)}`, {
+      cache: "no-store", headers: apiHeaders("admin", password), signal: controller.signal,
+    }).then(async response => {
+      if (!response.ok) throw new Error("Could not check availability");
+      setUnavailable({ date: matchDate, memberIds: (await response.json()).memberIds });
+    }).catch(() => { if (!controller.signal.aborted) setAvailabilityError(true); });
+    return () => controller.abort();
+  }, [matchDate, password]);
+  const unavailableIds = new Set(unavailable.date === matchDate ? unavailable.memberIds : []);
+  const labelMember = (member: Member) => member.name + (unavailableIds.has(member.id) ? " — Not Available" : "");
   const orderedMembers = members.filter(member => member.loginCodeStatus !== "not-issued").sort((a, b) => a.name.localeCompare(b.name));
   const assignedMemberIds = new Set(
     [...rinks.flatMap((rink) => rink.memberIds).filter((id): id is number => id !== null), ...reserveIds],
@@ -3194,6 +3280,10 @@ function AdminTeamSheetManager({
     setOpponent("");
     setCompetition("");
     setMatchDate(today());
+    setStartTime("");
+    setVenue("Home");
+    setFixtureId(null);
+    setEditing(null);
     setRinkCount(1);
     setRinks([blankRink()]);
     setReserveIds([]);
@@ -3204,11 +3294,40 @@ function AdminTeamSheetManager({
       Array.from({ length: nextCount }, (_, index) => current[index] ?? blankRink()),
     );
   };
+  const chooseFixture = (value: string) => {
+    const fixture = fixtures.find(item => item.id === Number(value));
+    setFixtureId(fixture?.id ?? null);
+    if (!fixture) return;
+    setOpponent(fixture.opponent);
+    setCompetition(fixture.competition);
+    setMatchDate(fixture.date);
+    setStartTime(fixture.time);
+    setVenue("Home");
+    setRinks(current => current.map(rink => ({ ...rink, venue: "Home" })));
+    changeRinkCount(fixture.rinkCount);
+  };
+  const edit = (sheet: TeamSheet) => {
+    setEditing(sheet);
+    setFixtureId(sheet.fixtureId ?? null);
+    setOpponent(sheet.opponent);
+    setCompetition(sheet.competition);
+    setMatchDate(sheet.matchDate);
+    setStartTime(sheet.startTime ?? "");
+    setVenue(sheet.venue ?? "Home");
+    setRinkCount(sheet.rinkCount);
+    setRinks(sheet.rinks.map(rink => ({
+      format: rink.format,
+      venue: rink.venue,
+      memberIds: teamFormats[rink.format].map(position => rink.players.find(player => player.position === position)?.memberId ?? null),
+    })));
+    setReserveIds(sheet.reserves?.map(member => member.memberId) ?? []);
+  };
   const changeFormat = (rinkIndex: number, format: TeamFormat) => {
     setRinks((current) =>
       current.map((rink, index) =>
         index === rinkIndex
           ? {
+              ...rink,
               format,
               memberIds: Array.from(
                 { length: teamFormats[format].length },
@@ -3231,6 +3350,12 @@ function AdminTeamSheetManager({
   };
   const publish = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const draft = submitter instanceof HTMLButtonElement && submitter.value === "draft";
+    if (venue === "Home & Away" && rinks.some(rink => !rink.venue)) {
+      setError("Choose Home or Away for every rink.");
+      return;
+    }
     setError("");
     setSaving(true);
     try {
@@ -3241,13 +3366,20 @@ function AdminTeamSheetManager({
           "content-type": "application/json",
         },
         body: JSON.stringify({
+          id: editing?.id,
+          revision: editing?.revision,
+          draft,
+          fixtureId,
+          startTime,
+          venue,
           opponent,
           competition,
           matchDate,
           rinkCount,
-          reserveIds,
+          reserveIds: draft ? reserveIds.filter(Boolean) : reserveIds,
           rinks: rinks.map((rink) => ({
             format: rink.format,
+            venue: venue === "Home & Away" ? rink.venue : venue,
             memberIds: rink.memberIds.map((memberId) => memberId ?? 0),
           })),
         }),
@@ -3258,7 +3390,7 @@ function AdminTeamSheetManager({
         return;
       }
       onChange(
-        [...sheets, result.sheet].sort(
+        [...sheets.filter(sheet => sheet.id !== result.sheet.id), result.sheet].sort(
           (a, b) =>
             new Date(b.matchDate).getTime() - new Date(a.matchDate).getTime(),
         ),
@@ -3266,7 +3398,7 @@ function AdminTeamSheetManager({
       reset();
       refreshAdminWorkspace(
         "team-sheets",
-        `Team sheet for Empire v ${result.sheet.opponent} has been published for members.`,
+        `Team sheet for Empire v ${result.sheet.opponent} ${draft ? "saved as a draft" : "published for members"}.`,
       );
       return;
     } catch {
@@ -3315,20 +3447,28 @@ function AdminTeamSheetManager({
       <div className="admin-section-heading">
         <div>
           <p className="eyebrow">Match selection</p>
-          <h2>Create and publish a team sheet</h2>
+          <h2>{editing ? "Edit team sheet" : "Create a team sheet"}</h2>
           <p>
             Choose the match and use the member directory to place players in
             every rink.
           </p>
         </div>
-        <span className="members-count">{sheets.length} published</span>
+        <span className="members-count">{sheets.filter(sheet => !sheet.draft && !sheet.archived).length} published</span>
       </div>
       <form className="team-sheet-builder" onSubmit={publish}>
+        <label>Fixture
+          <select value={fixtureId ?? ""} onChange={event => chooseFixture(event.target.value)}>
+            <option value="">Standalone match</option>
+            {fixtureId && !fixtures.some(fixture => fixture.id === fixtureId) && <option value={fixtureId}>Linked fixture unavailable</option>}
+            {fixtures.map(fixture => <option value={fixture.id} key={fixture.id}>{displayDate(fixture.date)} · {fixture.opponent} · {fixture.competition}</option>)}
+          </select>
+        </label>
         <div className="form-columns">
           <label>
             Opponent
             <input
               value={opponent}
+              readOnly={fixtureId !== null}
               onChange={(event) => setOpponent(event.target.value)}
               placeholder="e.g. Greenhithe BC"
               required
@@ -3339,6 +3479,7 @@ function AdminTeamSheetManager({
             League or competition
             <input
               value={competition}
+              readOnly={fixtureId !== null}
               onChange={(event) => setCompetition(event.target.value)}
               placeholder="e.g. North West Kent League"
               required
@@ -3350,9 +3491,18 @@ function AdminTeamSheetManager({
             <input
               type="date"
               value={matchDate}
+              readOnly={fixtureId !== null}
               onChange={(event) => setMatchDate(event.target.value)}
               required
             />
+          </label>
+          <label>Start time
+            <input type="time" value={startTime} onChange={event => setStartTime(event.target.value)} readOnly={fixtureId !== null} />
+          </label>
+          <label>Match venue
+            <select value={venue} onChange={event => setVenue(event.target.value as MatchLocation)}>
+              {matchLocations.map(location => <option key={location}>{location}</option>)}
+            </select>
           </label>
           <label>
             Number of rinks
@@ -3368,6 +3518,8 @@ function AdminTeamSheetManager({
             </select>
           </label>
         </div>
+        {availabilityError && <p role="status">Could not check player availability for this date.</p>}
+        {Array.from(assignedMemberIds).some(id => unavailableIds.has(id)) && <p role="status">At least one selected player or reserve has marked this date as Not Available.</p>}
         <div className="team-sheet-rinks">
           {rinks.map((rink, rinkIndex) => (
             <section className="team-sheet-rink" key={rinkIndex}>
@@ -3386,6 +3538,12 @@ function AdminTeamSheetManager({
                     ))}
                   </select>
                 </label>
+                {venue === "Home & Away" && <label>Rink venue
+                  <select value={rink.venue ?? ""} onChange={event => setRinks(current => current.map((item, index) => index === rinkIndex ? { ...item, venue: event.target.value as RinkLocation || undefined } : item))}>
+                    <option value="">Choose venue</option>
+                    {rinkLocations.map(location => <option key={location}>{location}</option>)}
+                  </select>
+                </label>}
               </div>
               <div className="team-sheet-player-grid">
                 {teamFormats[rink.format].map((position, positionIndex) => (
@@ -3407,7 +3565,7 @@ function AdminTeamSheetManager({
                             rink.memberIds[positionIndex] !== member.id
                           }
                         >
-                          {member.name}
+                          {labelMember(member)}
                         </option>
                       ))}
                     </select>
@@ -3418,7 +3576,7 @@ function AdminTeamSheetManager({
           ))}
         </div>
         <fieldset><legend>Reserves</legend>
-          {reserveIds.map((id, index) => <div key={index}><label>Reserve {index + 1} <select value={id || ""} onChange={event => setReserveIds(current => current.map((value, i) => i === index ? Number(event.target.value) : value))}><option value="">Choose a member</option>{orderedMembers.map(member => <option key={member.id} value={member.id} disabled={assignedMemberIds.has(member.id) && member.id !== id}>{member.name}</option>)}</select></label><button type="button" onClick={() => setReserveIds(current => current.filter((_, i) => i !== index))}>Remove reserve</button></div>)}
+          {reserveIds.map((id, index) => <div key={index}><label>Reserve {index + 1} <select value={id || ""} onChange={event => setReserveIds(current => current.map((value, i) => i === index ? Number(event.target.value) : value))}><option value="">Choose a member</option>{orderedMembers.map(member => <option key={member.id} value={member.id} disabled={assignedMemberIds.has(member.id) && member.id !== id}>{labelMember(member)}</option>)}</select></label><button type="button" onClick={() => setReserveIds(current => current.filter((_, i) => i !== index))}>Remove reserve</button></div>)}
           <button type="button" disabled={reserveIds.length >= 40 || reserveIds.includes(0)} onClick={() => setReserveIds(current => [...current, 0])}>Add reserve</button>
         </fieldset>
         {!members.length && (
@@ -3428,8 +3586,10 @@ function AdminTeamSheetManager({
         )}
         {error && <Status type="error" message={error} />}
         <button className="primary" type="submit" disabled={saving || !members.length}>
-          {saving ? "Publishing team sheet…" : "Publish team sheet"}
+          {saving ? "Saving team sheet…" : editing && !editing.draft ? "Update published team sheet" : "Publish team sheet"}
         </button>
+        {(!editing || editing.draft) && <button type="submit" value="draft" className="outline" disabled={saving}>Save draft</button>}
+        {editing && <button type="button" className="outline" onClick={reset}>Cancel editing</button>}
       </form>
       {sheets.length ? (
         <div className="published-team-sheets">
@@ -3441,8 +3601,10 @@ function AdminTeamSheetManager({
                   {sheet.competition} · {displayDate(sheet.matchDate)}
                 </span>
               </div>
-              <TeamSheetEmail sheet={sheet} />
-              {sheet.matchDate < clubToday() && <button type="button" onClick={()=>void archive(sheet)}>Archive</button>}
+              {sheet.draft && <span>Draft</span>}
+              <button type="button" onClick={() => edit(sheet)}>{sheet.draft ? "Edit or publish draft" : "Edit"}</button>
+              {!sheet.draft && <TeamSheetEmail sheet={sheet} />}
+              {!sheet.draft && sheet.matchDate < clubToday() && <button type="button" onClick={()=>void archive(sheet)}>Archive</button>}
               <button
                 className="remove-member"
                 type="button"
@@ -3468,7 +3630,7 @@ function TeamSheetEmail({ sheet }: { sheet: TeamSheet }) {
     setLoaded(false);setStatus("Loading current email addresses…");
     try {const response=await fetch(`/api/empire/team-sheets/recipients?sheetId=${sheet.id}`,{cache:"no-store",headers:{"x-empire-admin":"1"}}); const result=await response.json();if(!response.ok)throw new Error(result.error||"Could not load email addresses.");setAddresses(result.addresses);setMissing(result.missing);setStatus("");setLoaded(true);}catch(error){setStatus(error instanceof Error?error.message:"Could not load email addresses.");}
   }
-  const team = [`Empire v ${sheet.opponent}`, sheet.competition, displayDate(sheet.matchDate), ...sheet.rinks.flatMap(rink => [`\nRink ${rink.rink} – ${rink.format}`, ...rink.players.map(player => `${player.position}: ${player.name}`)]), ...(sheet.reserves?.length ? [`\nReserves: ${sheet.reserves.map(member => member.name).join(", ")}`] : [])].join("\n");
+  const team = [`Empire v ${sheet.opponent}`, sheet.competition, [displayDate(sheet.matchDate), sheet.startTime, sheet.venue].filter(Boolean).join(" · "), ...sheet.rinks.flatMap(rink => [`\nRink ${rink.rink} – ${rink.format}${rink.venue ? ` · ${rink.venue}` : ""}`, ...rink.players.map(player => `${player.position}: ${player.name}`)]), ...(sheet.reserves?.length ? [`\nReserves: ${sheet.reserves.map(member => member.name).join(", ")}`] : [])].join("\n");
   const link = `mailto:?bcc=${encodeURIComponent(addresses.join(","))}&subject=${encodeURIComponent(`Team selection: Empire v ${sheet.opponent}`)}&body=${encodeURIComponent(team)}`;
   return <details onToggle={event=>{if(event.currentTarget.open)void load()}}><summary>Email selected players</summary>{status&&<p role="status">{status}</p>}{loaded&&<><p>{addresses.length} unique addresses; {missing} player(s) without a usable address. Review your draft before sending.</p>{addresses.length > 0 && link.length <= 1800 && <a href={link}>Open BCC email</a>}<label>BCC addresses<textarea readOnly rows={2} value={addresses.join(", ")} onFocus={event => event.currentTarget.select()} /></label><label>Team selection<textarea readOnly rows={6} value={team} onFocus={event => event.currentTarget.select()} /></label><p>Copy the addresses into BCC and the selection into your message if your email app does not open.</p></>}</details>;
 }

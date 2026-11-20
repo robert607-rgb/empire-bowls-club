@@ -574,6 +574,12 @@ export async function getEmpireDatabase() {
       runtime.DB.prepare(
         "CREATE INDEX IF NOT EXISTS idx_empire_team_sheets_date ON empire_team_sheets (match_date)",
       ),
+      runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_member_unavailability (
+        member_id INTEGER NOT NULL,
+        match_date TEXT NOT NULL,
+        PRIMARY KEY (member_id, match_date)
+      )`),
+      runtime.DB.prepare("CREATE INDEX IF NOT EXISTS idx_empire_unavailability_date ON empire_member_unavailability (match_date)"),
       runtime.DB.prepare("CREATE TABLE IF NOT EXISTS empire_team_sheet_archives (sheet_id INTEGER PRIMARY KEY, archived_at TEXT NOT NULL)"),
       runtime.DB.prepare(`CREATE TABLE IF NOT EXISTS empire_access_accounts (
         access TEXT PRIMARY KEY,

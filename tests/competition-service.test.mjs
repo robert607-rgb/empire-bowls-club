@@ -26,7 +26,8 @@ test('knockout round play-by dates are saved separately from entry deadlines and
   await mutate(db,admin,save);
   assert.equal(db.sql.prepare('SELECT play_by FROM empire_competition_round_dates WHERE competition_id=? AND round=1').get(created.id).play_by,'2027-05-25');
   assert.equal(db.sql.prepare('SELECT deadline FROM empire_competitions WHERE id=?').get(created.id).deadline,null);
-  await mutate(db,admin,{...save,date:'2027-06-01'});
+  await mutate(db,admin,{...save,date:'2027-06-01',mode:'on'});
+  assert.equal(db.sql.prepare('SELECT date_mode FROM empire_competition_round_dates WHERE competition_id=? AND round=1').get(created.id).date_mode,'on');
   assert.equal(db.sql.prepare('SELECT play_by FROM empire_competition_round_dates WHERE competition_id=? AND round=1').get(created.id).play_by,'2027-06-01');
   await mutate(db,admin,{...save,date:''});
   assert.equal(db.sql.prepare('SELECT COUNT(*) n FROM empire_competition_round_dates WHERE competition_id=?').get(created.id).n,0);
