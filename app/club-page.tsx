@@ -3602,21 +3602,21 @@ function AdminTeamSheetManager({
                 </span>
               </div>
               {sheet.draft && <span>Draft</span>}
-              <button type="button" onClick={() => edit(sheet)}>{sheet.draft ? "Edit or publish draft" : "Edit"}</button>
+              <button type="button" onClick={() => edit(sheet)}>{sheet.draft ? "Edit or publish draft" : "Edit line-up"}</button>
               {!sheet.draft && <TeamSheetEmail sheet={sheet} />}
-              {!sheet.draft && sheet.matchDate < clubToday() && <button type="button" onClick={()=>void archive(sheet)}>Archive</button>}
+              <button type="button" onClick={()=>void archive(sheet)}>Archive</button>
               <button
                 className="remove-member"
                 type="button"
                 onClick={() => void remove(sheet)}
               >
-                Remove
+                Delete
               </button>
             </article>
           ))}
         </div>
       ) : null}
-      {sheets.some(sheet=>sheet.archived) && <details><summary>Archived team sheets</summary>{sheets.filter(sheet=>sheet.archived).map(sheet=><article key={sheet.id}><b>Empire v {sheet.opponent}</b> · {sheet.competition} · {displayDate(sheet.matchDate)} <button type="button" onClick={()=>void archive(sheet,true)}>Restore</button></article>)}</details>}
+      {sheets.some(sheet=>sheet.archived) && <details><summary>Archived team sheets</summary>{sheets.filter(sheet=>sheet.archived).map(sheet=><article key={sheet.id}><b>Empire v {sheet.opponent}</b> · {sheet.competition} · {displayDate(sheet.matchDate)} <button type="button" onClick={()=>void archive(sheet,true)}>Restore</button> <button type="button" onClick={()=>void remove(sheet)}>Delete</button></article>)}</details>}
     </section>
   );
 }

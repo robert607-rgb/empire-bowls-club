@@ -164,7 +164,6 @@ export async function PATCH(request: Request) {
     const db=await getEmpireDatabase();
     const sheet=await db.prepare('SELECT id,match_date FROM empire_team_sheets WHERE id=?').bind(id).first<{id:number;match_date:string}>();
     if(!sheet) return Response.json({error:'Team sheet not found.'},{status:404});
-    if(sheet.match_date>=clubToday()) return Response.json({error:'Archive the team sheet after the match date.'},{status:400});
     if(input.restore===true) await db.prepare('DELETE FROM empire_team_sheet_archives WHERE sheet_id=?').bind(id).run();
     else await db.prepare('INSERT OR IGNORE INTO empire_team_sheet_archives (sheet_id,archived_at) VALUES (?,?)').bind(id,new Date().toISOString()).run();
     return Response.json({ok:true});
